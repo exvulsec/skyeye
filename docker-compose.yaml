@@ -1,0 +1,9 @@
+version: '3'
+services:
+  openapi:
+    image: openapi:a740493-dirty
+    ports:
+      - "8088:8088"
+    volumes:
+      - ./config/config.dev.yaml:/app/config.dev.yaml
+    command: /app/openapi http -c /app
