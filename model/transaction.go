@@ -64,11 +64,11 @@ func (tx *Transaction) ConvertFromBlock(transaction *types.Transaction) {
 	tx.GasLimit = int64(transaction.Gas())
 }
 
-func (txs Transactions) EnrichReceipts(workers chan int64) {
+func (txs *Transactions) EnrichReceipts(workers chan int64) {
 	rwMutex := sync.RWMutex{}
 	wg := sync.WaitGroup{}
-	for index := range txs {
-		item := txs[index]
+	for index := range *txs {
+		item := (*txs)[index]
 		wg.Add(1)
 		workers <- 1
 		go func(index int) {
@@ -76,7 +76,7 @@ func (txs Transactions) EnrichReceipts(workers chan int64) {
 			item.enrichReceipt()
 			rwMutex.Lock()
 			defer rwMutex.Unlock()
-			txs[index] = item
+			(*txs)[index] = item
 		}(index)
 	}
 	wg.Wait()
@@ -102,4 +102,35 @@ func (txs *Transactions) CreateBatchToDB(tableName string, worker int) {
 	if result.Error != nil {
 		logrus.Fatalf("insert tx into db is err %v", result.Error)
 	}
+}
+
+func (txs *Transactions) ListTransactionsWithFromAddress(tableName, address string) error {
+	result := database.DB().Table(tableName).
+		Where("from_address = ?", address).
+		Order("block_timestamp asc").
+		Find(txs)
+	return result.Error
+}
+
+func (txs *Transactions) FilterAssociatedAddrs(chain, fromAddr string, filterAddrs []string) error {
+	txList := Transactions{}
+	tableName := utils.ComposeTableName(chain, database.TableContractCreationTxs)
+	if err := txList.ListTransactionsWithFromAddress(tableName, fromAddr); err != nil {
+		return err
+	}
+	for index := range txList {
+		if txList[index].filterAddrs(filterAddrs) {
+			*txs = append(*txs, txList[index])
+		}
+	}
+	return nil
+}
+
+func (tx *Transaction) filterAddrs(addrs []string) bool {
+	for _, addr := range addrs {
+		if tx.ContractAddress == strings.ToLower(addr) {
+			return true
+		}
+	}
+	return false
 }

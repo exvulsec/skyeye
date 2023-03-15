@@ -59,7 +59,9 @@ func (ce *contractCreationExecutor) filterContractCreationTxs() {
 
 func (ce *contractCreationExecutor) Enrich() {
 	startTimestamp := time.Now()
-	ce.items.(model.Transactions).EnrichReceipts(ce.workers)
+	txs := ce.items.(model.Transactions)
+	txs.EnrichReceipts(ce.workers)
+	ce.items = txs
 	logrus.Infof("enrich %d txs from receipt cost: %.2fs",
 		len(ce.items.(model.Transactions)),
 		time.Since(startTimestamp).Seconds())
