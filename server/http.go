@@ -12,8 +12,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/sirupsen/logrus"
 
-	"openapi/config"
-	"openapi/database"
+	"go-etl/config"
 )
 
 type HTTPServer struct {
@@ -22,8 +21,6 @@ type HTTPServer struct {
 }
 
 func NewHTTPServer() HTTPServer {
-	database.NewDBInstance()
-
 	r := gin.Default()
 	addRouters(r)
 	s := HTTPServer{routers: r}

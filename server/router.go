@@ -7,7 +7,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 
-	"openapi/controller"
+	"go-etl/http/controller"
 )
 
 func addRouters(r gin.IRouter) {

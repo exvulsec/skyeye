@@ -8,7 +8,7 @@ import (
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
 
-	"openapi/config"
+	"go-etl/config"
 )
 
 var dbInstance *DBInstance
@@ -57,6 +57,6 @@ func DB() *gorm.DB {
 	return dbInstance.Instance().(*gorm.DB)
 }
 
-func NewDBInstance() {
+func init() {
 	dbInstance = &DBInstance{initializer: initPostgresql}
 }

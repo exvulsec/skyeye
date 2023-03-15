@@ -3,8 +3,8 @@ package cmd
 import (
 	"github.com/spf13/cobra"
 
-	"openapi/config"
-	"openapi/server"
+	"go-etl/config"
+	"go-etl/server"
 )
 
 var httpCmd = &cobra.Command{

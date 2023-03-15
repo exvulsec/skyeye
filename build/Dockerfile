@@ -2,6 +2,6 @@ FROM debian:buster-slim
 
 WORKDIR /app
 
-COPY ./bin/openapi /app/openapi
+COPY ./bin/etl /app/etl
 
 EXPOSE 8088

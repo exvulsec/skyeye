@@ -3,7 +3,7 @@ package model
 import (
 	"fmt"
 
-	"openapi/database"
+	"go-etl/database"
 )
 
 type AddressLabel struct {

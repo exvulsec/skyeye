@@ -16,7 +16,8 @@ var (
 
 type config struct {
 	Postgresql       PostgresqlConfig `mapstructure:"postgresql" yaml:"postgresql"`
-	HTTPServerConfig HTTPServerConfig `mapstructure:"httpserver" yaml:"httpserver"`
+	HTTPServerConfig HTTPServerConfig `mapstructure:"http_server" yaml:"http_server"`
+	ETLConfig        ETLConfig        `mapstructure:"etl" yaml:"etl"`
 }
 
 type HTTPServerConfig struct {
@@ -25,14 +26,21 @@ type HTTPServerConfig struct {
 }
 
 type PostgresqlConfig struct {
+	Host         string `mapstructure:"host" yaml:"host"`
+	Port         int    `mapstructure:"Port" yaml:"port"`
 	User         string `mapstructure:"user" yaml:"user"`
 	Password     string `mapstructure:"password" yaml:"password"`
 	Database     string `mapstructure:"database" yaml:"database"`
-	Host         string `mapstructure:"host" yaml:"host"`
-	Port         int    `mapstructure:"port" yaml:"port"`
-	LogMode      bool   `mapstructure:"log-mode" yaml:"log-mode"`
-	MaxIdleConns int    `mapstructure:"max-idle-conns" yaml:"max-idle-conns"`
-	MaxOpenConns int    `mapstructure:"max-open-conns" yaml:"max-open-conns"`
+	LogMode      bool   `mapstructure:"log_mode" yaml:"log_mode"`
+	MaxIdleConns int    `mapstructure:"max_idle_conns" yaml:"max_idle_conns"`
+	MaxOpenConns int    `mapstructure:"max_open_conns" yaml:"max_open_conns"`
+}
+
+type ETLConfig struct {
+	ProviderURL  string `mapstructure:"provider_url" yaml:"provider_url"`
+	Chain        string `mapstructure:"chain" yaml:"chain"`
+	Worker       int64  `mapstructure:"worker" yaml:"worker"`
+	PreviousFile string `mapstructure:"previous_file" yaml:"previous_file"`
 }
 
 func SetupConfig() {

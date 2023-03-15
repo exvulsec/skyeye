@@ -7,7 +7,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 
-	"openapi/model"
+	"go-etl/model"
 )
 
 type AddressController struct{}

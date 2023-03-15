@@ -1,6 +1,6 @@
 package main
 
-import "openapi/cmd"
+import "go-etl/cmd"
 
 func main() {
 	cmd.Execute()
