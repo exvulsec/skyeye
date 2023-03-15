@@ -13,7 +13,7 @@ type AddressLabel struct {
 }
 
 func (al *AddressLabel) GetLabels(chain, address string) error {
-	tableName := fmt.Sprintf("%s.labels", chain)
+	tableName := fmt.Sprintf("%s.%s", chain, database.TableLabels)
 	return database.DB().Table(tableName).
 		Where("address = ?", address).First(al).Error
 }

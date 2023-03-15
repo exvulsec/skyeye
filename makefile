@@ -1,5 +1,5 @@
 .PHONY: build
-TARGET=openapi
+TARGET=etl
 
 OUTPUT_DIR := ./bin
 BUILD_DIR = ./build
