@@ -1,7 +1,7 @@
 version: '3'
 services:
   openapi:
-    image: openapi:a740493-dirty
+    image: etl:cdc513e-dirty
     ports:
       - "8088:8088"
     volumes:

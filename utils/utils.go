@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"strconv"
+	"strings"
 
 	"github.com/sirupsen/logrus"
 
@@ -16,7 +17,7 @@ func ReadBlockNumberFromFile(filePath string) int64 {
 	if err != nil {
 		logrus.Fatalf("failed to read the last block number from %s", config.Conf.ETLConfig.PreviousFile)
 	}
-	lastBlockNumber, err := strconv.ParseInt(string(bytes), 10, 64)
+	lastBlockNumber, err := strconv.ParseInt(strings.Trim(string(bytes), "\n"), 10, 64)
 	if err != nil {
 		logrus.Fatalf("failed to convert int the last block number from file %s is err: %v", filePath, err)
 	}

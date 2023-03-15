@@ -40,7 +40,7 @@ build-image: build-linux
 	  -t $${image}:$(VERSION)                                                   \
 	  --label $(DOCKER_LABELS)                                                  \
 	  -f $(BUILD_DIR)/Dockerfile .;                                             \
-	gsed -i                                                                     \
+	sed -i                                                                      \
 	  "/\ \ \ \ image: $${image}:*/c\ \ \ \ image: $${image}:$(VERSION)"        \
 	  $(PWD)/docker-compose.yaml;
 
