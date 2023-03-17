@@ -55,7 +55,7 @@ func getLatestBlocks(blockNumbers chan int64) {
 	for {
 		go getPreviousBlocks(blockNumbers)
 		headers := make(chan *types.Header, 10)
-		wsClient := client.NewWebSocketClinet()
+		wsClient := client.NewWebSocketClient()
 
 		sub, err := wsClient.SubscribeNewHead(context.Background(), headers)
 		if err != nil {
