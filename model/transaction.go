@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
@@ -83,10 +84,27 @@ func (txs *Transactions) EnrichReceipts(workers chan int64) {
 }
 
 func (tx *Transaction) enrichReceipt() {
-	receipt, err := client.EvmClient().TransactionReceipt(context.Background(), common.HexToHash(tx.TxHash))
-	if err != nil {
-		logrus.Panicf("get receipt from tx %s is err: %v", tx.TxHash, err)
+	var (
+		receipt *types.Receipt
+		err     error
+	)
+	retry := 3
+	for {
+		if retry == 0 {
+			return
+		}
+		receipt, err = client.EvmClient().TransactionReceipt(context.Background(), common.HexToHash(tx.TxHash))
+		if err == nil {
+			break
+		}
+		if strings.Contains(err.Error(), "not found") {
+			time.Sleep(time.Second)
+			continue
+		}
+		logrus.Errorf("get receipt from tx %s is err: %v", tx.TxHash, err)
+		retry--
 	}
+
 	tx.GasUsed = int64(receipt.GasUsed)
 	tx.GasPrice = decimal.NewFromBigInt(receipt.EffectiveGasPrice, 0)
 	tx.GasFee = decimal.NewFromInt(tx.GasUsed).Mul(tx.GasPrice)
