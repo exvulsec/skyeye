@@ -55,16 +55,18 @@ func getLatestBlocks(blockNumbers chan int64) {
 	for {
 		go getPreviousBlocks(blockNumbers)
 		headers := make(chan *types.Header, 10)
-		sub, err := client.EvmClient().SubscribeNewHead(context.Background(), headers)
+		wsClient := client.NewWebSocketClinet()
+
+		sub, err := wsClient.SubscribeNewHead(context.Background(), headers)
 		if err != nil {
 			logrus.Infof("failed to subscribe to new head block: %v, retry after 5s", err)
 			time.Sleep(5 * time.Second)
 			if retryTimes > 4 {
+				wsClient.Close()
 				break
 			}
 			retryTimes++
 			continue
-
 		}
 
 		logrus.Infof("subscribed to new head")
@@ -73,6 +75,7 @@ func getLatestBlocks(blockNumbers chan int64) {
 			case err = <-sub.Err():
 				logrus.Errorf("subscription error: %v\n", err)
 				sub.Unsubscribe()
+				wsClient.Close()
 				break
 			case header := <-headers:
 				if header.Number.Uint64() <= latestBlockNumber {
