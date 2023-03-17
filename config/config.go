@@ -38,6 +38,7 @@ type PostgresqlConfig struct {
 
 type ETLConfig struct {
 	ProviderURL  string `mapstructure:"provider_url" yaml:"provider_url"`
+	WebSocketURL string `mapstructure:"ws_url" yaml:"ws_url"`
 	Chain        string `mapstructure:"chain" yaml:"chain"`
 	Worker       int64  `mapstructure:"worker" yaml:"worker"`
 	PreviousFile string `mapstructure:"previous_file" yaml:"previous_file"`
