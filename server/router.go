@@ -13,8 +13,13 @@ import (
 func addRouters(r gin.IRouter) {
 	addHealthRouter(r)
 	apiV1 := setV1Group(r)
-	addrCtrl := controller.AddressController{}
-	addrCtrl.Routers(apiV1)
+	ctrls := []controller.Controller{
+		&controller.AddressController{},
+		&controller.TokenController{},
+	}
+	for _, ctrl := range ctrls {
+		ctrl.Routers(apiV1)
+	}
 }
 
 func setV1Group(r gin.IRouter) gin.IRouter {

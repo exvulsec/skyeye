@@ -8,6 +8,7 @@ import (
 	"github.com/gin-gonic/gin"
 
 	"go-etl/model"
+	"go-etl/utils"
 )
 
 type AddressController struct{}
@@ -21,18 +22,9 @@ func (ac *AddressController) Routers(routers gin.IRouter) {
 }
 
 func (ac *AddressController) FindLabelByAddress(c *gin.Context) {
-	chain := c.Query("chain")
-	address := strings.ToLower(c.Param("address"))
-	if address == "" {
-		c.JSON(
-			http.StatusOK,
-			model.Message{
-				Code: http.StatusBadRequest,
-				Msg:  "the address argument in the path is empty",
-			})
-		return
-	}
 	addrLabel := model.AddressLabel{}
+	chain := utils.GetChainFromQuery(c.Query(utils.ChainKey))
+	address := strings.ToLower(c.Param("address"))
 	if err := addrLabel.GetLabels(chain, address); err != nil {
 		c.JSON(
 			http.StatusOK,
@@ -46,18 +38,8 @@ func (ac *AddressController) FindLabelByAddress(c *gin.Context) {
 }
 
 func (ac *AddressController) AssociatedByAddress(c *gin.Context) {
-	chain := c.Query("chain")
+	chain := utils.GetChainFromQuery(c.Query(utils.ChainKey))
 	address := strings.ToLower(c.Param("address"))
-	if address == "" {
-		c.JSON(
-			http.StatusOK,
-			model.Message{
-				Code: http.StatusBadRequest,
-				Msg:  "the address argument in the path is empty",
-			})
-		return
-	}
-
 	filterAddrs := strings.Split(c.Query("filter_addrs"), ",")
 	txs := model.Transactions{}
 	if len(filterAddrs) > 0 {
