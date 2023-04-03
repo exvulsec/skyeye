@@ -6,3 +6,8 @@ const (
 	ChainEmpty    = ""
 	ChainKey      = "chain"
 )
+
+const (
+	RPCNameEthGetBlockByNumber      = "eth_getBlockByNumber"
+	RPCNameEthGetTransactionReceipt = "eth_getTransactionReceipt"
+)

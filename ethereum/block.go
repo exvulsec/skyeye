@@ -2,62 +2,70 @@ package ethereum
 
 import (
 	"context"
-	"math/big"
+	"encoding/json"
+	"log"
 	"time"
 
-	"github.com/ethereum/go-ethereum/event"
-
+	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/ethereum/go-ethereum/core/types"
+	"github.com/ethereum/go-ethereum/ethclient"
+	"github.com/ethereum/go-ethereum/event"
+	"github.com/ethereum/go-ethereum/rpc"
 	"github.com/sirupsen/logrus"
 
 	"go-etl/client"
 	"go-etl/config"
+	etlRPC "go-etl/rpc"
 	"go-etl/utils"
 )
 
-func GetLatestBlocks() chan types.Block {
+func GetLatestBlocks(batchSize, workers int) chan types.Block {
 	blocks := make(chan types.Block, 100)
-	blockNumbers := make(chan int64, 100)
-	go getLatestBlocks(blockNumbers)
-	go getBlockInfo(blocks, blockNumbers)
+	go getLatestBlocks(blocks, batchSize, workers)
 	return blocks
 }
 
 var latestBlockNumber uint64
 
-func getBlockInfo(blocks chan types.Block, blockNumbers chan int64) {
-	for blockNumber := range blockNumbers {
-		block, err := client.EvmClient().BlockByNumber(context.Background(), big.NewInt(blockNumber))
-		if err != nil {
-			logrus.Errorf("get the block by number %d is err %v", blockNumber, err)
-			break
-		}
-		blocks <- *block
-	}
-	close(blocks)
-}
-
-func getPreviousBlocks(blockNumbers chan int64) {
+func getPreviousBlocks(blockCh chan types.Block, batchSize int, workers int) {
 	var err error
-	previousBlockNumber := utils.ReadBlockNumberFromFile(config.Conf.ETLConfig.PreviousFile)
-	latestBlockNumber, err = client.EvmClient().BlockNumber(context.Background())
+	previousBlockNumber := uint64(utils.ReadBlockNumberFromFile(config.Conf.ETLConfig.PreviousFile) + 1)
+	latestBlockNumber, err = ethclient.NewClient(client.RPCClient()).BlockNumber(context.Background())
 	if err != nil {
-		logrus.Infof("failed to get to new head block: %v, retry after 5s", err)
+		logrus.Fatal("failed to get to the latest Block number", err)
 		return
 	}
 	logrus.Infof("latest block number is %d", latestBlockNumber)
-	var currentBlockNumber = previousBlockNumber + 1
-	for currentBlockNumber <= int64(latestBlockNumber) {
-		blockNumbers <- currentBlockNumber
-		currentBlockNumber = currentBlockNumber + 1
+	if err != nil {
+		log.Fatal(err)
+	}
+	calls := []rpc.BatchElem{}
+	for previousBlockNumber < latestBlockNumber {
+		calls = append(calls, rpc.BatchElem{
+			Method: utils.RPCNameEthGetBlockByNumber,
+			Args:   []any{hexutil.EncodeUint64(previousBlockNumber), true},
+			Result: &json.RawMessage{},
+		})
+		previousBlockNumber += 1
+	}
+	client.MultiCall(calls, batchSize, workers)
+	for _, call := range calls {
+		if call.Error == nil {
+			result, _ := call.Result.(*json.RawMessage)
+			block, err := etlRPC.GetBlock(*result)
+			if err != nil {
+				logrus.Fatalf("get block from raw json message is err: %v", err)
+			}
+			blockCh <- *block
+		}
 	}
 }
 
-func getLatestBlocks(blockNumbers chan int64) {
+func getLatestBlocks(blockCh chan types.Block, batchSize, workers int) {
 	wsClient := client.NewWebSocketClient()
 	headers := make(chan *types.Header, 10)
 	sub := event.Resubscribe(2*time.Second, func(ctx context.Context) (event.Subscription, error) {
-		go getPreviousBlocks(blockNumbers)
+		go getPreviousBlocks(blockCh, batchSize, workers)
 		return wsClient.SubscribeNewHead(context.Background(), headers)
 	})
 	logrus.Infof("subscribed to new head")
@@ -71,8 +79,24 @@ func getLatestBlocks(blockNumbers chan int64) {
 			if header.Number.Uint64() <= latestBlockNumber {
 				continue
 			}
-			logrus.Infof("get new block number %d from subscribed", header.Number.Int64())
-			blockNumbers <- header.Number.Int64()
+			calls := []rpc.BatchElem{}
+			calls = append(calls, rpc.BatchElem{
+				Method: utils.RPCNameEthGetBlockByNumber,
+				Args:   []any{hexutil.EncodeUint64(header.Number.Uint64()), true},
+				Result: &json.RawMessage{},
+			})
+			client.MultiCall(calls, batchSize, workers)
+			for _, call := range calls {
+				if call.Error == nil {
+					result, _ := call.Result.(*json.RawMessage)
+					block, err := etlRPC.GetBlock(*result)
+					if err != nil {
+						logrus.Fatalf("get block from raw json message is err: %v", err)
+					}
+					blockCh <- *block
+				}
+			}
+
 		}
 	}
 }

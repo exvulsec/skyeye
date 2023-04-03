@@ -17,14 +17,26 @@ import (
 type transactionExecutor struct {
 	blockNumber int64
 	blocks      chan types.Block
-	workers     chan int64
+	workers     int
+	batchSize   int
 	items       any
+	filter      filter
 }
 
-func NewTransactionExecutor(blocks chan types.Block) Executor {
+type filter struct {
+	nonce              int
+	isCreationContract bool
+}
+
+func NewTransactionExecutor(blocks chan types.Block, workers, batchSize, nonce int, isCreationContract bool) Executor {
 	return &transactionExecutor{
-		blocks:  blocks,
-		workers: make(chan int64, config.Conf.ETLConfig.Worker),
+		blocks:    blocks,
+		workers:   workers,
+		batchSize: batchSize,
+		filter: filter{
+			nonce:              nonce,
+			isCreationContract: isCreationContract,
+		},
 	}
 }
 
@@ -42,6 +54,7 @@ func (te *transactionExecutor) ExtractByBlock(block types.Block) any {
 	txs := model.Transactions{}
 	rwMutex := sync.RWMutex{}
 	wg := sync.WaitGroup{}
+
 	for index := range block.Transactions() {
 		wg.Add(1)
 		go func(index int) {
@@ -66,8 +79,9 @@ func (te *transactionExecutor) ExtractByBlock(block types.Block) any {
 
 func (te *transactionExecutor) Enrich() {
 	startTimestamp := time.Now()
+	te.filterTransactions()
 	txs := te.items.(model.Transactions)
-	txs.EnrichReceipts(te.workers)
+	txs.EnrichReceipts(te.batchSize, te.workers)
 	logrus.Infof("enrich %d txs from receipt cost: %.2fs", len(txs), time.Since(startTimestamp).Seconds())
 }
 
@@ -81,4 +95,27 @@ func (te *transactionExecutor) Export() {
 	)
 	logrus.Infof("insert %d txs into database cost: %.2f", len(txs), time.Since(startTimestamp).Seconds())
 	utils.WriteBlockNumberToFile(config.Conf.ETLConfig.PreviousFile, te.blockNumber)
+}
+
+func (te *transactionExecutor) filterTransactions() {
+	txs := model.Transactions{}
+	for _, item := range te.items.(model.Transactions) {
+		if te.filterTransaction(item) {
+			txs = append(txs, item)
+		}
+	}
+	te.items = txs
+}
+
+func (te *transactionExecutor) filterTransaction(tx model.Transaction) bool {
+	if te.filter.isCreationContract {
+		if tx.ToAddress == nil && tx.Nonce < te.filter.nonce {
+			return true
+		}
+		return false
+	}
+	if tx.Nonce < te.filter.nonce {
+		return true
+	}
+	return false
 }

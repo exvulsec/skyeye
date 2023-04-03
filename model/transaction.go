@@ -1,15 +1,13 @@
 package model
 
 import (
-	"context"
 	"encoding/hex"
 	"fmt"
 	"strings"
-	"sync"
-	"time"
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
+	"github.com/ethereum/go-ethereum/rpc"
 	"github.com/shopspring/decimal"
 	"github.com/sirupsen/logrus"
 
@@ -32,6 +30,7 @@ type Transaction struct {
 	Input           string          `json:"input" gorm:"column:input"`
 	Value           decimal.Decimal `json:"value" gorm:"column:value"`
 	TxStatus        int64           `json:"tx_status" gorm:"column:tx_status"`
+	Nonce           int             `json:"nonce" gorm:"-"`
 	Gas
 }
 
@@ -65,46 +64,23 @@ func (tx *Transaction) ConvertFromBlock(transaction *types.Transaction) {
 	tx.GasLimit = int64(transaction.Gas())
 }
 
-func (txs *Transactions) EnrichReceipts(workers chan int64) {
-	rwMutex := sync.RWMutex{}
-	wg := sync.WaitGroup{}
+func (txs *Transactions) EnrichReceipts(batchSize, workers int) {
+	calls := []rpc.BatchElem{}
 	for index := range *txs {
-		item := (*txs)[index]
-		wg.Add(1)
-		workers <- 1
-		go func(index int) {
-			defer func() { <-workers; wg.Done() }()
-			item.enrichReceipt()
-			rwMutex.Lock()
-			defer rwMutex.Unlock()
-			(*txs)[index] = item
-		}(index)
+		calls = append(calls, rpc.BatchElem{
+			Method: utils.RPCNameEthGetTransactionReceipt,
+			Args:   []any{common.HexToHash((*txs)[index].TxHash)},
+			Result: &types.Receipt{},
+		})
 	}
-	wg.Wait()
+	client.MultiCall(calls, batchSize, workers)
+	for index := range *txs {
+		receipt, _ := calls[index].Result.(*types.Receipt)
+		(*txs)[index].enrichReceipt(*receipt)
+	}
 }
 
-func (tx *Transaction) enrichReceipt() {
-	var (
-		receipt *types.Receipt
-		err     error
-	)
-	retry := 3
-	for {
-		if retry == 0 {
-			return
-		}
-		receipt, err = client.EvmClient().TransactionReceipt(context.Background(), common.HexToHash(tx.TxHash))
-		if err == nil {
-			break
-		}
-		if strings.Contains(err.Error(), "not found") {
-			time.Sleep(time.Second)
-			continue
-		}
-		logrus.Errorf("get receipt from tx %s is err: %v", tx.TxHash, err)
-		retry--
-	}
-
+func (tx *Transaction) enrichReceipt(receipt types.Receipt) {
 	tx.GasUsed = int64(receipt.GasUsed)
 	tx.GasPrice = decimal.NewFromBigInt(receipt.EffectiveGasPrice, 0)
 	tx.GasFee = decimal.NewFromInt(tx.GasUsed).Mul(tx.GasPrice)
