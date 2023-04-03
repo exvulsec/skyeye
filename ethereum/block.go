@@ -5,6 +5,8 @@ import (
 	"math/big"
 	"time"
 
+	"github.com/ethereum/go-ethereum/event"
+
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/sirupsen/logrus"
 
@@ -32,6 +34,7 @@ func getBlockInfo(blocks chan types.Block, blockNumbers chan int64) {
 		}
 		blocks <- *block
 	}
+	close(blocks)
 }
 
 func getPreviousBlocks(blockNumbers chan int64) {
@@ -51,39 +54,25 @@ func getPreviousBlocks(blockNumbers chan int64) {
 }
 
 func getLatestBlocks(blockNumbers chan int64) {
-	var retryTimes = 0
-	for {
+	wsClient := client.NewWebSocketClient()
+	headers := make(chan *types.Header, 10)
+	sub := event.Resubscribe(2*time.Second, func(ctx context.Context) (event.Subscription, error) {
 		go getPreviousBlocks(blockNumbers)
-		headers := make(chan *types.Header, 10)
-		wsClient := client.NewWebSocketClient()
-
-		sub, err := wsClient.SubscribeNewHead(context.Background(), headers)
-		if err != nil {
-			logrus.Infof("failed to subscribe to new head block: %v, retry after 5s", err)
-			time.Sleep(5 * time.Second)
-			if retryTimes > 4 {
-				wsClient.Close()
-				break
+		return wsClient.SubscribeNewHead(context.Background(), headers)
+	})
+	logrus.Infof("subscribed to new head")
+	for {
+		select {
+		case err := <-sub.Err():
+			logrus.Errorf("subscription error: %v\n", err)
+			sub.Unsubscribe()
+			break
+		case header := <-headers:
+			if header.Number.Uint64() <= latestBlockNumber {
+				continue
 			}
-			retryTimes++
-			continue
-		}
-
-		logrus.Infof("subscribed to new head")
-		for {
-			select {
-			case err = <-sub.Err():
-				logrus.Errorf("subscription error: %v\n", err)
-				sub.Unsubscribe()
-				wsClient.Close()
-				break
-			case header := <-headers:
-				if header.Number.Uint64() <= latestBlockNumber {
-					continue
-				}
-				logrus.Infof("get new block number %d from subscribed", header.Number.Int64())
-				blockNumbers <- header.Number.Int64()
-			}
+			logrus.Infof("get new block number %d from subscribed", header.Number.Int64())
+			blockNumbers <- header.Number.Int64()
 		}
 	}
 }

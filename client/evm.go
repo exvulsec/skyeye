@@ -46,6 +46,6 @@ func NewWebSocketClient() *ethclient.Client {
 	if err != nil {
 		logrus.Fatalf("failed to connect provider url %s, err is %v", config.Conf.ETLConfig.ProviderURL, err)
 	}
-	logrus.Infof("connect to provider is successfully")
+	logrus.Infof("connect to ws provider is successfully")
 	return client
 }
