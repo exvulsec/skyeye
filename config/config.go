@@ -18,6 +18,7 @@ type config struct {
 	Postgresql       PostgresqlConfig `mapstructure:"postgresql" yaml:"postgresql"`
 	HTTPServerConfig HTTPServerConfig `mapstructure:"http_server" yaml:"http_server"`
 	ETLConfig        ETLConfig        `mapstructure:"etl" yaml:"etl"`
+	RedisConfig      RedisConfig      `mapstructure:"redis" yaml:"redis"`
 }
 
 type HTTPServerConfig struct {
@@ -27,7 +28,7 @@ type HTTPServerConfig struct {
 
 type PostgresqlConfig struct {
 	Host         string `mapstructure:"host" yaml:"host"`
-	Port         int    `mapstructure:"Port" yaml:"port"`
+	Port         int    `mapstructure:"port" yaml:"port"`
 	User         string `mapstructure:"user" yaml:"user"`
 	Password     string `mapstructure:"password" yaml:"password"`
 	Database     string `mapstructure:"database" yaml:"database"`
@@ -36,9 +37,15 @@ type PostgresqlConfig struct {
 	MaxOpenConns int    `mapstructure:"max_open_conns" yaml:"max_open_conns"`
 }
 
+type RedisConfig struct {
+	Addr         string `mapstructure:"addr" yaml:"host"`
+	Password     string `mapstructure:"port" yaml:"port"`
+	Database     int    `mapstructure:"database" yaml:"database"`
+	MaxIdleConns int    `mapstructure:"max_idle_conns" yaml:"max_idle_conns"`
+}
+
 type ETLConfig struct {
 	ProviderURL  string `mapstructure:"provider_url" yaml:"provider_url"`
-	WebSocketURL string `mapstructure:"ws_url" yaml:"ws_url"`
 	Chain        string `mapstructure:"chain" yaml:"chain"`
 	Worker       int64  `mapstructure:"worker" yaml:"worker"`
 	PreviousFile string `mapstructure:"previous_file" yaml:"previous_file"`
