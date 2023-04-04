@@ -23,26 +23,21 @@ var txCmd = &cobra.Command{
 	Short: "export latest tx from blockchain node",
 	Run: func(cmd *cobra.Command, args []string) {
 		config.SetupConfig()
-		blocksCh := ethereum.GetLatestBlocks()
-		executor := ethereum.NewTransactionExecutor(blocksCh)
-		executor.Run()
-	},
-}
-
-var contractCreationCmd = &cobra.Command{
-	Use:   "contract-creation-txs",
-	Short: "export create contract txs from blockchain node",
-	Run: func(cmd *cobra.Command, args []string) {
-		config.SetupConfig()
-		blocksCh := ethereum.GetLatestBlocks()
-		executor := ethereum.NewContractCreationExecutor(blocksCh)
+		nonce, _ := cmd.Flags().GetInt("tx_nonce")
+		workers, _ := cmd.Flags().GetInt("workers")
+		batchSize, _ := cmd.Flags().GetInt("batch_size")
+		isCreationContract, _ := cmd.Flags().GetBool("creation_contract")
+		blocksCh := ethereum.GetLatestBlocks(batchSize, workers)
+		executor := ethereum.NewTransactionExecutor(blocksCh, workers, batchSize, nonce, isCreationContract)
 		executor.Run()
 	},
 }
 
 func init() {
 	exportCmd.AddCommand(txCmd)
-	exportCmd.AddCommand(contractCreationCmd)
 	txCmd.Flags().StringVarP(&config.CfgPath, "config", "c", "", "set config file path")
-	contractCreationCmd.Flags().StringVarP(&config.CfgPath, "config", "c", "", "set config file path")
+	txCmd.Flags().Int("tx_nonce", 0, "filter the less than nonce count txs, > 0 is available, default is 0")
+	txCmd.Flags().Bool("creation_contract", false, "filter the contract create txs")
+	txCmd.Flags().Int("workers", 2, "batch call workers")
+	txCmd.Flags().Int("batch_size", 50, "one batch call workers ")
 }
