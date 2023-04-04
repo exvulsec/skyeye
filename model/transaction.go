@@ -12,7 +12,7 @@ import (
 	"github.com/sirupsen/logrus"
 
 	"go-etl/client"
-	"go-etl/database"
+	"go-etl/datastore"
 	"go-etl/utils"
 )
 
@@ -92,14 +92,14 @@ func (tx *Transaction) enrichReceipt(receipt types.Receipt) {
 }
 
 func (txs *Transactions) CreateBatchToDB(tableName string, worker int) {
-	result := database.DB().Table(tableName).CreateInBatches(txs, worker)
+	result := datastore.DB().Table(tableName).CreateInBatches(txs, worker)
 	if result.Error != nil {
 		logrus.Fatalf("insert tx into db is err %v", result.Error)
 	}
 }
 
 func (txs *Transactions) ListTransactionsWithFromAddress(tableName, address string) error {
-	result := database.DB().Table(tableName).
+	result := datastore.DB().Table(tableName).
 		Where("from_address = ?", address).
 		Order("block_timestamp asc").
 		Find(txs)
@@ -108,7 +108,7 @@ func (txs *Transactions) ListTransactionsWithFromAddress(tableName, address stri
 
 func (txs *Transactions) FilterAssociatedAddrs(chain, fromAddr string, filterAddrs []string) error {
 	txList := Transactions{}
-	tableName := utils.ComposeTableName(chain, database.TableContractCreationTxs)
+	tableName := utils.ComposeTableName(chain, datastore.TableContractCreationTxs)
 	if err := txList.ListTransactionsWithFromAddress(tableName, fromAddr); err != nil {
 		return err
 	}

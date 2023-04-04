@@ -40,12 +40,3 @@ func EvmClient() *ethclient.Client {
 func init() {
 	evmClient = &EVMInstance{initializer: initEvmClient}
 }
-
-func NewWebSocketClient() *ethclient.Client {
-	client, err := ethclient.Dial(config.Conf.ETLConfig.WebSocketURL)
-	if err != nil {
-		logrus.Fatalf("failed to connect ws provider url %s with ethclient, err is %v", config.Conf.ETLConfig.WebSocketURL, err)
-	}
-	logrus.Infof("connect to ws provider with ethclient is successfully")
-	return client
-}

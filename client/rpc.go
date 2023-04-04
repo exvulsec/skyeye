@@ -2,6 +2,7 @@ package client
 
 import (
 	"sync"
+	"time"
 
 	"github.com/ethereum/go-ethereum/rpc"
 	"github.com/sirupsen/logrus"
@@ -48,11 +49,11 @@ func MultiCall(calls []rpc.BatchElem, batchSize, workerCount int) {
 	if len(calls)%batchSize != 0 {
 		count += 1
 	}
-
 	for i := 0; i < count; i++ {
 		worker <- 1
 		wg.Add(1)
 		go func(index int) {
+			startTimestamp := time.Now()
 			defer func() {
 				wg.Done()
 				<-worker
@@ -71,6 +72,7 @@ func MultiCall(calls []rpc.BatchElem, batchSize, workerCount int) {
 					logrus.Fatalf("get block number %v from rpc node is err: %v", call.Args, call.Error)
 				}
 			}
+			logrus.Infof("handle %d calls and cost %.2fs", endIndex-startIndex, time.Since(startTimestamp).Seconds())
 		}(i)
 	}
 	wg.Wait()

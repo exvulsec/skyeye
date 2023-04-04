@@ -3,7 +3,7 @@ package model
 import (
 	"github.com/shopspring/decimal"
 
-	"go-etl/database"
+	"go-etl/datastore"
 )
 
 type Token struct {
@@ -17,7 +17,7 @@ type Token struct {
 }
 
 func (t *Token) GetToken(tableName, address string) error {
-	result := database.DB().
+	result := datastore.DB().
 		Table(tableName).
 		Where("address = ?", address).
 		Find(t)

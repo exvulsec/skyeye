@@ -9,39 +9,34 @@ import (
 	"github.com/sirupsen/logrus"
 
 	"go-etl/config"
-	"go-etl/database"
+	"go-etl/ethereum/exporter"
 	"go-etl/model"
 	"go-etl/utils"
 )
 
 type transactionExecutor struct {
-	blockNumber int64
-	blocks      chan types.Block
-	workers     int
-	batchSize   int
-	items       any
-	filter      filter
-}
-
-type filter struct {
-	nonce              int
+	blockExecutor      BlockExecutor
+	blockNumber        int64
+	workers            int
+	batchSize          int
+	items              any
 	isCreationContract bool
+	exporters          []exporter.Exporter
 }
 
-func NewTransactionExecutor(blocks chan types.Block, workers, batchSize, nonce int, isCreationContract bool) Executor {
+func NewTransactionExecutor(blockExecutor BlockExecutor, workers, batchSize, nonce int, isCreationContract, writeToRedis bool) Executor {
 	return &transactionExecutor{
-		blocks:    blocks,
-		workers:   workers,
-		batchSize: batchSize,
-		filter: filter{
-			nonce:              nonce,
-			isCreationContract: isCreationContract,
-		},
+		blockExecutor:      blockExecutor,
+		workers:            workers,
+		batchSize:          batchSize,
+		isCreationContract: isCreationContract,
+		exporters:          exporter.NewTransactionExporters(writeToRedis, nonce),
 	}
 }
 
 func (te *transactionExecutor) Run() {
-	for block := range te.blocks {
+	go te.blockExecutor.GetBlocks()
+	for block := range te.blockExecutor.blocks {
 		te.blockNumber = block.Number().Int64()
 		te.items = te.ExtractByBlock(block)
 		te.Enrich()
@@ -81,19 +76,19 @@ func (te *transactionExecutor) Enrich() {
 	startTimestamp := time.Now()
 	te.filterTransactions()
 	txs := te.items.(model.Transactions)
-	txs.EnrichReceipts(te.batchSize, te.workers)
-	logrus.Infof("enrich %d txs from receipt cost: %.2fs", len(txs), time.Since(startTimestamp).Seconds())
+	if len(txs) > 0 {
+		txs.EnrichReceipts(te.batchSize, te.workers)
+		logrus.Infof("enrich %d txs from receipt cost: %.2fs", len(txs), time.Since(startTimestamp).Seconds())
+	}
 }
 
 func (te *transactionExecutor) Export() {
-	startTimestamp := time.Now()
 	txs := te.items.(model.Transactions)
-	txs.CreateBatchToDB(utils.ComposeTableName(
-		config.Conf.ETLConfig.Chain,
-		database.TableTransactions),
-		config.Conf.Postgresql.MaxOpenConns,
-	)
-	logrus.Infof("insert %d txs into database cost: %.2f", len(txs), time.Since(startTimestamp).Seconds())
+	if len(txs) > 0 {
+		for _, e := range te.exporters {
+			e.ExportItems(txs)
+		}
+	}
 	utils.WriteBlockNumberToFile(config.Conf.ETLConfig.PreviousFile, te.blockNumber)
 }
 
@@ -108,13 +103,10 @@ func (te *transactionExecutor) filterTransactions() {
 }
 
 func (te *transactionExecutor) filterTransaction(tx model.Transaction) bool {
-	if te.filter.isCreationContract {
-		if tx.ToAddress == nil && tx.Nonce < te.filter.nonce {
-			return true
-		}
-		return false
+	if !te.isCreationContract {
+		return true
 	}
-	if tx.Nonce < te.filter.nonce {
+	if tx.ToAddress == nil {
 		return true
 	}
 	return false

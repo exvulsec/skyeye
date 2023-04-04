@@ -7,7 +7,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 
-	"go-etl/database"
+	"go-etl/datastore"
 	"go-etl/model"
 	"go-etl/utils"
 )
@@ -26,7 +26,7 @@ func (tc *TokenController) GetTokenInfo(c *gin.Context) {
 	address := strings.ToLower(c.Param("address"))
 
 	token := model.Token{}
-	if err := token.GetToken(utils.ComposeTableName(chain, database.TableTokens), address); err != nil {
+	if err := token.GetToken(utils.ComposeTableName(chain, datastore.TableTokens), address); err != nil {
 		c.JSON(
 			http.StatusOK,
 			model.Message{
