@@ -44,7 +44,6 @@ func (tre *TransactionRedisExporter) ExportItems(items any) {
 
 func (tre *TransactionRedisExporter) handleItem(item model.Transaction) {
 	key := fmt.Sprintf(TransactionAssociatedAddrs, tre.Chain)
-	logrus.Infof(key)
 	if item.Nonce > tre.Nonce {
 		_, err := datastore.Redis().HDel(context.Background(), key, item.FromAddress).Result()
 		if err != nil {
