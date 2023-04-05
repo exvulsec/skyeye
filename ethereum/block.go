@@ -64,7 +64,7 @@ func (be *BlockExecutor) getPreviousBlocks() {
 			currentBlockNumber += 1
 		}
 		if len(calls) > 0 {
-			logrus.Infof("get %d blocks from  batch call", len(calls))
+			logrus.Infof("get %d blocks from batch call", len(calls))
 			client.MultiCall(calls, be.batchSize, be.workerSize)
 			for _, call := range calls {
 				if call.Error == nil {
