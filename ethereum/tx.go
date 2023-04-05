@@ -24,13 +24,13 @@ type transactionExecutor struct {
 	exporters          []exporter.Exporter
 }
 
-func NewTransactionExecutor(blockExecutor BlockExecutor, workers, batchSize, nonce int, isCreationContract, writeToRedis bool) Executor {
+func NewTransactionExecutor(blockExecutor BlockExecutor, chain, table string, workers, batchSize, nonce int, isCreationContract, writeToRedis bool) Executor {
 	return &transactionExecutor{
 		blockExecutor:      blockExecutor,
 		workers:            workers,
 		batchSize:          batchSize,
 		isCreationContract: isCreationContract,
-		exporters:          exporter.NewTransactionExporters(writeToRedis, nonce),
+		exporters:          exporter.NewTransactionExporters(chain, table, writeToRedis, nonce),
 	}
 }
 
