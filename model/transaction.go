@@ -108,7 +108,7 @@ func (txs *Transactions) ListTransactionsWithFromAddress(tableName, address stri
 
 func (txs *Transactions) FilterAssociatedAddrs(chain, fromAddr string, filterAddrs []string) error {
 	txList := Transactions{}
-	tableName := utils.ComposeTableName(chain, datastore.TableContractCreationTxs)
+	tableName := utils.ComposeTableName(chain, datastore.TableAssociatedTxs)
 	if err := txList.ListTransactionsWithFromAddress(tableName, fromAddr); err != nil {
 		return err
 	}

@@ -28,8 +28,10 @@ var txCmd = &cobra.Command{
 		batchSize, _ := cmd.Flags().GetInt("batch_size")
 		isCreationContract, _ := cmd.Flags().GetBool("creation_contract")
 		writeRedis, _ := cmd.Flags().GetBool("write_redis")
-		blocksCh := ethereum.NewBlockExecutor(batchSize, workers)
-		executor := ethereum.NewTransactionExecutor(blocksCh, workers, batchSize, nonce, isCreationContract, writeRedis)
+		chain, _ := cmd.Flags().GetString("chain")
+		tableName, _ := cmd.Flags().GetString("table_name")
+		blockExecutor := ethereum.NewBlockExecutor(chain, batchSize, workers)
+		executor := ethereum.NewTransactionExecutor(blockExecutor, chain, tableName, workers, batchSize, nonce, isCreationContract, writeRedis)
 		executor.Run()
 	},
 }
@@ -42,4 +44,6 @@ func init() {
 	txCmd.Flags().Bool("write_redis", false, "redis txs to redis")
 	txCmd.Flags().Int("workers", 2, "batch call workers")
 	txCmd.Flags().Int("batch_size", 50, "one batch call workers ")
+	txCmd.Flags().String("chain", "ethereum", "chain name")
+	txCmd.Flags().String("table_name", "txs", "table name")
 }

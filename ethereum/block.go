@@ -19,6 +19,7 @@ import (
 )
 
 type BlockExecutor struct {
+	chain        string
 	batchSize    int
 	workerSize   int
 	latestBlocks chan types.Block
@@ -26,8 +27,9 @@ type BlockExecutor struct {
 	running      bool
 }
 
-func NewBlockExecutor(batchSize, workerSize int) BlockExecutor {
+func NewBlockExecutor(chain string, batchSize, workerSize int) BlockExecutor {
 	return BlockExecutor{
+		chain:      chain,
 		batchSize:  batchSize,
 		workerSize: workerSize,
 		blocks:     make(chan types.Block, 10000),

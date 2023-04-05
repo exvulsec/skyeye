@@ -2,6 +2,7 @@ package model
 
 import (
 	"fmt"
+
 	"go-etl/datastore"
 )
 
