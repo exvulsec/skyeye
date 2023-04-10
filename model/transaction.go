@@ -73,7 +73,7 @@ func (txs *Transactions) EnrichReceipts(batchSize, workers int) {
 			Result: &types.Receipt{},
 		})
 	}
-	client.MultiCall(calls, batchSize, workers)
+	client.MultiCall(calls, batchSize, workers, nil)
 	for index := range *txs {
 		receipt, _ := calls[index].Result.(*types.Receipt)
 		(*txs)[index].enrichReceipt(*receipt)

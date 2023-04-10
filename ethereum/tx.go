@@ -11,6 +11,7 @@ import (
 	"go-etl/config"
 	"go-etl/ethereum/exporter"
 	"go-etl/model"
+	"go-etl/rpc"
 	"go-etl/utils"
 )
 
@@ -36,9 +37,13 @@ func NewTransactionExecutor(blockExecutor BlockExecutor, chain, table string, wo
 
 func (te *transactionExecutor) Run() {
 	go te.blockExecutor.GetBlocks()
-	for block := range te.blockExecutor.blocks {
+	for item := range te.blockExecutor.blocks {
+		block, err := rpc.GetBlock(*item)
+		if err != nil {
+			logrus.Fatalf("get block from raw json message is err: %v, item is %v", err, item)
+		}
 		te.blockNumber = block.Number().Int64()
-		te.items = te.ExtractByBlock(block)
+		te.items = te.ExtractByBlock(*block)
 		te.Enrich()
 		te.Export()
 	}
