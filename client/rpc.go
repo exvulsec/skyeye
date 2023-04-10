@@ -1,6 +1,7 @@
 package client
 
 import (
+	"encoding/json"
 	"sync"
 	"time"
 
@@ -42,7 +43,7 @@ func init() {
 	rpcClient = &RPCInstance{initializer: initRPCClient}
 }
 
-func MultiCall(calls []rpc.BatchElem, batchSize, workerCount int) {
+func MultiCall(calls []rpc.BatchElem, batchSize, workerCount int, channel chan *json.RawMessage) {
 	wg := sync.WaitGroup{}
 	worker := make(chan int, workerCount)
 	count := len(calls) / batchSize
@@ -67,9 +68,12 @@ func MultiCall(calls []rpc.BatchElem, batchSize, workerCount int) {
 				logrus.Fatalf("batch call is err %v", err)
 				return
 			}
-			for _, call := range calls {
+			for _, call := range calls[startIndex:endIndex] {
 				if call.Error != nil {
 					logrus.Fatalf("get block number %v from rpc node is err: %v", call.Args, call.Error)
+				}
+				if channel != nil {
+					channel <- call.Result.(*json.RawMessage)
 				}
 			}
 			logrus.Infof("handle %d calls and cost %.2fs", endIndex-startIndex, time.Since(startTimestamp).Seconds())

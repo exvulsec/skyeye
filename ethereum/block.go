@@ -14,7 +14,6 @@ import (
 
 	"go-etl/client"
 	"go-etl/config"
-	etlRPC "go-etl/rpc"
 	"go-etl/utils"
 )
 
@@ -22,8 +21,8 @@ type BlockExecutor struct {
 	chain        string
 	batchSize    int
 	workerSize   int
-	latestBlocks chan types.Block
-	blocks       chan types.Block
+	latestBlocks chan *json.RawMessage
+	blocks       chan *json.RawMessage
 	running      bool
 }
 
@@ -32,7 +31,7 @@ func NewBlockExecutor(chain string, batchSize, workerSize int) BlockExecutor {
 		chain:      chain,
 		batchSize:  batchSize,
 		workerSize: workerSize,
-		blocks:     make(chan types.Block, 10000),
+		blocks:     make(chan *json.RawMessage, 10000),
 		running:    false,
 	}
 }
@@ -67,17 +66,7 @@ func (be *BlockExecutor) getPreviousBlocks() {
 		}
 		if len(calls) > 0 {
 			logrus.Infof("get %d blocks from batch call", len(calls))
-			client.MultiCall(calls, be.batchSize, be.workerSize)
-			for _, call := range calls {
-				if call.Error == nil {
-					result, _ := call.Result.(*json.RawMessage)
-					block, err := etlRPC.GetBlock(*result)
-					if err != nil {
-						logrus.Fatalf("get previous block from raw json message is err: %v", err)
-					}
-					be.blocks <- *block
-				}
-			}
+			client.MultiCall(calls, be.batchSize, be.workerSize, be.blocks)
 		}
 	}
 
@@ -89,7 +78,7 @@ func (be *BlockExecutor) subNewHeader() {
 	headers := make(chan *types.Header, 2)
 	sub := event.Resubscribe(2*time.Second, func(ctx context.Context) (event.Subscription, error) {
 		be.running = false
-		be.latestBlocks = make(chan types.Block, 10000)
+		be.latestBlocks = make(chan *json.RawMessage, 10000)
 		go be.getPreviousBlocks()
 		return client.EvmClient().SubscribeNewHead(context.Background(), headers)
 	})
@@ -104,17 +93,19 @@ func (be *BlockExecutor) subNewHeader() {
 				continue
 			}
 			logrus.Infof("receive new block %d", header.Number.Uint64())
-			block, err := client.EvmClient().BlockByNumber(context.Background(), header.Number)
-			if err != nil {
-				logrus.Fatalf("get block is err: %v", err)
-			}
+			calls := []rpc.BatchElem{{
+				Method: utils.RPCNameEthGetBlockByNumber,
+				Args:   []any{hexutil.EncodeBig(header.Number), true},
+				Result: &json.RawMessage{},
+			}}
+
 			if be.running {
 				for latestBlock := range be.latestBlocks {
 					be.blocks <- latestBlock
 				}
-				be.blocks <- *block
+				client.MultiCall(calls, be.batchSize, be.workerSize, be.blocks)
 			} else {
-				be.latestBlocks <- *block
+				client.MultiCall(calls, be.batchSize, be.workerSize, be.latestBlocks)
 			}
 		}
 	}
