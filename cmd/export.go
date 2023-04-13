@@ -36,8 +36,7 @@ var txCmd = &cobra.Command{
 	},
 }
 
-func init() {
-	exportCmd.AddCommand(txCmd)
+func txCmdInit() {
 	txCmd.Flags().StringVarP(&config.CfgPath, "config", "c", "", "set config file path")
 	txCmd.Flags().Int("tx_nonce", 0, "filter the less than nonce count txs, > 0 is available, default is 0")
 	txCmd.Flags().Bool("creation_contract", false, "filter the contract create txs")
@@ -46,4 +45,9 @@ func init() {
 	txCmd.Flags().Int("batch_size", 50, "one batch call workers ")
 	txCmd.Flags().String("chain", "ethereum", "chain name")
 	txCmd.Flags().String("table_name", "txs", "table name")
+}
+
+func init() {
+	exportCmd.AddCommand(txCmd)
+	txCmdInit()
 }
