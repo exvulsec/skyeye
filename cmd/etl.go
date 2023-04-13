@@ -28,5 +28,6 @@ func Execute() {
 func init() {
 	etlCmd.AddCommand(httpCmd)
 	etlCmd.AddCommand(exportCmd)
+	etlCmd.AddCommand(filterCmd)
 	setHTTPFlags()
 }
