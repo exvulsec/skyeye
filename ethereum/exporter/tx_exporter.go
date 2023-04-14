@@ -7,6 +7,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/redis/go-redis/v9"
 	"github.com/sirupsen/logrus"
 
 	"go-etl/config"
@@ -15,22 +16,28 @@ import (
 	"go-etl/utils"
 )
 
-var TransactionAssociatedAddrs = "%s:txs_associated:addrs"
+var (
+	TransactionAssociatedAddrs       = "%s:txs_associated:addrs"
+	TransactionContractAddressStream = "%s:contract_address:stream"
+)
 
 type TransactionRedisExporter struct {
 	Chain string
-	Nonce int
+	Nonce uint64
 }
 
-func NewTransactionExporters(chain, table string, writeToRedis bool, nonce int) []Exporter {
-	exporters := []Exporter{NewTransactionPostgresqlExporter(chain, table, nonce)}
-	if writeToRedis {
+func NewTransactionExporters(chain, table string, nonce uint64) []Exporter {
+	exporters := []Exporter{}
+	if config.Conf.Postgresql.Host != "" {
+		exporters = append(exporters, NewTransactionPostgresqlExporter(chain, table, nonce))
+	}
+	if config.Conf.RedisConfig.Addr != "" {
 		exporters = append(exporters, NewTransactionRedisExporter(chain, nonce))
 	}
 	return exporters
 }
 
-func NewTransactionRedisExporter(chain string, nonce int) Exporter {
+func NewTransactionRedisExporter(chain string, nonce uint64) Exporter {
 	return &TransactionRedisExporter{Chain: chain, Nonce: nonce}
 }
 
@@ -74,16 +81,27 @@ func (tre *TransactionRedisExporter) handleItem(item model.Transaction) {
 			log.Fatalf("set value %v to filed %s in key %s from redis is err: %v", addrs, item.FromAddress, key, err)
 			return
 		}
+		_, err = datastore.Redis().XAdd(context.Background(), &redis.XAddArgs{
+			Stream: fmt.Sprintf(TransactionContractAddressStream, tre.Chain),
+			ID:     "*",
+			Values: map[string]any{
+				item.TxHash: item.ContractAddress,
+			},
+		}).Result()
+		if err != nil {
+			log.Fatalf("send redis stream is err: %v", err)
+			return
+		}
 	}
 }
 
 type TransactionPostgresqlExporter struct {
 	Chain     string
 	TableName string
-	Nonce     int
+	Nonce     uint64
 }
 
-func NewTransactionPostgresqlExporter(chain, tableName string, nonce int) Exporter {
+func NewTransactionPostgresqlExporter(chain, tableName string, nonce uint64) Exporter {
 	return &TransactionPostgresqlExporter{Chain: chain, TableName: tableName, Nonce: nonce}
 }
 

@@ -30,7 +30,7 @@ type Transaction struct {
 	Input           string          `json:"input" gorm:"column:input"`
 	Value           decimal.Decimal `json:"value" gorm:"column:value"`
 	TxStatus        int64           `json:"tx_status" gorm:"column:tx_status"`
-	Nonce           int             `json:"nonce" gorm:"-"`
+	Nonce           uint64          `json:"nonce" gorm:"column:nonce"`
 	Gas
 }
 
@@ -56,6 +56,7 @@ func (tx *Transaction) ConvertFromBlock(transaction *types.Transaction) {
 		toAddr := strings.ToLower(transaction.To().String())
 		tx.ToAddress = &toAddr
 	}
+	tx.Nonce = transaction.Nonce()
 	tx.TxType = transaction.Type()
 	tx.Input = fmt.Sprintf("0x%s", hex.EncodeToString(transaction.Data()))
 	tx.Value = decimal.NewFromBigInt(transaction.Value(), 0)

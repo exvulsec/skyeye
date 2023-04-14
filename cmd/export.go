@@ -23,24 +23,22 @@ var txCmd = &cobra.Command{
 	Short: "export latest tx from blockchain node",
 	Run: func(cmd *cobra.Command, args []string) {
 		config.SetupConfig()
-		nonce, _ := cmd.Flags().GetInt("tx_nonce")
+		nonce, _ := cmd.Flags().GetUint64("tx_nonce")
 		workers, _ := cmd.Flags().GetInt("workers")
 		batchSize, _ := cmd.Flags().GetInt("batch_size")
 		isCreationContract, _ := cmd.Flags().GetBool("creation_contract")
-		writeRedis, _ := cmd.Flags().GetBool("write_redis")
 		chain, _ := cmd.Flags().GetString("chain")
 		tableName, _ := cmd.Flags().GetString("table_name")
 		blockExecutor := ethereum.NewBlockExecutor(chain, batchSize, workers)
-		executor := ethereum.NewTransactionExecutor(blockExecutor, chain, tableName, workers, batchSize, nonce, isCreationContract, writeRedis)
+		executor := ethereum.NewTransactionExecutor(blockExecutor, chain, tableName, workers, batchSize, nonce, isCreationContract)
 		executor.Run()
 	},
 }
 
 func txCmdInit() {
 	txCmd.Flags().StringVarP(&config.CfgPath, "config", "c", "", "set config file path")
-	txCmd.Flags().Int("tx_nonce", 0, "filter the less than nonce count txs, > 0 is available, default is 0")
+	txCmd.Flags().Uint64("tx_nonce", 0, "filter the less than nonce count txs, > 0 is available, default is 0")
 	txCmd.Flags().Bool("creation_contract", false, "filter the contract create txs")
-	txCmd.Flags().Bool("write_redis", false, "redis txs to redis")
 	txCmd.Flags().Int("workers", 2, "batch call workers")
 	txCmd.Flags().Int("batch_size", 50, "one batch call workers ")
 	txCmd.Flags().String("chain", "ethereum", "chain name")
