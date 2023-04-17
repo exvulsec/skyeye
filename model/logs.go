@@ -48,10 +48,14 @@ func (log *Log) ConvertFromEthereumLog(l types.Log) error {
 	log.BlockTimestamp = int64(b.Time())
 	log.Topic0 = strings.ToLower(l.Topics[0].String())
 	log.TopicCount = len(l.Topics)
-	topics := ""
-	for _, t := range l.Topics {
+	topics := "["
+	for index, t := range l.Topics {
 		topics += strings.ToLower(t.String())
+		if index != len(l.Topics)-1 {
+			topics += ","
+		}
 	}
+	topics += "]"
 	log.Topics = topics
 	log.Data = hexutil.Encode(l.Data)
 	return nil
