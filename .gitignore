@@ -23,4 +23,5 @@
 go.work
 
 config/config.*.yaml
+config/config*.yaml
 config/*previous

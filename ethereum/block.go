@@ -83,14 +83,14 @@ func (be *BlockExecutor) subNewHeader() {
 		logrus.Fatalf("subscribe new header is err: %v", err)
 	}
 
-	defer close(be.latestBlocks)
-	defer close(be.blocks)
-
 	for {
 		select {
 		case err = <-sub.Err():
-			logrus.Errorf("subscription block is error: %v\n", err)
+			close(headers)
+			close(be.latestBlocks)
+			close(be.blocks)
 			sub.Unsubscribe()
+			logrus.Fatalf("subscription block is error: %v", err)
 			break
 		case header := <-headers:
 			if header.Number.Uint64() <= latestBlockNumber {

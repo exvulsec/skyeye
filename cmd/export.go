@@ -22,7 +22,7 @@ var txCmd = &cobra.Command{
 	Use:   "txs",
 	Short: "export latest tx from blockchain node",
 	Run: func(cmd *cobra.Command, args []string) {
-		config.SetupConfig()
+		config.SetupConfig("")
 		nonce, _ := cmd.Flags().GetUint64("tx_nonce")
 		workers, _ := cmd.Flags().GetInt("workers")
 		batchSize, _ := cmd.Flags().GetInt("batch_size")
