@@ -1,13 +1,11 @@
 package model
 
 import (
-	"context"
 	"strings"
 
 	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/ethereum/go-ethereum/core/types"
 
-	"go-etl/client"
 	"go-etl/datastore"
 )
 
@@ -26,17 +24,13 @@ type Log struct {
 
 type Logs []Log
 
-func (log *Log) ConvertFromEthereumLog(l types.Log) error {
+func (log *Log) ConvertFromEthereumLog(l types.Log, blockTimestamp int64) {
 	log.LogPos = int64(l.Index)
 	log.TransactionIndex = int64(l.TxIndex)
 	log.Address = strings.ToLower(l.Address.String())
 	log.BlockNumber = int64(l.BlockNumber)
-	b, err := client.EvmClient().BlockByHash(context.Background(), l.BlockHash)
-	if err != nil {
-		return err
-	}
 	log.TransactionHash = strings.ToLower(l.TxHash.String())
-	log.BlockTimestamp = int64(b.Time())
+	log.BlockTimestamp = blockTimestamp
 	log.Topic0 = strings.ToLower(l.Topics[0].String())
 	log.TopicCount = len(l.Topics)
 	topics := "["
@@ -49,7 +43,6 @@ func (log *Log) ConvertFromEthereumLog(l types.Log) error {
 	topics += "]"
 	log.Topics = topics
 	log.Data = hexutil.Encode(l.Data)
-	return nil
 }
 
 func (log *Log) InsertLog(tableName string) error {

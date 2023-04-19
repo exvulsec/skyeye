@@ -33,7 +33,7 @@ func NewLogFilter(chain, table, topicsString string, workerSize int) *LogFilter 
 	return &LogFilter{
 		chain:      chain,
 		table:      table,
-		logChannel: make(chan types.Log, 100),
+		logChannel: make(chan types.Log, 10000),
 		topics:     topics,
 		workerSize: workerSize,
 	}
@@ -45,7 +45,7 @@ func (lf *LogFilter) composeFilterQuery() ethereum.FilterQuery {
 	}
 }
 
-func (lf *LogFilter) handleLogs(logs []types.Log) {
+func (lf *LogFilter) handleLogs(logs []types.Log, blockTimestamp int64) error {
 	tableName := utils.ComposeTableName(lf.chain, lf.table)
 	modelLogs := model.Logs{}
 	wg := sync.WaitGroup{}
@@ -55,54 +55,55 @@ func (lf *LogFilter) handleLogs(logs []types.Log) {
 		go func(log types.Log) {
 			defer wg.Done()
 			modelLog := model.Log{}
-			if err := modelLog.ConvertFromEthereumLog(log); err != nil {
-				logrus.Errorf("convert from log to model log is err %v", err)
-			}
+			modelLog.ConvertFromEthereumLog(log, blockTimestamp)
 			rwMutex.Lock()
+			defer rwMutex.Unlock()
 			modelLogs = append(modelLogs, modelLog)
-			rwMutex.Unlock()
 		}(log)
 	}
 	wg.Wait()
 
-	if err := modelLogs.CreateBatchToDB(tableName, lf.workerSize); err != nil {
-		logrus.Fatalf("insert logs to db is err %v", err)
-	}
-
+	return modelLogs.CreateBatchToDB(tableName, lf.workerSize)
 }
 
 func (lf *LogFilter) Run() {
-	var latestBlockNumber uint64 = 0
+	var currentBlockNumber uint64 = 0
 	var logs = []types.Log{}
 	var startTimestamp time.Time
+	var currentBlockTimestamp int64 = 0
 
 	sub, err := client.EvmClient().SubscribeFilterLogs(context.Background(), lf.composeFilterQuery(), lf.logChannel)
 	if err != nil {
 		logrus.Fatalf("subscribe logs is err %v", err)
 	}
 
-	defer close(lf.logChannel)
-
 	for {
 		select {
 		case err = <-sub.Err():
-			logrus.Error("subscription logs is err: %v", err)
+			close(lf.logChannel)
 			sub.Unsubscribe()
+			logrus.Fatalf("subscription logs is err: %v", err)
 			break
 		case l := <-lf.logChannel:
-			if l.BlockNumber == latestBlockNumber {
-				logs = append(logs, l)
-			}
-			if l.BlockNumber != latestBlockNumber {
+			if l.BlockNumber != currentBlockNumber {
 				if len(logs) > 0 {
-					lf.handleLogs(logs)
-					logrus.Infof("collected block nubmer %d's %d logs cost:%.2fs", latestBlockNumber, len(logs), time.Since(startTimestamp).Seconds())
+					startTimestamp = time.Now()
+					logrus.Infof("start to write block nubmer %d's %d logs to db", currentBlockNumber, len(logs))
+					if err = lf.handleLogs(logs, currentBlockTimestamp); err != nil {
+						logrus.Fatalf("handle logs  is err %v", err)
+					}
+					logrus.Infof("finish to write block nubmer %d's %d logs cost:%.2fs", currentBlockNumber, len(logs), time.Since(startTimestamp).Seconds())
 				}
-				latestBlockNumber = l.BlockNumber
-				logrus.Infof("start to collect block nubmer %d's log", latestBlockNumber)
-				startTimestamp = time.Now()
-				logs = []types.Log{l}
+				currentBlockNumber = l.BlockNumber
+				block, err := client.EvmClient().BlockByHash(context.Background(), l.BlockHash)
+				if err != nil {
+					logrus.Fatalf("get block %d info is err %v", currentBlockNumber, err)
+				}
+				currentBlockTimestamp = int64(block.Time())
+				logrus.Infof("start to collect block nubmer %d's log", currentBlockNumber)
+				logs = []types.Log{}
 			}
+			logs = append(logs, l)
 		}
 	}
 }

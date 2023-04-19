@@ -11,13 +11,13 @@ var httpCmd = &cobra.Command{
 	Use:   "http",
 	Short: "run http server",
 	Run: func(cmd *cobra.Command, args []string) {
-		config.SetupConfig()
+		config.SetupConfig("")
 		srv := server.NewHTTPServer()
 		srv.Run()
 	},
 }
 
-func setHTTPFlags() {
+func init() {
 	httpCmd.Flags().StringVarP(&config.CfgPath, "config", "c", "", "set config file path")
 	httpCmd.Flags().StringVarP(&config.Env,
 		"env",

@@ -23,7 +23,8 @@ var logsCmd = &cobra.Command{
 	Use:   "logs",
 	Short: "filter logs by given topics from latest block",
 	Run: func(cmd *cobra.Command, args []string) {
-		config.SetupConfig()
+		configPath, _ := cmd.Flags().GetString("config")
+		config.SetupConfig(configPath)
 		chain, _ := cmd.Flags().GetString("chain")
 		tableName, _ := cmd.Flags().GetString("table_name")
 		topics, _ := cmd.Flags().GetString("topics")
@@ -35,7 +36,7 @@ var logsCmd = &cobra.Command{
 
 func init() {
 	filterCmd.AddCommand(logsCmd)
-	logsCmd.Flags().StringVarP(&config.CfgPath, "config", "c", "", "set config file path")
+	logsCmd.Flags().String("config", "", "set config file path")
 	logsCmd.Flags().String("chain", "ethereum", "chain name")
 	logsCmd.Flags().String("table_name", datastore.TableLogs, "table name")
 	logsCmd.Flags().Int("workers", 2, "batch call workers")

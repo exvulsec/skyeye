@@ -52,14 +52,18 @@ type ETLConfig struct {
 	PreviousFile string `mapstructure:"previous_file" yaml:"previous_file"`
 }
 
-func SetupConfig() {
-	if len(CfgPath) < 1 {
-		panic(fmt.Errorf("failed to get config path %s", CfgPath))
-	}
+func SetupConfig(configPath string) {
+	if configPath != "" {
+		viper.SetConfigFile(configPath)
+	} else {
+		if len(CfgPath) < 1 {
+			panic(fmt.Errorf("failed to get config path %s", CfgPath))
+		}
 
-	viper.SetConfigName("config." + Env)
-	viper.SetConfigType("yaml")
-	viper.AddConfigPath(CfgPath)
+		viper.SetConfigName("config." + Env)
+		viper.SetConfigType("yaml")
+		viper.AddConfigPath(CfgPath)
+	}
 
 	err := viper.ReadInConfig()
 	if err != nil {
