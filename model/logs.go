@@ -4,14 +4,11 @@ import (
 	"context"
 	"strings"
 
-	mapset "github.com/deckarep/golang-set/v2"
 	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/ethereum/go-ethereum/core/types"
 
 	"go-etl/client"
-	"go-etl/config"
 	"go-etl/datastore"
-	"go-etl/utils"
 )
 
 type Log struct {
@@ -27,13 +24,7 @@ type Log struct {
 	Data             string `json:"data" gorm:"column:data"`
 }
 
-func GetLogAddrs() (mapset.Set[string], error) {
-	addrs := []string{}
-	if err := datastore.DB().Table(utils.ComposeTableName(config.Conf.ETLConfig.Chain, "logs")).Select("DISTINCT address").Find(&addrs).Error; err != nil {
-		return nil, err
-	}
-	return mapset.NewSet[string](addrs...), nil
-}
+type Logs []Log
 
 func (log *Log) ConvertFromEthereumLog(l types.Log) error {
 	log.LogPos = int64(l.Index)
@@ -63,4 +54,9 @@ func (log *Log) ConvertFromEthereumLog(l types.Log) error {
 
 func (log *Log) InsertLog(tableName string) error {
 	return datastore.DB().Table(tableName).Create(log).Error
+}
+
+func (logs *Logs) CreateBatchToDB(tableName string, worker int) error {
+	result := datastore.DB().Table(tableName).CreateInBatches(logs, worker)
+	return result.Error
 }
