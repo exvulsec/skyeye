@@ -17,10 +17,11 @@ type TokenPrice struct {
 
 type TokenPrices []TokenPrice
 
-func (tps *TokenPrices) GetTokenPrices(tableName string, addrs []string) error {
-	result := datastore.DB().
+func (tp *TokenPrice) GetTokenPrice(tableName string, addr string) error {
+	return datastore.DB().
 		Table(tableName).
-		Where("address in (?)", addrs).
-		Find(tps)
-	return result.Error
+		Where("address=?", addr).
+		Order("timestamp").
+		Limit(1).
+		Find(tp).Error
 }

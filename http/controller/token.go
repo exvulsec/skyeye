@@ -4,8 +4,10 @@ import (
 	"fmt"
 	"net/http"
 	"strings"
+	"sync"
 
 	"github.com/gin-gonic/gin"
+	"github.com/sirupsen/logrus"
 
 	"go-etl/datastore"
 	"go-etl/model"
@@ -56,14 +58,23 @@ func (tc *TokenController) GetTokenPrices(c *gin.Context) {
 		addrs[index] = strings.ToLower(addrs[index])
 	}
 	tokenPrices := model.TokenPrices{}
-	if err := tokenPrices.GetTokenPrices(utils.ComposeTableName(chain, datastore.TableTokenPrices), addrs); err != nil {
-		c.JSON(
-			http.StatusOK,
-			model.Message{
-				Code: http.StatusInternalServerError,
-				Msg:  fmt.Sprintf("get address %s is err: %v", addressString, err),
-			})
-		return
+	tableName := utils.ComposeTableName(chain, datastore.TableTokenPrices)
+	wg := sync.WaitGroup{}
+	rwMutex := sync.RWMutex{}
+	for _, addr := range addrs {
+		wg.Add(1)
+		go func(address string) {
+			defer wg.Done()
+			tokenPrice := model.TokenPrice{}
+			if err := tokenPrice.GetTokenPrice(tableName, address); err != nil {
+				logrus.Errorf("get token %s's price is err %v", address, err)
+			}
+			rwMutex.Lock()
+			defer rwMutex.Unlock()
+			tokenPrices = append(tokenPrices, tokenPrice)
+		}(addr)
 	}
+	wg.Wait()
+
 	c.JSON(http.StatusOK, model.Message{Code: http.StatusOK, Data: tokenPrices})
 }

@@ -8,6 +8,7 @@ import (
 	"github.com/gin-gonic/gin"
 
 	"go-etl/http/controller"
+	"go-etl/middleware"
 )
 
 func addRouters(r gin.IRouter) {
@@ -17,6 +18,7 @@ func addRouters(r gin.IRouter) {
 		&controller.AddressController{},
 		&controller.TokenController{},
 	}
+	apiV1.Use(middleware.CheckAPIKEY())
 	for _, ctrl := range ctrls {
 		ctrl.Routers(apiV1)
 	}

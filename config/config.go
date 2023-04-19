@@ -22,8 +22,9 @@ type config struct {
 }
 
 type HTTPServerConfig struct {
-	Host string `mapstructure:"host" yaml:"host"`
-	Port int    `mapstructure:"Port" yaml:"port"`
+	Host   string `mapstructure:"host" yaml:"host"`
+	Port   int    `mapstructure:"port" yaml:"port"`
+	APIKey string `mapstructure:"api_key" yaml:"api_key"`
 }
 
 type PostgresqlConfig struct {
