@@ -27,7 +27,8 @@ var logsCmd = &cobra.Command{
 		chain, _ := cmd.Flags().GetString("chain")
 		tableName, _ := cmd.Flags().GetString("table_name")
 		topics, _ := cmd.Flags().GetString("topics")
-		logFilter := ethereum.NewLogFilter(chain, tableName, topics)
+		workerSize, _ := cmd.Flags().GetInt("workers")
+		logFilter := ethereum.NewLogFilter(chain, tableName, topics, workerSize)
 		logFilter.Run()
 	},
 }
@@ -37,5 +38,6 @@ func init() {
 	logsCmd.Flags().StringVarP(&config.CfgPath, "config", "c", "", "set config file path")
 	logsCmd.Flags().String("chain", "ethereum", "chain name")
 	logsCmd.Flags().String("table_name", datastore.TableLogs, "table name")
+	logsCmd.Flags().Int("workers", 2, "batch call workers")
 	logsCmd.Flags().String("topics", "", "filter the specified topics, split by comma")
 }
