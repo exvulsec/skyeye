@@ -44,7 +44,9 @@ func NewTransactionRedisExporter(chain string, nonce uint64) Exporter {
 func (tre *TransactionRedisExporter) ExportItems(items any) {
 	startTimestamp := time.Now()
 	for _, item := range items.(model.Transactions) {
-		tre.handleItem(item)
+		if item.TxStatus != 0 {
+			tre.handleItem(item)
+		}
 	}
 	logrus.Infof("handle %d txs to redis cost: %.2f", len(items.(model.Transactions)), time.Since(startTimestamp).Seconds())
 }
