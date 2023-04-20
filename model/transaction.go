@@ -21,8 +21,8 @@ type Transactions []Transaction
 type Transaction struct {
 	BlockTimestamp  int64           `json:"block_timestamp" gorm:"column:block_timestamp"`
 	BlockNumber     int64           `json:"block_number" gorm:"column:blknum"`
-	TxHash          string          `json:"txhash" gorm:"column:tx_hash"`
-	TxPos           int64           `json:"txpos" gorm:"column:tx_pos"`
+	TxHash          string          `json:"txhash" gorm:"column:txhash"`
+	TxPos           int64           `json:"txpos" gorm:"column:txpos"`
 	FromAddress     string          `json:"from_address" gorm:"column:from_address"`
 	ToAddress       *string         `json:"to_address" gorm:"column:to_address"`
 	TxType          uint8           `json:"tx_type" gorm:"column:tx_type"`
