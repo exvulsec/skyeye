@@ -15,5 +15,7 @@ type AddressLabel struct {
 func (al *AddressLabel) GetLabels(chain, address string) error {
 	tableName := fmt.Sprintf("%s.%s", chain, datastore.TableLabels)
 	return datastore.DB().Table(tableName).
-		Where("address = ?", address).First(al).Error
+		Where("address = ?", address).
+		Limit(1).
+		Find(al).Error
 }

@@ -9,7 +9,7 @@ import (
 	"go-etl/model"
 )
 
-const APIKEY = "api_key"
+const APIKEY = "apikey"
 
 func CheckAPIKEY() gin.HandlerFunc {
 	return func(c *gin.Context) {
