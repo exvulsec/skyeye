@@ -22,9 +22,12 @@ type config struct {
 }
 
 type HTTPServerConfig struct {
-	Host   string `mapstructure:"host" yaml:"host"`
-	Port   int    `mapstructure:"port" yaml:"port"`
-	APIKey string `mapstructure:"api_key" yaml:"api_key"`
+	Host                  string `mapstructure:"host" yaml:"host"`
+	Port                  int    `mapstructure:"port" yaml:"port"`
+	APIKey                string `mapstructure:"apikey" yaml:"apikey"`
+	EtherScanAPIKey       string `mapstructure:"etherscan_apikey" yaml:"etherscan_apikey"`
+	ClientMaxConns        int    `mapstructure:"client_max_conns" yaml:"client_max_conns"`
+	AddressNonceThreshold uint64 `mapstructure:"address_nonce_threshold" yaml:"address_nonce_threshold"`
 }
 
 type PostgresqlConfig struct {
