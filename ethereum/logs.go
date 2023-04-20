@@ -9,6 +9,7 @@ import (
 	"github.com/ethereum/go-ethereum"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
+	"github.com/ethereum/go-ethereum/event"
 	"github.com/sirupsen/logrus"
 
 	"go-etl/client"
@@ -67,19 +68,21 @@ func (lf *LogFilter) handleLogs(logs []types.Log, blockTimestamp int64) error {
 }
 
 func (lf *LogFilter) Run() {
-	var currentBlockNumber uint64 = 0
-	var logs = []types.Log{}
+	var currentBlockNumber uint64
+	var logs []types.Log
 	var startTimestamp time.Time
-	var currentBlockTimestamp int64 = 0
+	var currentBlockTimestamp int64
 
-	sub, err := client.EvmClient().SubscribeFilterLogs(context.Background(), lf.composeFilterQuery(), lf.logChannel)
-	if err != nil {
-		logrus.Fatalf("subscribe logs is err %v", err)
-	}
+	sub := event.Resubscribe(2*time.Second, func(ctx context.Context) (event.Subscription, error) {
+		currentBlockNumber = 0
+		logs = []types.Log{}
+		currentBlockTimestamp = 0
+		return client.EvmClient().SubscribeFilterLogs(context.Background(), lf.composeFilterQuery(), lf.logChannel)
+	})
 
 	for {
 		select {
-		case err = <-sub.Err():
+		case err := <-sub.Err():
 			close(lf.logChannel)
 			sub.Unsubscribe()
 			logrus.Fatalf("subscription logs is err: %v", err)
@@ -89,8 +92,8 @@ func (lf *LogFilter) Run() {
 				if len(logs) > 0 {
 					startTimestamp = time.Now()
 					logrus.Infof("start to write block nubmer %d's %d logs to db", currentBlockNumber, len(logs))
-					if err = lf.handleLogs(logs, currentBlockTimestamp); err != nil {
-						logrus.Fatalf("handle logs  is err %v", err)
+					if err := lf.handleLogs(logs, currentBlockTimestamp); err != nil {
+						logrus.Fatalf("handle logs is err %v", err)
 					}
 					logrus.Infof("finish to write block nubmer %d's %d logs cost:%.2fs", currentBlockNumber, len(logs), time.Since(startTimestamp).Seconds())
 				}

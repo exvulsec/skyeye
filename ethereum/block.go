@@ -3,10 +3,12 @@ package ethereum
 import (
 	"context"
 	"encoding/json"
+	"time"
 
 	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/ethclient"
+	"github.com/ethereum/go-ethereum/event"
 	"github.com/ethereum/go-ethereum/rpc"
 	"github.com/sirupsen/logrus"
 
@@ -74,18 +76,17 @@ func (be *BlockExecutor) getPreviousBlocks() {
 }
 func (be *BlockExecutor) subNewHeader() {
 	headers := make(chan *types.Header, 2)
-	be.running = false
-	be.latestBlocks = make(chan *json.RawMessage, 10000)
 
-	go be.getPreviousBlocks()
-	sub, err := client.EvmClient().SubscribeNewHead(context.Background(), headers)
-	if err != nil {
-		logrus.Fatalf("subscribe new header is err: %v", err)
-	}
+	sub := event.Resubscribe(2*time.Second, func(ctx context.Context) (event.Subscription, error) {
+		be.running = false
+		be.latestBlocks = make(chan *json.RawMessage, 10000)
+		go be.getPreviousBlocks()
+		return client.EvmClient().SubscribeNewHead(context.Background(), headers)
+	})
 
 	for {
 		select {
-		case err = <-sub.Err():
+		case err := <-sub.Err():
 			close(headers)
 			close(be.latestBlocks)
 			close(be.blocks)

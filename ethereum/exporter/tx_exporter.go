@@ -118,14 +118,13 @@ func (tpe *TransactionPostgresqlExporter) ExportItems(items any) {
 		}
 	}
 	if len(filterTXs) > 0 {
-		txs.CreateBatchToDB(utils.ComposeTableName(
+		filterTXs.CreateBatchToDB(utils.ComposeTableName(
 			tpe.Chain,
 			tpe.TableName),
 			config.Conf.Postgresql.MaxOpenConns,
 		)
 		logrus.Infof("insert %d txs into database cost: %.2f", len(txs), time.Since(startTimestamp).Seconds())
 	}
-
 }
 
 func (tpe *TransactionPostgresqlExporter) handleItem(item model.Transaction) bool {
