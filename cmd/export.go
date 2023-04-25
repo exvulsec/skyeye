@@ -30,8 +30,10 @@ var txCmd = &cobra.Command{
 		isCreationContract, _ := cmd.Flags().GetBool("creation_contract")
 		chain, _ := cmd.Flags().GetString("chain")
 		tableName, _ := cmd.Flags().GetString("table_name")
+		openAPIServer, _ := cmd.Flags().GetString("openapi_server")
+		redisVersion, _ := cmd.Flags().GetString("redis_version")
 		blockExecutor := ethereum.NewBlockExecutor(chain, batchSize, workers)
-		executor := ethereum.NewTransactionExecutor(blockExecutor, chain, tableName, workers, batchSize, nonce, isCreationContract)
+		executor := ethereum.NewTransactionExecutor(blockExecutor, chain, tableName, openAPIServer, redisVersion, workers, batchSize, nonce, isCreationContract)
 		executor.Run()
 	},
 }
@@ -44,6 +46,8 @@ func txCmdInit() {
 	txCmd.Flags().Int("batch_size", 50, "one batch call workers ")
 	txCmd.Flags().String("chain", "ethereum", "chain name")
 	txCmd.Flags().String("table_name", "txs", "table name")
+	txCmd.Flags().String("openapi_server", "http://159.138.63.196:8088", "open api server")
+	txCmd.Flags().String("redis_version", "v2", "redis mq version")
 }
 
 func init() {

@@ -4,10 +4,11 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"io"
+	"math/rand"
 	"net/http"
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/gin-gonic/gin"
@@ -27,6 +28,9 @@ func (ac *AddressController) Routers(routers gin.IRouter) {
 		api.GET("/:address/labels", ac.FindLabelByAddress)
 		api.GET("/:address/associated", ac.AssociatedByAddress)
 		api.GET("/:address/source_eth", ac.SourceETH)
+		if config.Conf.HTTPServerConfig.ReadSolidityCode {
+			api.GET("/:address/solidity_code", ac.ReadSolidityCode)
+		}
 	}
 }
 
@@ -72,12 +76,14 @@ func (ac *AddressController) SourceETH(c *gin.Context) {
 	address := strings.ToLower(c.Param("address"))
 
 	txResp := model.ScanTXResponse{}
-
+	rand.Seed(time.Now().UnixNano())
 	for {
+		index := rand.Intn(len(config.Conf.HTTPServerConfig.EtherScanAPIKeys))
+		ethScanAPIKEY := config.Conf.HTTPServerConfig.EtherScanAPIKeys[index]
 		wg := sync.WaitGroup{}
 		apis := []string{
-			fmt.Sprintf(scanAPI, config.Conf.HTTPServerConfig.EtherScanAPIKey, address, utils.EtherScanTransactionAction),
-			fmt.Sprintf(scanAPI, config.Conf.HTTPServerConfig.EtherScanAPIKey, address, utils.EtherScanTraceAction),
+			fmt.Sprintf(scanAPI, ethScanAPIKEY, address, utils.EtherScanTransactionAction),
+			fmt.Sprintf(scanAPI, ethScanAPIKEY, address, utils.EtherScanTraceAction),
 		}
 		var (
 			transaction model.ScanTransaction
@@ -85,17 +91,15 @@ func (ac *AddressController) SourceETH(c *gin.Context) {
 		)
 
 		for _, api := range apis {
-			tx := model.ScanTransactionResponse{}
 			resp, err := client.HTTPClient().Get(api)
 			if err != nil {
 				logrus.Errorf("get address %s's from scan api is err %v", address, err)
 				return
 			}
 			defer resp.Body.Close()
-			body, _ := io.ReadAll(resp.Body)
-			logrus.Infof("body is %v", string(body))
-			if err = json.Unmarshal(body, &tx); err != nil {
-				logrus.Errorf("unmarshall address %s's transaction is err %v", address, err)
+			tx := model.ScanTransactionResponse{}
+			if err = json.NewDecoder(resp.Body).Decode(&tx); err != nil {
+				logrus.Errorf("json unmarshall from %s is err %v,", resp.Body, err)
 				return
 			}
 			if tx.Status == "1" {
@@ -135,4 +139,8 @@ func (ac *AddressController) SourceETH(c *gin.Context) {
 		}
 	}
 	c.JSON(http.StatusOK, model.Message{Code: http.StatusOK, Data: txResp})
+}
+
+func (ac *AddressController) ReadSolidityCode(c *gin.Context) {
+	return
 }
