@@ -5,10 +5,25 @@ import (
 	"strconv"
 )
 
+type ScanBaseResponse struct {
+	Status  string `json:"status"`
+	Message string `json:"message"`
+}
+
+type ScanContractResponse struct {
+	ScanBaseResponse
+	Result []ScanContract `json:"result"`
+}
+
+type ScanContract struct {
+	SourceCode   string `json:"SourceCode"`
+	ABI          string `json:"ABI"`
+	ContractName string `json:"ContractName"`
+}
+
 type ScanTransactionResponse struct {
-	Status  string            `json:"status"`
-	Message string            `json:"message"`
-	Result  []ScanTransaction `json:"result"`
+	ScanBaseResponse
+	Result []ScanTransaction `json:"result"`
 }
 type ScanTransaction struct {
 	TimestampString string `json:"timeStamp"`

@@ -2,6 +2,7 @@ package config
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/viper"
@@ -22,12 +23,14 @@ type config struct {
 }
 
 type HTTPServerConfig struct {
-	Host                  string `mapstructure:"host" yaml:"host"`
-	Port                  int    `mapstructure:"port" yaml:"port"`
-	APIKey                string `mapstructure:"apikey" yaml:"apikey"`
-	EtherScanAPIKey       string `mapstructure:"etherscan_apikey" yaml:"etherscan_apikey"`
-	ClientMaxConns        int    `mapstructure:"client_max_conns" yaml:"client_max_conns"`
-	AddressNonceThreshold uint64 `mapstructure:"address_nonce_threshold" yaml:"address_nonce_threshold"`
+	Host                  string   `mapstructure:"host" yaml:"host"`
+	Port                  int      `mapstructure:"port" yaml:"port"`
+	APIKey                string   `mapstructure:"apikey" yaml:"apikey"`
+	EtherScanAPIKeyString string   `mapstructure:"etherscan_apikeys" yaml:"etherscan_apikeys"`
+	EtherScanAPIKeys      []string `mapstructure:"-" yaml:"-"`
+	ClientMaxConns        int      `mapstructure:"client_max_conns" yaml:"client_max_conns"`
+	AddressNonceThreshold uint64   `mapstructure:"address_nonce_threshold" yaml:"address_nonce_threshold"`
+	ReadSolidityCode      bool     `mapstructure:"read_solidity_code" yaml:"read_solidity_code"`
 }
 
 type PostgresqlConfig struct {
@@ -75,6 +78,10 @@ func SetupConfig(configPath string) {
 	// load config info to global Config variable
 	if err = viper.Unmarshal(&Conf); err != nil {
 		panic(fmt.Errorf("failed to unmarshal configuration file %v", err))
+	}
+
+	if Conf.HTTPServerConfig.EtherScanAPIKeyString != "" {
+		Conf.HTTPServerConfig.EtherScanAPIKeys = strings.Split(Conf.HTTPServerConfig.EtherScanAPIKeyString, ",")
 	}
 
 	logrus.Infof("read configuration file successfully")
