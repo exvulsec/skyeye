@@ -10,6 +10,11 @@ type ScanBaseResponse struct {
 	Message string `json:"message"`
 }
 
+type ScanStringResult struct {
+	ScanBaseResponse
+	Result string `json:"result"`
+}
+
 type ScanContractResponse struct {
 	ScanBaseResponse
 	Result []ScanContract `json:"result"`
