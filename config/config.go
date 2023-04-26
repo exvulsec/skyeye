@@ -30,7 +30,7 @@ type HTTPServerConfig struct {
 	EtherScanAPIKeys      []string `mapstructure:"-" yaml:"-"`
 	ClientMaxConns        int      `mapstructure:"client_max_conns" yaml:"client_max_conns"`
 	AddressNonceThreshold uint64   `mapstructure:"address_nonce_threshold" yaml:"address_nonce_threshold"`
-	ReadSolidityCode      bool     `mapstructure:"read_solidity_code" yaml:"read_solidity_code"`
+	SolidityCodePath      string   `mapstructure:"solidity_code_path" yaml:"solidity_code_path"`
 }
 
 type PostgresqlConfig struct {
