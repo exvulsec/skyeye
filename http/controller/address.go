@@ -10,7 +10,6 @@ import (
 	"net/http"
 	"os"
 	"strings"
-	"sync"
 	"time"
 
 	"github.com/ethereum/go-ethereum/common"
@@ -84,7 +83,6 @@ func (ac *AddressController) SourceETH(c *gin.Context) {
 	for {
 		index := rand.Intn(len(config.Conf.HTTPServerConfig.EtherScanAPIKeys))
 		ethScanAPIKEY := config.Conf.HTTPServerConfig.EtherScanAPIKeys[index]
-		wg := sync.WaitGroup{}
 		apis := []string{
 			fmt.Sprintf(scanAPI, ethScanAPIKEY, address, utils.EtherScanTransactionAction),
 			fmt.Sprintf(scanAPI, ethScanAPIKEY, address, utils.EtherScanTraceAction),
@@ -117,7 +115,7 @@ func (ac *AddressController) SourceETH(c *gin.Context) {
 					c.JSON(http.StatusOK, model.Message{Code: http.StatusInternalServerError, Msg: fmt.Sprintf("unmarshal json from body %s is err %v", string(body), err)})
 					return
 				}
-				c.JSON(http.StatusOK, model.Message{Code: http.StatusBadRequest, Msg: fmt.Sprintf("get address %s error from etherscan %s", address, result.Result)})
+				c.JSON(http.StatusOK, model.Message{Code: http.StatusBadRequest, Msg: fmt.Sprintf("get address %s from etherscan is err: %s, message is %s", address, result.Result, result.Message)})
 				return
 			}
 			tx := model.ScanTransactionResponse{}
@@ -137,7 +135,6 @@ func (ac *AddressController) SourceETH(c *gin.Context) {
 				}
 			}
 		}
-		wg.Wait()
 		address = transaction.FromAddress
 		if transaction.Timestamp > trace.Timestamp && trace.Timestamp > 0 {
 			address = trace.FromAddress

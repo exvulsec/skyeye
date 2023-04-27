@@ -52,10 +52,12 @@ type RedisConfig struct {
 }
 
 type ETLConfig struct {
-	ProviderURL  string `mapstructure:"provider_url" yaml:"provider_url"`
-	Chain        string `mapstructure:"chain" yaml:"chain"`
-	Worker       int64  `mapstructure:"worker" yaml:"worker"`
-	PreviousFile string `mapstructure:"previous_file" yaml:"previous_file"`
+	ProviderURL  string   `mapstructure:"provider_url" yaml:"provider_url"`
+	Chain        string   `mapstructure:"chain" yaml:"chain"`
+	Worker       int64    `mapstructure:"worker" yaml:"worker"`
+	PreviousFile string   `mapstructure:"previous_file" yaml:"previous_file"`
+	CexList      string   `mapstructure:"cex_list" yaml:"cex_list"`
+	Cexs         []string `mapstructure:"-" yaml:"-"`
 }
 
 func SetupConfig(configPath string) {
@@ -82,6 +84,10 @@ func SetupConfig(configPath string) {
 
 	if Conf.HTTPServerConfig.EtherScanAPIKeyString != "" {
 		Conf.HTTPServerConfig.EtherScanAPIKeys = strings.Split(Conf.HTTPServerConfig.EtherScanAPIKeyString, ",")
+	}
+
+	if Conf.ETLConfig.CexList != "" {
+		Conf.ETLConfig.Cexs = strings.Split(Conf.ETLConfig.CexList, ",")
 	}
 
 	logrus.Infof("read configuration file successfully")
