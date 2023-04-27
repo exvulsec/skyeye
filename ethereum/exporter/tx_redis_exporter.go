@@ -49,13 +49,16 @@ func NewTransactionRedisExporter(chain, openAPIServer, redisVersion string, nonc
 }
 
 func (tre *TransactionRedisExporter) ExportItems(items any) {
-	startTimestamp := time.Now()
 	for _, item := range items.(model.Transactions) {
 		if item.TxStatus != 0 {
 			tre.handleItem(item)
+			if item.ToAddress == nil && item.ContractAddress != "" && item.Nonce <= tre.Nonce {
+				tre.appendItemToMessageQueue(item)
+			} else {
+				logrus.Infof("filter the address %s by policy: create contract with tx nonce less than %d", item.ContractAddress, tre.Nonce)
+			}
 		}
 	}
-	logrus.Infof("handle %d txs to redis cost: %.2f", len(items.(model.Transactions)), time.Since(startTimestamp).Seconds())
 }
 
 func (tre *TransactionRedisExporter) handleItem(item model.Transaction) {
@@ -90,11 +93,10 @@ func (tre *TransactionRedisExporter) handleItem(item model.Transaction) {
 			logrus.Errorf("set value %v to filed %s in key %s from redis is err: %v", addrs, item.FromAddress, key, err)
 			return
 		}
-		tre.AppendToMessageQueue(item)
 	}
 }
 
-func (tre *TransactionRedisExporter) AppendToMessageQueue(item model.Transaction) {
+func (tre *TransactionRedisExporter) appendItemToMessageQueue(item model.Transaction) {
 	needFilter, err := tre.filterContractIsErc20OrErc721(item.ContractAddress)
 	if err != nil {
 		logrus.Errorf("filter contract is err: %v", err)
@@ -109,12 +111,16 @@ func (tre *TransactionRedisExporter) AppendToMessageQueue(item model.Transaction
 			time.Sleep(10 * time.Minute)
 			tx, err := tre.getSourceEthAddress(item.ContractAddress)
 			if err != nil {
-				logrus.Errorf("get contract eth source is err %v", err)
+				logrus.Errorf("get contract %s's eth source is err: %v", item.ContractAddress, err)
+				return
+			}
+			if len(tx.Nonce) < 5 && tx.IsCEX() {
+				logrus.Infof("filter the address %s by policy: source depth less than 5 and label in cex %s", item.ContractAddress, config.Conf.ETLConfig.CexList)
 				return
 			}
 			contract, err := tre.getContractCode(item.ContractAddress)
 			if err != nil {
-				logrus.Errorf("get contract eth source is err %v", err)
+				logrus.Errorf("get contract %s code is err: %v", item.ContractAddress, err)
 				return
 			}
 
@@ -127,6 +133,8 @@ func (tre *TransactionRedisExporter) AppendToMessageQueue(item model.Transaction
 					"eth_source_label": tx.Label,
 					"source_depth":     len(tx.Nonce),
 				}
+			} else {
+				logrus.Infof("filter the address %s by policy: contract code is open source", item.ContractAddress)
 			}
 			if len(values) > 0 {
 				_, err = datastore.Redis().XAdd(context.Background(), &redis.XAddArgs{
@@ -138,8 +146,12 @@ func (tre *TransactionRedisExporter) AppendToMessageQueue(item model.Transaction
 					logrus.Errorf("send redis stream is err: %v", err)
 					return
 				}
+				logrus.Infof("insert address %s to the redis mq: no match any filter policys", item.ContractAddress)
 			}
 		}()
+	} else {
+		logrus.Infof("filter the address %s by policy: is erc20 or is erc721", item.ContractAddress)
+		return
 	}
 }
 
@@ -152,7 +164,7 @@ func (tre *TransactionRedisExporter) getSourceEthAddress(contractAddress string)
 	url := fmt.Sprintf("%s/api/v1/address/%s/source_eth?apikey=%s", tre.OpenAPIServer, contractAddress, config.Conf.HTTPServerConfig.APIKey)
 	resp, err := client.HTTPClient().Get(url)
 	if err != nil {
-		return model.ScanTXResponse{}, fmt.Errorf("get the contract source eth from etherscan is err %v", err)
+		return model.ScanTXResponse{}, fmt.Errorf("get the contract source eth from etherscan is err: %v", err)
 	}
 	defer resp.Body.Close()
 
@@ -162,10 +174,10 @@ func (tre *TransactionRedisExporter) getSourceEthAddress(contractAddress string)
 	}
 
 	if err = json.Unmarshal(body, &message); err != nil {
-		return model.ScanTXResponse{}, fmt.Errorf("json unmarshall from body %s is err %v", string(body), err)
+		return model.ScanTXResponse{}, fmt.Errorf("json unmarshall from body %s is err: %v", string(body), err)
 	}
 	if message.Code != http.StatusOK {
-		return model.ScanTXResponse{}, fmt.Errorf("get txs from open api server is err %s", message.Msg)
+		return model.ScanTXResponse{}, fmt.Errorf("get txs from open api server is err: %s", message.Msg)
 	}
 
 	return message.Data, nil

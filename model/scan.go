@@ -3,6 +3,9 @@ package model
 import (
 	"fmt"
 	"strconv"
+	"strings"
+
+	"go-etl/config"
 )
 
 type ScanBaseResponse struct {
@@ -49,4 +52,13 @@ func (st *ScanTransaction) ConvertStringToInt() error {
 	}
 	st.Timestamp = timestamp
 	return nil
+}
+
+func (st *ScanTXResponse) IsCEX() bool {
+	for _, cex := range config.Conf.ETLConfig.Cexs {
+		if strings.HasPrefix(strings.ToLower(st.Label), cex) {
+			return true
+		}
+	}
+	return false
 }
