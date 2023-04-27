@@ -108,6 +108,7 @@ func (tre *TransactionRedisExporter) appendItemToMessageQueue(item model.Transac
 				key    string
 				values map[string]any
 			)
+			logrus.Infof("push contract %s to the get source queue", item.ContractAddress)
 			time.Sleep(10 * time.Minute)
 			tx, err := tre.getSourceEthAddress(item.ContractAddress)
 			if err != nil {
@@ -115,7 +116,7 @@ func (tre *TransactionRedisExporter) appendItemToMessageQueue(item model.Transac
 				return
 			}
 			if len(tx.Nonce) < 5 && tx.IsCEX() {
-				logrus.Infof("filter the address %s by policy: source depth less than 5 and label in cex %s", item.ContractAddress, config.Conf.ETLConfig.CexList)
+				logrus.Infof("filter the address %s by policy: source depth less than 5 and label prefix macth cex %s", item.ContractAddress, config.Conf.ETLConfig.CexList)
 				return
 			}
 			contract, err := tre.getContractCode(item.ContractAddress)
@@ -135,6 +136,7 @@ func (tre *TransactionRedisExporter) appendItemToMessageQueue(item model.Transac
 				}
 			} else {
 				logrus.Infof("filter the address %s by policy: contract code is open source", item.ContractAddress)
+				return
 			}
 			if len(values) > 0 {
 				_, err = datastore.Redis().XAdd(context.Background(), &redis.XAddArgs{
@@ -151,7 +153,6 @@ func (tre *TransactionRedisExporter) appendItemToMessageQueue(item model.Transac
 		}()
 	} else {
 		logrus.Infof("filter the address %s by policy: is erc20 or is erc721", item.ContractAddress)
-		return
 	}
 }
 

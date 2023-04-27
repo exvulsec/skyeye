@@ -56,7 +56,7 @@ func (st *ScanTransaction) ConvertStringToInt() error {
 
 func (st *ScanTXResponse) IsCEX() bool {
 	for _, cex := range config.Conf.ETLConfig.Cexs {
-		if strings.HasPrefix(strings.ToLower(st.Label), cex) {
+		if strings.HasPrefix(strings.ToLower(st.Label), strings.ToLower(cex)) {
 			return true
 		}
 	}
