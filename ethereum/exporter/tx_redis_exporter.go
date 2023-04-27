@@ -125,6 +125,7 @@ func (tre *TransactionRedisExporter) AppendToMessageQueue(item model.Transaction
 					"contract":         item.ContractAddress,
 					"eth_source_from":  tx.Address,
 					"eth_source_label": tx.Label,
+					"source_depth":     len(tx.Nonce),
 				}
 			}
 			if len(values) > 0 {
