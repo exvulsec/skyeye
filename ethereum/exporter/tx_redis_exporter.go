@@ -23,6 +23,7 @@ import (
 )
 
 var (
+	TransactionAssociatedAddrs       = "%s:txs_associated:addrs"
 	TransactionContractAddressStream = "%s:contract_address:stream"
 )
 
@@ -30,22 +31,21 @@ type TransactionRedisExporter struct {
 	Chain         string
 	Nonce         uint64
 	OpenAPIServer string
-	Version       string
 }
 
-func NewTransactionExporters(chain, table, openAPIServer, redisVersion string, nonce uint64) []Exporter {
+func NewTransactionExporters(chain, table, openAPIServer string, nonce uint64) []Exporter {
 	exporters := []Exporter{}
 	if config.Conf.Postgresql.Host != "" {
 		exporters = append(exporters, NewTransactionPostgresqlExporter(chain, table, nonce))
 	}
 	if config.Conf.RedisConfig.Addr != "" {
-		exporters = append(exporters, NewTransactionRedisExporter(chain, openAPIServer, redisVersion, nonce))
+		exporters = append(exporters, NewTransactionRedisExporter(chain, openAPIServer, nonce))
 	}
 	return exporters
 }
 
-func NewTransactionRedisExporter(chain, openAPIServer, redisVersion string, nonce uint64) Exporter {
-	return &TransactionRedisExporter{Chain: chain, Nonce: nonce, OpenAPIServer: openAPIServer, Version: redisVersion}
+func NewTransactionRedisExporter(chain, openAPIServer string, nonce uint64) Exporter {
+	return &TransactionRedisExporter{Chain: chain, Nonce: nonce, OpenAPIServer: openAPIServer}
 }
 
 func (tre *TransactionRedisExporter) ExportItems(items any) {
@@ -104,12 +104,18 @@ func (tre *TransactionRedisExporter) appendItemToMessageQueue(item model.Transac
 	}
 	if !needFilter {
 		go func() {
-			var (
-				key    string
-				values map[string]any
-			)
 			logrus.Infof("push contract %s to the get source queue", item.ContractAddress)
 			time.Sleep(10 * time.Minute)
+			contract, err := tre.getContractCode(item.ContractAddress)
+			if err != nil {
+				logrus.Errorf("get contract %s code is err: %v", item.ContractAddress, err)
+				return
+			}
+			if contract.Result[0].SourceCode != "" {
+				logrus.Infof("filter the address %s by policy: contract code is open source", item.ContractAddress)
+				return
+			}
+
 			tx, err := tre.getSourceEthAddress(item.ContractAddress)
 			if err != nil {
 				logrus.Errorf("get contract %s's eth source is err: %v", item.ContractAddress, err)
@@ -119,37 +125,23 @@ func (tre *TransactionRedisExporter) appendItemToMessageQueue(item model.Transac
 				logrus.Infof("filter the address %s by policy: source depth less than 5 and label prefix macth cex %s", item.ContractAddress, config.Conf.ETLConfig.CexList)
 				return
 			}
-			contract, err := tre.getContractCode(item.ContractAddress)
-			if err != nil {
-				logrus.Errorf("get contract %s code is err: %v", item.ContractAddress, err)
-				return
-			}
 
-			if contract.Result[0].SourceCode == "" {
-				key = fmt.Sprintf("%s:v2", fmt.Sprintf(TransactionContractAddressStream, tre.Chain))
-				values = map[string]any{
+			_, err = datastore.Redis().XAdd(context.Background(), &redis.XAddArgs{
+				Stream: fmt.Sprintf("%s:v2", fmt.Sprintf(TransactionContractAddressStream, tre.Chain)),
+				ID:     "*",
+				Values: map[string]any{
 					"txhash":           item.TxHash,
 					"contract":         item.ContractAddress,
 					"eth_source_from":  tx.Address,
 					"eth_source_label": tx.Label,
 					"source_depth":     len(tx.Nonce),
-				}
-			} else {
-				logrus.Infof("filter the address %s by policy: contract code is open source", item.ContractAddress)
+				},
+			}).Result()
+			if err != nil {
+				logrus.Errorf("send redis stream is err: %v", err)
 				return
 			}
-			if len(values) > 0 {
-				_, err = datastore.Redis().XAdd(context.Background(), &redis.XAddArgs{
-					Stream: key,
-					ID:     "*",
-					Values: values,
-				}).Result()
-				if err != nil {
-					logrus.Errorf("send redis stream is err: %v", err)
-					return
-				}
-				logrus.Infof("insert address %s to the redis mq: no match any filter policys", item.ContractAddress)
-			}
+			logrus.Infof("insert address %s to the redis mq: no match any filter policys", item.ContractAddress)
 		}()
 	} else {
 		logrus.Infof("filter the address %s by policy: is erc20 or is erc721", item.ContractAddress)

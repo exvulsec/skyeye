@@ -31,9 +31,8 @@ var txCmd = &cobra.Command{
 		chain, _ := cmd.Flags().GetString("chain")
 		tableName, _ := cmd.Flags().GetString("table_name")
 		openAPIServer, _ := cmd.Flags().GetString("openapi_server")
-		redisVersion, _ := cmd.Flags().GetString("redis_version")
 		blockExecutor := ethereum.NewBlockExecutor(chain, batchSize, workers)
-		executor := ethereum.NewTransactionExecutor(blockExecutor, chain, tableName, openAPIServer, redisVersion, workers, batchSize, nonce, isCreationContract)
+		executor := ethereum.NewTransactionExecutor(blockExecutor, chain, tableName, openAPIServer, workers, batchSize, nonce, isCreationContract)
 		executor.Run()
 	},
 }

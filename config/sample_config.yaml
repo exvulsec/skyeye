@@ -1,6 +1,11 @@
 http_server:
   host: localhost
   port: 8080
+  apikey:
+  client_max_conns: 5
+  etherscan_apikeys:
+  address_nonce_threshold: 200000
+  solidity_code_path:
 
 postgresql:
   user: postgres
@@ -17,3 +22,9 @@ etl:
   chain: ethereum
   worker: 10
   previous_file:
+  cex_list: Binance,Coinbase
+
+redis:
+  addr: localhost:6379
+  database: 1
+  max_idle_conns: 5

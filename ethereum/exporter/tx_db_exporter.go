@@ -10,10 +10,6 @@ import (
 	"go-etl/utils"
 )
 
-var (
-	TransactionAssociatedAddrs = "%s:txs_associated:addrs"
-)
-
 type TransactionPostgresqlExporter struct {
 	Chain     string
 	TableName string
