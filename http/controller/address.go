@@ -1,7 +1,6 @@
 package controller
 
 import (
-	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -181,56 +180,9 @@ func (ac *AddressController) ReadSolidityCode(c *gin.Context) {
 }
 
 func (ac *AddressController) getLabelFromMetaDock(chain string, address string) string {
-	headers := map[string]string{
-		"authority":          "extension.blocksec.com",
-		"accept":             "application/json",
-		"blocksec-meta-dock": "v2.4.0",
-		"user-agent":         "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/112.0.0.0 Safari/537.36",
-		"content-type":       "application/json",
-		"origin":             "chrome-extension://fkhgpeojcbhimodmppkbbliepkpcgcoo",
-		"sec-fetch-site":     "none",
-		"sec-fetch-mode":     "cors",
-		"sec-fetch-dest":     "empty",
-		"accept-encoding":    "gzip, deflate, br",
-		"accept-language":    "zh,zh-CN;q=0.9",
-	}
-
-	metaDockChain := utils.ConvertChainToMetaDock(chain)
-	body, err := json.Marshal(model.MetaDockLabelRequest{
-		Chain: metaDockChain,
-		Addresses: []string{
-			address,
-		},
-	})
-	if err != nil {
-		logrus.Errorf("marhsall json from chain %s and address %s is err: %v", chain, address, err)
-		return ""
-	}
-
-	req, err := http.NewRequest(http.MethodPost, "https://extension.blocksec.com/api/v1/address-label", bytes.NewBuffer(body))
-	if err != nil {
-		logrus.Errorf("new request for get meta dock labels is err: %v", err)
-		return ""
-	}
-	for key, value := range headers {
-		req.Header.Add(key, value)
-	}
-
-	resp, err := client.HTTPClient().Do(req)
-	if err != nil {
-		logrus.Errorf("receive response from https://extension.blocksec.com/api/v1/address-label is err: %v", err)
-		return ""
-	}
 	labels := model.MetaDockLabelsResponse{}
-	data, err := io.ReadAll(resp.Body)
-	if err != nil {
-		logrus.Errorf("read data from resp.Body is err: %v", err)
-		return ""
-	}
-	defer resp.Body.Close()
-
-	if err = json.Unmarshal(data, &labels); err != nil {
-		logrus.Errorf("unmarhsall data from resp.Body %s is err: %v", data, err)
+	if err := labels.GetLabels(chain, []string{address}); err != nil {
+		logrus.Error(err)
 		return ""
 	}
 	if len(labels) > 0 {
