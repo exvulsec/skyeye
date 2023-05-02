@@ -30,9 +30,13 @@ var txCmd = &cobra.Command{
 		isCreationContract, _ := cmd.Flags().GetBool("creation_contract")
 		chain, _ := cmd.Flags().GetString("chain")
 		tableName, _ := cmd.Flags().GetString("table_name")
+		logTableName, _ := cmd.Flags().GetString("log_table")
 		openAPIServer, _ := cmd.Flags().GetString("openapi_server")
+		topicString, _ := cmd.Flags().GetString("topics")
 		blockExecutor := ethereum.NewBlockExecutor(chain, batchSize, workers)
-		executor := ethereum.NewTransactionExecutor(blockExecutor, chain, tableName, openAPIServer, workers, batchSize, nonce, isCreationContract)
+
+		logExecutor := ethereum.NewLogExecutor(chain, logTableName, workers, ethereum.ConvertTopicsFromString(topicString))
+		executor := ethereum.NewTransactionExecutor(blockExecutor, logExecutor, chain, tableName, openAPIServer, workers, batchSize, nonce, isCreationContract)
 		executor.Run()
 	},
 }
@@ -41,12 +45,13 @@ func txCmdInit() {
 	txCmd.Flags().String("config", "", "set config file path")
 	txCmd.Flags().Uint64("tx_nonce", 0, "filter the less than nonce count txs, > 0 is available, default is 0")
 	txCmd.Flags().Bool("creation_contract", false, "filter the contract create txs")
-	txCmd.Flags().Int("workers", 2, "batch call workers")
+	txCmd.Flags().Int("workers", 5, "batch call workers")
 	txCmd.Flags().Int("batch_size", 50, "one batch call workers ")
 	txCmd.Flags().String("chain", "ethereum", "chain name")
 	txCmd.Flags().String("table_name", "txs", "table name")
 	txCmd.Flags().String("openapi_server", "http://159.138.63.196:8088", "open api server")
-	txCmd.Flags().String("redis_version", "v2", "redis mq version")
+	txCmd.Flags().String("topics", "", "filter the specified topics, split by comma")
+	txCmd.Flags().String("log_table", "logs", "log table name")
 }
 
 func init() {

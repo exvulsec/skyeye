@@ -65,7 +65,7 @@ func (tx *Transaction) ConvertFromBlock(transaction *types.Transaction) {
 	tx.GasLimit = int64(transaction.Gas())
 }
 
-func (txs *Transactions) EnrichReceipts(batchSize, workers int) {
+func (txs *Transactions) EnrichReceipts(batchSize, workers int, logsCh chan []*types.Log) {
 	calls := []rpc.BatchElem{}
 	for index := range *txs {
 		calls = append(calls, rpc.BatchElem{
@@ -78,6 +78,9 @@ func (txs *Transactions) EnrichReceipts(batchSize, workers int) {
 	for index := range *txs {
 		receipt, _ := calls[index].Result.(*types.Receipt)
 		(*txs)[index].enrichReceipt(*receipt)
+		if logsCh != nil {
+			logsCh <- receipt.Logs
+		}
 	}
 }
 

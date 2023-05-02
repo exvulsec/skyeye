@@ -24,7 +24,7 @@ func GetBlock(raw json.RawMessage) (*types.Block, error) {
 	// Decode header and transactions.
 	var head *types.Header
 	if err := json.Unmarshal(raw, &head); err != nil {
-		return nil, err
+		return nil, fmt.Errorf("unmarshall header from data %s is err: %v", string(raw), err)
 	}
 	// When the block is not found, the API returns JSON null.
 	if head == nil {
@@ -33,7 +33,7 @@ func GetBlock(raw json.RawMessage) (*types.Block, error) {
 
 	var body RPCBlock
 	if err := json.Unmarshal(raw, &body); err != nil {
-		return nil, err
+		return nil, fmt.Errorf("unmarshall rpcblock from data %s is err: %v", string(raw), err)
 	}
 	// Quick-verify transaction and uncle lists. This mostly helps with debugging the server.
 	if head.UncleHash == types.EmptyUncleHash && len(body.UncleHashes) > 0 {
