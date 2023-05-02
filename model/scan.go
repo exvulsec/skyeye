@@ -8,12 +8,8 @@ import (
 	"strconv"
 	"strings"
 
-	mapset "github.com/deckarep/golang-set/v2"
-	"github.com/sirupsen/logrus"
-
 	"go-etl/client"
 	"go-etl/config"
-	"go-etl/utils"
 )
 
 type ScanBaseResponse struct {
@@ -71,8 +67,8 @@ func (st *ScanTXResponse) IsCEX() bool {
 	return false
 }
 
-func (rs *ScanStringResult) GetPush20OpCode(chain, address string) ([]string, error) {
-	addrs := []string{}
+func (rs *ScanStringResult) GetOpCodes(address string) ([]string, error) {
+	opcodes := []string{}
 	headers := map[string]string{
 		"authority":          "etherscan.io",
 		"accept":             "application/json, text/javascript, */*; q=0.01",
@@ -98,7 +94,7 @@ func (rs *ScanStringResult) GetPush20OpCode(chain, address string) ([]string, er
 	req, err := http.NewRequest(http.MethodGet, scanURL, nil)
 	if err != nil {
 
-		return addrs, fmt.Errorf("new request for get meta dock labels is err: %v", err)
+		return opcodes, fmt.Errorf("new request for get meta dock labels is err: %v", err)
 	}
 
 	q := req.URL.Query()
@@ -114,45 +110,17 @@ func (rs *ScanStringResult) GetPush20OpCode(chain, address string) ([]string, er
 
 	resp, err := client.HTTPClient().Do(req)
 	if err != nil {
-		return addrs, fmt.Errorf("receive response from %s is err: %v", scanURL, err)
+		return opcodes, fmt.Errorf("receive response from %s is err: %v", scanURL, err)
 	}
 	data, err := io.ReadAll(resp.Body)
 	if err != nil {
-		return addrs, fmt.Errorf("read data from resp.Body is err: %v", err)
+		return opcodes, fmt.Errorf("read data from resp.Body is err: %v", err)
 	}
 	defer resp.Body.Close()
 	if err = json.Unmarshal(data, rs); err != nil {
-		return addrs, fmt.Errorf("unmarshall data %s is err: %v", string(data), err)
+		return opcodes, fmt.Errorf("unmarshall data %s is err: %v", string(data), err)
 	}
-	opcodes := strings.Split(rs.Result, "<br>")
-	for _, opcode := range opcodes {
-		ops := strings.Split(opcode, " ")
-		if len(ops) > 1 {
-			if ops[0] == utils.PUSH20 && strings.ToLower(ops[1]) != utils.FFFFAddress {
-				addrs = append(addrs, strings.ToLower(ops[1]))
-			}
-		}
-	}
-	addrs = mapset.NewSet[string](addrs...).ToSlice()
-	labelAddrs := []string{}
-	if len(addrs) > 0 {
-		labels := MetaDockLabelsResponse{}
-		if err = labels.GetLabels(chain, addrs); err != nil {
-			logrus.Errorf("get labels from metadocks in get opcode is err: %+v", err)
-			return addrs, nil
-		}
-		labelMap := map[string]string{}
-		for _, label := range labels {
-			labelMap[label.Address] = label.Label
-		}
-		for _, addr := range addrs {
-			value := addr
-			if v, ok := labelMap[addr]; ok {
-				value = v
-			}
-			labelAddrs = append(labelAddrs, value)
-		}
-	}
+	opcodes = strings.Split(rs.Result, "<br>")
 
-	return labelAddrs, nil
+	return opcodes, nil
 }

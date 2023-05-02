@@ -63,10 +63,10 @@ func (labels *MetaDockLabelsResponse) GetLabels(chain string, addrs []string) er
 	var reader io.Reader = resp.Body
 	if utils.CheckHeaderIsGZip(resp.Header) {
 		gr, err := gzip.NewReader(resp.Body)
-		defer gr.Close()
 		if err != nil {
 			return fmt.Errorf("create gzip reader is err: %v", err)
 		}
+		defer gr.Close()
 		reader = gr
 	}
 
