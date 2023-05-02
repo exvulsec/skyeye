@@ -1,3 +1,6 @@
 package utils
 
-var PUSH20 = "PUSH20"
+const (
+	PUSH20 = "PUSH20"
+	PUSH4  = "PUSH4"
+)

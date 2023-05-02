@@ -125,16 +125,26 @@ func (tre *TransactionRedisExporter) appendItemToMessageQueue(item model.Transac
 				logrus.Infof("filter the address %s by policy: source depth less than 5 and label prefix macth cex %s", item.ContractAddress, config.Conf.ETLConfig.CexList)
 				return
 			}
+			opcodes, err := tre.getOpcodes(item.ContractAddress)
+			if err != nil {
+				logrus.Infof("get contract address %s's opcodes is err: %v", item.ContractAddress, err)
+				return
+			}
+
+			fund := tx.Address
+			if tx.Label != "" {
+				fund = tx.Label
+			}
 
 			_, err = datastore.Redis().XAdd(context.Background(), &redis.XAddArgs{
 				Stream: fmt.Sprintf("%s:v2", fmt.Sprintf(TransactionContractAddressStream, tre.Chain)),
 				ID:     "*",
 				Values: map[string]any{
-					"txhash":           item.TxHash,
-					"contract":         item.ContractAddress,
-					"eth_source_from":  tx.Address,
-					"eth_source_label": tx.Label,
-					"source_depth":     len(tx.Nonce),
+					"txhash":   item.TxHash,
+					"contract": item.ContractAddress,
+					"fund":     fmt.Sprintf("%d-%s", len(tx.Nonce), fund),
+					"push4":    tre.GetContractPush4Args(opcodes),
+					"push20":   tre.GetContractPush20Args(opcodes),
 				},
 			}).Result()
 			if err != nil {
@@ -214,7 +224,53 @@ func (tre *TransactionRedisExporter) filterContractIsErc20OrErc721(address strin
 	return false, nil
 }
 
-func (tre *TransactionRedisExporter) GetContractPush20Args(address string) ([]string, error) {
+func (tre *TransactionRedisExporter) getOpcodes(addrss string) ([]string, error) {
 	result := model.ScanStringResult{}
-	return result.GetPush20OpCode(tre.Chain, address)
+	return result.GetOpCodes(addrss)
+}
+
+func (tre *TransactionRedisExporter) GetContractPush20Args(opcodes []string) []string {
+	labelAddrs := []string{}
+	args := []string{}
+	for _, opcode := range opcodes {
+		ops := strings.Split(opcode, " ")
+		if len(ops) > 1 {
+			if ops[0] == utils.PUSH20 && strings.ToLower(ops[1]) != utils.FFFFAddress {
+				args = append(args, strings.ToLower(ops[1]))
+			}
+		}
+	}
+	addrs := mapset.NewSet[string](args...).ToSlice()
+	if len(addrs) > 0 {
+		labels := model.MetaDockLabelsResponse{}
+		if err := labels.GetLabels(tre.Chain, addrs); err != nil {
+			logrus.Errorf("get labels from metadocks in get opcode is err: %+v", err)
+			return labelAddrs
+		}
+		labelMap := map[string]string{}
+		for _, label := range labels {
+			labelMap[label.Address] = label.Label
+		}
+		for _, addr := range addrs {
+			value := addr
+			if v, ok := labelMap[addr]; ok {
+				value = v
+			}
+			labelAddrs = append(labelAddrs, value)
+		}
+	}
+	return labelAddrs
+}
+
+func (tre *TransactionRedisExporter) GetContractPush4Args(opcodes []string) []string {
+	args := []string{}
+	for _, opcode := range opcodes {
+		ops := strings.Split(opcode, " ")
+		if len(ops) > 1 {
+			if ops[0] == utils.PUSH4 {
+				args = append(args, strings.ToLower(ops[1]))
+			}
+		}
+	}
+	return args
 }
