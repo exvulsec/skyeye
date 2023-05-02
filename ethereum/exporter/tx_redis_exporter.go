@@ -146,8 +146,8 @@ func (tre *TransactionRedisExporter) appendItemToMessageQueue(item model.Transac
 					"txhash":   item.TxHash,
 					"contract": item.ContractAddress,
 					"fund":     fmt.Sprintf("%d-%s", len(tx.Nonce), fund),
-					"push4":    strings.Join(tre.GetContractPush4Args(opcodes), ","),
-					"push20":   strings.Join(tre.GetContractPush20Args(opcodes), ","),
+					//"push4":    strings.Join(tre.GetContractPush4Args(opcodes), ","),
+					"push20": strings.Join(tre.GetContractPush20Args(opcodes), ","),
 				},
 			}).Result()
 			if err != nil {
@@ -270,10 +270,10 @@ func (tre *TransactionRedisExporter) GetContractPush4Args(opcodes []string) []st
 	for _, opcode := range opcodes {
 		ops := strings.Split(opcode, " ")
 		if len(ops) > 1 {
-			if ops[0] == utils.PUSH4 {
+			if ops[0] == utils.PUSH4 && strings.ToLower(ops[1]) != utils.FFFFFunction {
 				args = append(args, strings.ToLower(ops[1]))
 			}
 		}
 	}
-	return args
+	return mapset.NewSet[string](args...).ToSlice()
 }
