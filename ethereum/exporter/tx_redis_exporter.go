@@ -213,3 +213,8 @@ func (tre *TransactionRedisExporter) filterContractIsErc20OrErc721(address strin
 	}
 	return false, nil
 }
+
+func (tre *TransactionRedisExporter) GetContractPush20Args(address string) ([]string, error) {
+	result := model.ScanStringResult{}
+	return result.GetPush20OpCode(tre.Chain, address)
+}

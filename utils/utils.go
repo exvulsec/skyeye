@@ -2,6 +2,7 @@ package utils
 
 import (
 	"fmt"
+	"net/http"
 	"os"
 	"strconv"
 	"strings"
@@ -57,4 +58,13 @@ func ComposeTableName(schema string, tableName string) string {
 	}
 	return tableName
 
+}
+
+func CheckHeaderIsGZip(header http.Header) bool {
+	for k, v := range header {
+		if strings.ToLower(k) == "content-encoding" && strings.ToLower(v[0]) == "gzip" {
+			return true
+		}
+	}
+	return false
 }
