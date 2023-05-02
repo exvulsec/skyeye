@@ -130,10 +130,13 @@ func (tre *TransactionRedisExporter) appendItemToMessageQueue(item model.Transac
 				logrus.Infof("get contract address %s's opcodes is err: %v", item.ContractAddress, err)
 				return
 			}
-
 			fund := tx.Address
-			if tx.Label != "" {
-				fund = tx.Label
+			if tx.Address != "" {
+				if tx.Label != "" {
+					fund = tx.Label
+				}
+			} else {
+				fund = "scanError"
 			}
 
 			_, err = datastore.Redis().XAdd(context.Background(), &redis.XAddArgs{
