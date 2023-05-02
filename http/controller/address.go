@@ -138,13 +138,21 @@ func (ac *AddressController) SourceETH(c *gin.Context) {
 		if transaction.Timestamp > trace.Timestamp && trace.Timestamp > 0 {
 			address = trace.FromAddress
 		}
-		nonce, err := client.EvmClient().PendingNonceAt(context.Background(), common.HexToAddress(address))
-		if err != nil {
-			c.JSON(http.StatusOK, model.Message{Code: http.StatusInternalServerError, Msg: fmt.Sprintf("get nonce for address %s is err: %v", address, err)})
-			return
+		var (
+			nonce uint64
+			err   error
+		)
+
+		if address != "" {
+			nonce, err = client.EvmClient().PendingNonceAt(context.Background(), common.HexToAddress(address))
+			if err != nil {
+				c.JSON(http.StatusOK, model.Message{Code: http.StatusInternalServerError, Msg: fmt.Sprintf("get nonce for address %s is err: %v", address, err)})
+				return
+			}
+			txResp.Nonce = append(txResp.Nonce, nonce)
 		}
-		txResp.Nonce = append(txResp.Nonce, nonce)
-		if nonce >= config.Conf.HTTPServerConfig.AddressNonceThreshold || address == utils.EtherScanGenesisAddress {
+		if address == utils.EtherScanGenesisAddress || address == "" ||
+			nonce >= config.Conf.HTTPServerConfig.AddressNonceThreshold {
 			txResp.Address = address
 			label := utils.EtherScanGenesisAddress
 			if address != utils.EtherScanGenesisAddress {
