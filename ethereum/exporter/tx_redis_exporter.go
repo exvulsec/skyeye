@@ -143,8 +143,8 @@ func (tre *TransactionRedisExporter) appendItemToMessageQueue(item model.Transac
 					"txhash":   item.TxHash,
 					"contract": item.ContractAddress,
 					"fund":     fmt.Sprintf("%d-%s", len(tx.Nonce), fund),
-					"push4":    tre.GetContractPush4Args(opcodes),
-					"push20":   tre.GetContractPush20Args(opcodes),
+					"push4":    strings.Join(tre.GetContractPush4Args(opcodes), ","),
+					"push20":   strings.Join(tre.GetContractPush20Args(opcodes), ","),
 				},
 			}).Result()
 			if err != nil {
