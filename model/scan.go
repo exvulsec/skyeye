@@ -3,13 +3,13 @@ package model
 import (
 	"encoding/json"
 	"fmt"
-	"go-etl/utils"
 	"io"
 	"net/http"
 	"strconv"
 	"strings"
 
 	"go-etl/client"
+	"go-etl/utils"
 )
 
 type ScanBaseResponse struct {

@@ -105,7 +105,7 @@ func (tre *TransactionRedisExporter) appendItemToMessageQueue(item model.Transac
 	if !needFilter {
 		go func() {
 			logrus.Infof("push contract %s to the get source queue", item.ContractAddress)
-			time.Sleep(1 * time.Second)
+			time.Sleep(10 * time.Minute)
 			contract, err := tre.getContractCode(item.ContractAddress)
 			if err != nil {
 				logrus.Errorf("get contract %s code is err: %v", item.ContractAddress, err)
