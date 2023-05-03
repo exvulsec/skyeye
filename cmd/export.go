@@ -1,11 +1,11 @@
 package cmd
 
 import (
-	"go-etl/config"
-	"go-etl/ethereum"
-
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
+
+	"go-etl/config"
+	"go-etl/ethereum"
 )
 
 var exportCmd = &cobra.Command{
