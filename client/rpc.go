@@ -73,6 +73,7 @@ func MultiCall(calls []rpc.BatchElem, batchSize, workerCount int, channel chan *
 					logrus.Fatalf("get block number %v from rpc node is err: %v", call.Args, call.Error)
 				}
 				if channel != nil {
+
 					channel <- call.Result.(*json.RawMessage)
 				}
 			}

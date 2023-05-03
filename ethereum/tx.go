@@ -17,6 +17,7 @@ import (
 
 type transactionExecutor struct {
 	blockExecutor      BlockExecutor
+	logExecutor        Executor
 	blockNumber        int64
 	workers            int
 	batchSize          int
@@ -25,9 +26,15 @@ type transactionExecutor struct {
 	exporters          []exporter.Exporter
 }
 
-func NewTransactionExecutor(blockExecutor BlockExecutor, chain, table, openapi string, workers, batchSize int, nonce uint64, isCreationContract bool) Executor {
+func NewTransactionExecutor(blockExecutor BlockExecutor,
+	logExecutor Executor,
+	chain, table, openapi string,
+	workers, batchSize int,
+	nonce uint64,
+	isCreationContract bool) Executor {
 	return &transactionExecutor{
 		blockExecutor:      blockExecutor,
+		logExecutor:        logExecutor,
 		workers:            workers,
 		batchSize:          batchSize,
 		isCreationContract: isCreationContract,
@@ -37,10 +44,14 @@ func NewTransactionExecutor(blockExecutor BlockExecutor, chain, table, openapi s
 
 func (te *transactionExecutor) Run() {
 	go te.blockExecutor.GetBlocks()
+	if te.logExecutor != nil {
+		go te.logExecutor.Run()
+	}
+
 	for item := range te.blockExecutor.blocks {
 		block, err := rpc.GetBlock(*item)
 		if err != nil {
-			logrus.Fatalf("get block from raw json message is err: %v, item is %v", err, item)
+			logrus.Fatalf("get block from raw json message is err: %v, item is %+v", err, item)
 		}
 		te.blockNumber = block.Number().Int64()
 		te.items = te.ExtractByBlock(*block)
@@ -82,7 +93,8 @@ func (te *transactionExecutor) Enrich() {
 	te.filterTransactions()
 	txs := te.items.(model.Transactions)
 	if len(txs) > 0 {
-		txs.EnrichReceipts(te.batchSize, te.workers)
+		lge, _ := te.logExecutor.(*logExecutor)
+		txs.EnrichReceipts(te.batchSize, te.workers, lge.logsCh)
 		logrus.Infof("enrich %d txs from receipt cost: %.2fs", len(txs), time.Since(startTimestamp).Seconds())
 	}
 }
@@ -98,21 +110,13 @@ func (te *transactionExecutor) Export() {
 }
 
 func (te *transactionExecutor) filterTransactions() {
-	txs := model.Transactions{}
-	for _, item := range te.items.(model.Transactions) {
-		if te.filterTransaction(item) {
-			txs = append(txs, item)
+	if te.isCreationContract {
+		txs := model.Transactions{}
+		for _, item := range te.items.(model.Transactions) {
+			if item.ToAddress == nil {
+				txs = append(txs, item)
+			}
 		}
+		te.items = txs
 	}
-	te.items = txs
-}
-
-func (te *transactionExecutor) filterTransaction(tx model.Transaction) bool {
-	if !te.isCreationContract {
-		return true
-	}
-	if tx.ToAddress == nil {
-		return true
-	}
-	return false
 }

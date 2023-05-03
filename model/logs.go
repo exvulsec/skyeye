@@ -24,13 +24,12 @@ type Log struct {
 
 type Logs []Log
 
-func (log *Log) ConvertFromEthereumLog(l types.Log, blockTimestamp int64) {
+func (log *Log) ConvertFromEthereumLog(l types.Log) {
 	log.LogPos = int64(l.Index)
 	log.TransactionIndex = int64(l.TxIndex)
 	log.Address = strings.ToLower(l.Address.String())
 	log.BlockNumber = int64(l.BlockNumber)
 	log.TransactionHash = strings.ToLower(l.TxHash.String())
-	log.BlockTimestamp = blockTimestamp
 	log.Topic0 = strings.ToLower(l.Topics[0].String())
 	log.TopicCount = len(l.Topics)
 	topics := "["

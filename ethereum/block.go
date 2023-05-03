@@ -55,18 +55,14 @@ func (be *BlockExecutor) getPreviousBlocks() {
 	if previousBlockNumber < latestBlockNumber {
 		currentBlockNumber := previousBlockNumber + 1
 		logrus.Infof("start to sync from block %d to block %d", currentBlockNumber, latestBlockNumber)
-		calls := []rpc.BatchElem{}
 		for currentBlockNumber <= latestBlockNumber {
-			calls = append(calls, rpc.BatchElem{
+			logrus.Infof("get %d blocks from batch call", currentBlockNumber)
+			client.MultiCall([]rpc.BatchElem{{
 				Method: utils.RPCNameEthGetBlockByNumber,
 				Args:   []any{hexutil.EncodeUint64(currentBlockNumber), true},
 				Result: &json.RawMessage{},
-			})
+			}}, be.batchSize, be.workerSize, be.blocks)
 			currentBlockNumber += 1
-		}
-		if len(calls) > 0 {
-			logrus.Infof("get %d blocks from batch call", len(calls))
-			client.MultiCall(calls, be.batchSize, be.workerSize, be.blocks)
 		}
 	}
 
