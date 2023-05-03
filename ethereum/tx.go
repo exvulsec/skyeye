@@ -1,17 +1,21 @@
 package ethereum
 
 import (
+	"encoding/json"
 	"sync"
 	"time"
 
+	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/ethereum/go-ethereum/core/types"
+	"github.com/ethereum/go-ethereum/rpc"
 	"github.com/shopspring/decimal"
 	"github.com/sirupsen/logrus"
 
+	"go-etl/client"
 	"go-etl/config"
 	"go-etl/ethereum/exporter"
 	"go-etl/model"
-	"go-etl/rpc"
+	etlRPC "go-etl/rpc"
 	"go-etl/utils"
 )
 
@@ -48,10 +52,31 @@ func (te *transactionExecutor) Run() {
 		go te.logExecutor.Run()
 	}
 
-	for item := range te.blockExecutor.blocks {
-		block, err := rpc.GetBlock(*item)
+	for blockNumber := range te.blockExecutor.blocks {
+		calls := []rpc.BatchElem{{
+			Method: utils.RPCNameEthGetBlockByNumber,
+			Args:   []any{hexutil.EncodeUint64(blockNumber), true},
+			Result: &json.RawMessage{},
+		}}
+		client.MultiCall(calls, te.batchSize, te.workers)
+		if result, _ := calls[0].Result.(*json.RawMessage); string(*result) == "null" {
+			retry := 1
+			for {
+				time.Sleep(1 * time.Second)
+				logrus.Infof("retry %d to get block: %d info", retry, blockNumber)
+				if err := client.RPCClient().BatchCall(calls); err != nil {
+					logrus.Errorf("batch call is err %v", err)
+					return
+				}
+				if result, _ = calls[0].Result.(*json.RawMessage); string(*result) != "null" {
+					break
+				}
+				retry++
+			}
+		}
+		block, err := etlRPC.GetBlock(*calls[0].Result.(*json.RawMessage))
 		if err != nil {
-			logrus.Fatalf("get block from raw json message is err: %v, item is %+v", err, item)
+			logrus.Fatalf("get block from raw json message is err: %v, item is %+v", err, blockNumber)
 		}
 		te.blockNumber = block.Number().Int64()
 		te.items = te.ExtractByBlock(*block)
@@ -74,7 +99,9 @@ func (te *transactionExecutor) ExtractByBlock(block types.Block) any {
 			t.ConvertFromBlock(block.Transactions()[index])
 			t.BlockNumber = block.Number().Int64()
 			t.BlockTimestamp = int64(block.Time())
-			t.GasBase = decimal.NewFromBigInt(block.BaseFee(), 0)
+			if block.BaseFee() != nil {
+				t.GasBase = decimal.NewFromBigInt(block.BaseFee(), 0)
+			}
 			rwMutex.Lock()
 			txs = append(txs, t)
 			rwMutex.Unlock()
@@ -93,8 +120,13 @@ func (te *transactionExecutor) Enrich() {
 	te.filterTransactions()
 	txs := te.items.(model.Transactions)
 	if len(txs) > 0 {
-		lge, _ := te.logExecutor.(*logExecutor)
-		txs.EnrichReceipts(te.batchSize, te.workers, lge.logsCh)
+		var logCh chan []*types.Log
+		if te.logExecutor != nil {
+			lge, _ := te.logExecutor.(*logExecutor)
+			logCh = lge.logsCh
+		}
+
+		txs.EnrichReceipts(te.batchSize, te.workers, logCh)
 		logrus.Infof("enrich %d txs from receipt cost: %.2fs", len(txs), time.Since(startTimestamp).Seconds())
 	}
 }
@@ -106,7 +138,7 @@ func (te *transactionExecutor) Export() {
 			e.ExportItems(txs)
 		}
 	}
-	utils.WriteBlockNumberToFile(config.Conf.ETLConfig.PreviousFile, te.blockNumber)
+	utils.WriteBlockNumberToFile(config.Conf.ETL.PreviousFile, te.blockNumber)
 }
 
 func (te *transactionExecutor) filterTransactions() {

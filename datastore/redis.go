@@ -26,10 +26,10 @@ func (i *RedisInstance) Instance() any {
 
 func initRedisClient() any {
 	return redis.NewClient(&redis.Options{
-		Addr:         config.Conf.RedisConfig.Addr,
-		Password:     config.Conf.RedisConfig.Password,
-		DB:           config.Conf.RedisConfig.Database,
-		MaxIdleConns: config.Conf.RedisConfig.MaxIdleConns,
+		Addr:         config.Conf.Redis.Addr,
+		Password:     config.Conf.Redis.Password,
+		DB:           config.Conf.Redis.Database,
+		MaxIdleConns: config.Conf.Redis.MaxIdleConns,
 	})
 }
 

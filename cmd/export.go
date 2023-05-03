@@ -1,11 +1,11 @@
 package cmd
 
 import (
-	"github.com/sirupsen/logrus"
-	"github.com/spf13/cobra"
-
 	"go-etl/config"
 	"go-etl/ethereum"
+
+	"github.com/sirupsen/logrus"
+	"github.com/spf13/cobra"
 )
 
 var exportCmd = &cobra.Command{
@@ -34,8 +34,10 @@ var txCmd = &cobra.Command{
 		openAPIServer, _ := cmd.Flags().GetString("openapi_server")
 		topicString, _ := cmd.Flags().GetString("topics")
 		blockExecutor := ethereum.NewBlockExecutor(chain, batchSize, workers)
-
-		logExecutor := ethereum.NewLogExecutor(chain, logTableName, workers, ethereum.ConvertTopicsFromString(topicString))
+		var logExecutor ethereum.Executor
+		if topicString != "" {
+			logExecutor = ethereum.NewLogExecutor(chain, logTableName, workers, ethereum.ConvertTopicsFromString(topicString))
+		}
 		executor := ethereum.NewTransactionExecutor(blockExecutor, logExecutor, chain, tableName, openAPIServer, workers, batchSize, nonce, isCreationContract)
 		executor.Run()
 	},

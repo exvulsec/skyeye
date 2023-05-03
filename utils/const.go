@@ -5,6 +5,7 @@ const (
 	FFFFAddress   = "0xffffffffffffffffffffffffffffffffffffffff"
 	FFFFFunction  = "0xffffffff"
 	ChainEthereum = "ethereum"
+	ChainBSC      = "bsc"
 	ChainEmpty    = ""
 	ChainKey      = "chain"
 )

@@ -25,9 +25,9 @@ func (ei *EVMInstance) Instance() any {
 }
 
 func initEvmClient() any {
-	client, err := ethclient.Dial(config.Conf.ETLConfig.ProviderURL)
+	client, err := ethclient.Dial(config.Conf.ETL.ProviderURL)
 	if err != nil {
-		logrus.Fatalf("failed to connect provider url %s with ethclient, err is %v", config.Conf.ETLConfig.ProviderURL, err)
+		logrus.Fatalf("failed to connect provider url %s with ethclient, err is %v", config.Conf.ETL.ProviderURL, err)
 	}
 	logrus.Infof("connect to provider with ethclient is successfully")
 	return client

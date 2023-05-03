@@ -13,7 +13,7 @@ const APIKEY = "apikey"
 
 func CheckAPIKEY() gin.HandlerFunc {
 	return func(c *gin.Context) {
-		if c.Query(APIKEY) != config.Conf.HTTPServerConfig.APIKey {
+		if c.Query(APIKEY) != config.Conf.HTTPServer.APIKey {
 			c.AbortWithStatusJSON(http.StatusOK, model.Message{
 				Code: http.StatusUnauthorized,
 				Msg:  "invalid api key",

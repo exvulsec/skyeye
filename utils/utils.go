@@ -16,7 +16,7 @@ func ReadBlockNumberFromFile(filePath string) int64 {
 	checkFileIfNotExist(filePath)
 	bytes, err := os.ReadFile(filePath)
 	if err != nil {
-		logrus.Fatalf("failed to read the last block number from %s", config.Conf.ETLConfig.PreviousFile)
+		logrus.Fatalf("failed to read the last block number from %s", config.Conf.ETL.PreviousFile)
 	}
 	lastBlockNumber, err := strconv.ParseInt(strings.Trim(string(bytes), "\n"), 10, 64)
 	if err != nil {
