@@ -30,7 +30,14 @@ func (ac *AddressController) Routers(routers gin.IRouter) {
 		api.GET("/:address/labels", ac.FindLabelByAddress)
 		api.GET("/:address/associated", ac.AssociatedByAddress)
 		api.GET("/:address/source_eth", ac.SourceETH)
-		if config.Conf.HTTPServerConfig.SolidityCodePath != "" {
+		var exposeSolidityCodeAPI = true
+		for _, info := range config.Conf.ScanInfos {
+			if info.SolidityCodePath == "" {
+				exposeSolidityCodeAPI = false
+				break
+			}
+		}
+		if exposeSolidityCodeAPI {
 			api.GET("/:address/solidity", ac.ReadSolidityCode)
 		}
 	}
@@ -74,17 +81,18 @@ func (ac *AddressController) AssociatedByAddress(c *gin.Context) {
 
 func (ac *AddressController) SourceETH(c *gin.Context) {
 	chain := utils.GetChainFromQuery(c.Query(utils.ChainKey))
-	scanAPI := utils.GetScanAPI(chain)
+	scanAPI := fmt.Sprintf("%s%s", utils.GetScanAPI(chain), utils.APIQuery)
 	address := strings.ToLower(c.Param("address"))
 
 	txResp := model.ScanTXResponse{}
 	rand.Seed(time.Now().UnixNano())
 	for {
-		index := rand.Intn(len(config.Conf.HTTPServerConfig.EtherScanAPIKeys))
-		ethScanAPIKEY := config.Conf.HTTPServerConfig.EtherScanAPIKeys[index]
+		scanInfo := config.Conf.ScanInfos[chain]
+		index := rand.Intn(len(scanInfo.APIKeys))
+		scanAPIKEY := scanInfo.APIKeys[index]
 		apis := []string{
-			fmt.Sprintf(scanAPI, ethScanAPIKEY, address, utils.EtherScanTransactionAction),
-			fmt.Sprintf(scanAPI, ethScanAPIKEY, address, utils.EtherScanTraceAction),
+			fmt.Sprintf(scanAPI, scanAPIKEY, address, utils.ScanTransactionAction),
+			fmt.Sprintf(scanAPI, scanAPIKEY, address, utils.ScanTraceAction),
 		}
 		var (
 			transaction model.ScanTransaction
@@ -127,7 +135,7 @@ func (ac *AddressController) SourceETH(c *gin.Context) {
 					logrus.Errorf("convert string to int is err: %v", err)
 					return
 				}
-				if strings.Contains(api, utils.EtherScanTraceAction) {
+				if strings.Contains(api, utils.ScanTraceAction) {
 					trace = tx.Result[0]
 				} else {
 					transaction = tx.Result[0]
@@ -151,11 +159,11 @@ func (ac *AddressController) SourceETH(c *gin.Context) {
 			}
 			txResp.Nonce = append(txResp.Nonce, nonce)
 		}
-		if address == utils.EtherScanGenesisAddress || address == "" ||
-			nonce >= config.Conf.HTTPServerConfig.AddressNonceThreshold {
+		if address == utils.ScanGenesisAddress || address == "" ||
+			nonce >= scanInfo.AddressNonceThreshold {
 			txResp.Address = address
-			label := utils.EtherScanGenesisAddress
-			if address != utils.EtherScanGenesisAddress {
+			label := utils.ScanGenesisAddress
+			if address != utils.ScanGenesisAddress {
 				label = ac.getLabelFromMetaDock(chain, address)
 			}
 			txResp.Label = label
@@ -166,6 +174,7 @@ func (ac *AddressController) SourceETH(c *gin.Context) {
 }
 
 func (ac *AddressController) ReadSolidityCode(c *gin.Context) {
+	chain := utils.GetChainFromQuery(c.Query(utils.ChainKey))
 	address := strings.ToLower(c.Param("address"))
 	hexAddress := common.HexToAddress(address)
 	byteCode, err := client.EvmClient().CodeAt(c, hexAddress, nil)
@@ -178,7 +187,8 @@ func (ac *AddressController) ReadSolidityCode(c *gin.Context) {
 		return
 	}
 
-	fileName := fmt.Sprintf("%s/%s/%s.pan", config.Conf.HTTPServerConfig.SolidityCodePath, hexAddress, hexAddress)
+	scanInfo := config.Conf.ScanInfos[chain]
+	fileName := fmt.Sprintf("%s/%s/%s.pan", scanInfo.SolidityCodePath, hexAddress, hexAddress)
 	content, err := os.ReadFile(fileName)
 	if err != nil {
 		c.JSON(http.StatusOK, model.Message{Code: http.StatusInternalServerError, Msg: fmt.Sprintf("read file %s content is err: %v", fileName, err)})

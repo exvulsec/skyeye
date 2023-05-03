@@ -3,7 +3,7 @@ http_server:
   port: 8080
   apikey:
   client_max_conns: 5
-  etherscan_apikeys:
+  scan_apikeys:
   address_nonce_threshold: 200000
   solidity_code_path:
 

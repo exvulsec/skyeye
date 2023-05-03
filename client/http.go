@@ -26,7 +26,7 @@ func (ei *HTTPInstance) Instance() any {
 
 func initHTTPClient() any {
 	transport := http.DefaultTransport.(*http.Transport)
-	transport.MaxConnsPerHost = config.Conf.HTTPServerConfig.ClientMaxConns
+	transport.MaxConnsPerHost = config.Conf.HTTPServer.ClientMaxConns
 	logrus.Infof("init http client")
 	return &http.Client{
 		Transport: transport,

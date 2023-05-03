@@ -129,9 +129,9 @@ http_server:
   apikey:
   # http 客户端最大的链接数
   client_max_conns: 5
-  # etherscan 的 apikey, 调用 etherscan api 使用, 支持多个 apikey, 以 ',' 分割
-  etherscan_apikeys:
-  # 过滤 eth 源头地址时, 地址 transaction nonce 的阈值, 大于该值时停止查询
+  # scan 的 apikey, 调用 scan api 使用, 支持多个 apikey, 以 ',' 分割
+  scan_apikeys:
+  # 过滤 fund 源头地址时, 地址 transaction nonce 的阈值, 大于该值时停止查询
   address_nonce_threshold: 200000
   # solidity 合约源码的路径, 设置该值则会启用 /api/v1/address/:address/solidity 接口, 默认关闭
   solidity_code_path:

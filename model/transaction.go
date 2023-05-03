@@ -68,13 +68,14 @@ func (tx *Transaction) ConvertFromBlock(transaction *types.Transaction) {
 func (txs *Transactions) EnrichReceipts(batchSize, workers int, logsCh chan []*types.Log) {
 	calls := []rpc.BatchElem{}
 	for index := range *txs {
+		logrus.Infof("tx types is %d", (*txs)[index].TxType)
 		calls = append(calls, rpc.BatchElem{
 			Method: utils.RPCNameEthGetTransactionReceipt,
 			Args:   []any{common.HexToHash((*txs)[index].TxHash)},
 			Result: &types.Receipt{},
 		})
 	}
-	client.MultiCall(calls, batchSize, workers, nil)
+	client.MultiCall(calls, batchSize, workers)
 	for index := range *txs {
 		receipt, _ := calls[index].Result.(*types.Receipt)
 		(*txs)[index].enrichReceipt(*receipt)
@@ -86,8 +87,11 @@ func (txs *Transactions) EnrichReceipts(batchSize, workers int, logsCh chan []*t
 
 func (tx *Transaction) enrichReceipt(receipt types.Receipt) {
 	tx.GasUsed = int64(receipt.GasUsed)
-	tx.GasPrice = decimal.NewFromBigInt(receipt.EffectiveGasPrice, 0)
-	tx.GasFee = decimal.NewFromInt(tx.GasUsed).Mul(tx.GasPrice)
+	if receipt.EffectiveGasPrice != nil {
+		tx.GasPrice = decimal.NewFromBigInt(receipt.EffectiveGasPrice, 0)
+		tx.GasFee = decimal.NewFromInt(tx.GasUsed).Mul(tx.GasPrice)
+	}
+
 	if tx.ContractAddress != utils.ZeroAddress {
 		tx.ContractAddress = strings.ToLower(receipt.ContractAddress.String())
 	}

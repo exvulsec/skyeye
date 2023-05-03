@@ -3,13 +3,13 @@ package model
 import (
 	"encoding/json"
 	"fmt"
+	"go-etl/utils"
 	"io"
 	"net/http"
 	"strconv"
 	"strings"
 
 	"go-etl/client"
-	"go-etl/config"
 )
 
 type ScanBaseResponse struct {
@@ -58,22 +58,15 @@ func (st *ScanTransaction) ConvertStringToInt() error {
 	return nil
 }
 
-func (st *ScanTXResponse) IsCEX() bool {
-	for _, cex := range config.Conf.ETLConfig.Cexs {
-		if strings.HasPrefix(strings.ToLower(st.Label), strings.ToLower(cex)) {
-			return true
-		}
-	}
-	return false
-}
-
-func (rs *ScanStringResult) GetOpCodes(address string) ([]string, error) {
+func (rs *ScanStringResult) GetOpCodes(chain, address string) ([]string, error) {
 	opcodes := []string{}
+	scanURL := utils.GetScanURL(chain)
+
 	headers := map[string]string{
 		"authority":          "etherscan.io",
 		"accept":             "application/json, text/javascript, */*; q=0.01",
 		"accept-language":    "zh,zh-CN;q=0.9",
-		"referer":            fmt.Sprintf("https://etherscan.io/address/%s", address),
+		"referer":            fmt.Sprintf("%s/address/%s", scanURL, address),
 		"sec-ch-ua":          `"Chromium";v="112", "Google Chrome";v="112", "Not:A-Brand";v="99"`,
 		"sec-ch-ua-mobile":   "?0",
 		"sec-ch-ua-platform": "macOS",
@@ -84,14 +77,14 @@ func (rs *ScanStringResult) GetOpCodes(address string) ([]string, error) {
 		"x-requested-with":   "XMLHttpRequest",
 	}
 
-	scanURL := "https://etherscan.io/api?"
+	scanAPIURL := fmt.Sprintf("%s/api?", scanURL)
 
 	params := map[string]string{
 		"module":  "opcode",
 		"action":  "getopcode",
 		"address": address,
 	}
-	req, err := http.NewRequest(http.MethodGet, scanURL, nil)
+	req, err := http.NewRequest(http.MethodGet, scanAPIURL, nil)
 	if err != nil {
 
 		return opcodes, fmt.Errorf("new request for get meta dock labels is err: %v", err)
@@ -110,7 +103,7 @@ func (rs *ScanStringResult) GetOpCodes(address string) ([]string, error) {
 
 	resp, err := client.HTTPClient().Do(req)
 	if err != nil {
-		return opcodes, fmt.Errorf("receive response from %s is err: %v", scanURL, err)
+		return opcodes, fmt.Errorf("receive response from %s is err: %v", scanAPIURL, err)
 	}
 	data, err := io.ReadAll(resp.Body)
 	if err != nil {

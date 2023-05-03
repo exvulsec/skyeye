@@ -27,8 +27,8 @@ func NewHTTPServer() HTTPServer {
 
 	s.srv = &http.Server{
 		Addr: fmt.Sprintf("%s:%d",
-			config.Conf.HTTPServerConfig.Host,
-			config.Conf.HTTPServerConfig.Port),
+			config.Conf.HTTPServer.Host,
+			config.Conf.HTTPServer.Port),
 		Handler: s.routers,
 	}
 	return s

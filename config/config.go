@@ -16,19 +16,23 @@ var (
 )
 
 type config struct {
-	Postgresql       PostgresqlConfig `mapstructure:"postgresql" yaml:"postgresql"`
-	HTTPServerConfig HTTPServerConfig `mapstructure:"http_server" yaml:"http_server"`
-	ETLConfig        ETLConfig        `mapstructure:"etl" yaml:"etl"`
-	RedisConfig      RedisConfig      `mapstructure:"redis" yaml:"redis"`
+	Postgresql PostgresqlConfig          `mapstructure:"postgresql" yaml:"postgresql"`
+	ScanInfos  map[string]ScanInfoConfig `mapstructure:"scan_infos" yaml:"scanInfos"`
+	HTTPServer HTTPServerConfig          `mapstructure:"http_server" yaml:"http_server"`
+	ETL        ETLConfig                 `mapstructure:"etl" yaml:"etl"`
+	Redis      RedisConfig               `mapstructure:"redis" yaml:"redis"`
 }
 
 type HTTPServerConfig struct {
-	Host                  string   `mapstructure:"host" yaml:"host"`
-	Port                  int      `mapstructure:"port" yaml:"port"`
-	APIKey                string   `mapstructure:"apikey" yaml:"apikey"`
-	EtherScanAPIKeyString string   `mapstructure:"etherscan_apikeys" yaml:"etherscan_apikeys"`
-	EtherScanAPIKeys      []string `mapstructure:"-" yaml:"-"`
-	ClientMaxConns        int      `mapstructure:"client_max_conns" yaml:"client_max_conns"`
+	Host           string `mapstructure:"host" yaml:"host"`
+	Port           int    `mapstructure:"port" yaml:"port"`
+	APIKey         string `mapstructure:"apikey" yaml:"apikey"`
+	ClientMaxConns int    `mapstructure:"client_max_conns" yaml:"client_max_conns"`
+}
+
+type ScanInfoConfig struct {
+	APIKeyString          string   `mapstructure:"apikeys" yaml:"apikeys"`
+	APIKeys               []string `mapstructure:"-" yaml:"-"`
 	AddressNonceThreshold uint64   `mapstructure:"address_nonce_threshold" yaml:"address_nonce_threshold"`
 	SolidityCodePath      string   `mapstructure:"solidity_code_path" yaml:"solidity_code_path"`
 }
@@ -52,12 +56,10 @@ type RedisConfig struct {
 }
 
 type ETLConfig struct {
-	ProviderURL  string   `mapstructure:"provider_url" yaml:"provider_url"`
-	Chain        string   `mapstructure:"chain" yaml:"chain"`
-	Worker       int64    `mapstructure:"worker" yaml:"worker"`
-	PreviousFile string   `mapstructure:"previous_file" yaml:"previous_file"`
-	CexList      string   `mapstructure:"cex_list" yaml:"cex_list"`
-	Cexs         []string `mapstructure:"-" yaml:"-"`
+	ProviderURL  string `mapstructure:"provider_url" yaml:"provider_url"`
+	Chain        string `mapstructure:"chain" yaml:"chain"`
+	Worker       int64  `mapstructure:"worker" yaml:"worker"`
+	PreviousFile string `mapstructure:"previous_file" yaml:"previous_file"`
 }
 
 func SetupConfig(configPath string) {
@@ -82,12 +84,12 @@ func SetupConfig(configPath string) {
 		panic(fmt.Errorf("failed to unmarshal configuration file %v", err))
 	}
 
-	if Conf.HTTPServerConfig.EtherScanAPIKeyString != "" {
-		Conf.HTTPServerConfig.EtherScanAPIKeys = strings.Split(Conf.HTTPServerConfig.EtherScanAPIKeyString, ",")
-	}
+	for chain, value := range Conf.ScanInfos {
+		if value.APIKeyString != "" {
+			value.APIKeys = strings.Split(value.APIKeyString, ",")
+			Conf.ScanInfos[chain] = value
+		}
 
-	if Conf.ETLConfig.CexList != "" {
-		Conf.ETLConfig.Cexs = strings.Split(Conf.ETLConfig.CexList, ",")
 	}
 
 	logrus.Infof("read configuration file successfully")

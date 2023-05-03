@@ -38,7 +38,7 @@ func NewTransactionExporters(chain, table, openAPIServer string, nonce uint64) [
 	if config.Conf.Postgresql.Host != "" {
 		exporters = append(exporters, NewTransactionPostgresqlExporter(chain, table, nonce))
 	}
-	if config.Conf.RedisConfig.Addr != "" {
+	if config.Conf.Redis.Addr != "" {
 		exporters = append(exporters, NewTransactionRedisExporter(chain, openAPIServer, nonce))
 	}
 	return exporters
@@ -105,7 +105,7 @@ func (tre *TransactionRedisExporter) appendItemToMessageQueue(item model.Transac
 	if !needFilter {
 		go func() {
 			logrus.Infof("push contract %s to the get source queue", item.ContractAddress)
-			time.Sleep(10 * time.Minute)
+			time.Sleep(1 * time.Second)
 			contract, err := tre.getContractCode(item.ContractAddress)
 			if err != nil {
 				logrus.Errorf("get contract %s code is err: %v", item.ContractAddress, err)
@@ -121,11 +121,7 @@ func (tre *TransactionRedisExporter) appendItemToMessageQueue(item model.Transac
 				logrus.Errorf("get contract %s's eth source is err: %v", item.ContractAddress, err)
 				return
 			}
-			if len(tx.Nonce) < 5 && tx.IsCEX() {
-				logrus.Infof("filter the address %s by policy: source depth less than 5 and label prefix macth cex %s", item.ContractAddress, config.Conf.ETLConfig.CexList)
-				return
-			}
-			opcodes, err := tre.getOpcodes(item.ContractAddress)
+			opcodes, err := tre.getOpcodes(tre.Chain, item.ContractAddress)
 			if err != nil {
 				logrus.Infof("get contract address %s's opcodes is err: %v", item.ContractAddress, err)
 				return
@@ -143,6 +139,7 @@ func (tre *TransactionRedisExporter) appendItemToMessageQueue(item model.Transac
 				Stream: fmt.Sprintf("%s:v2", fmt.Sprintf(TransactionContractAddressStream, tre.Chain)),
 				ID:     "*",
 				Values: map[string]any{
+					"chain":    tre.Chain,
 					"txhash":   item.TxHash,
 					"contract": item.ContractAddress,
 					"fund":     fmt.Sprintf("%d-%s", len(tx.Nonce), fund),
@@ -167,7 +164,7 @@ func (tre *TransactionRedisExporter) getSourceEthAddress(contractAddress string)
 		Msg  string               `json:"msg"`
 		Data model.ScanTXResponse `json:"data"`
 	}{}
-	url := fmt.Sprintf("%s/api/v1/address/%s/source_eth?apikey=%s", tre.OpenAPIServer, contractAddress, config.Conf.HTTPServerConfig.APIKey)
+	url := fmt.Sprintf("%s/api/v1/address/%s/source_eth?apikey=%s&chain=%s", tre.OpenAPIServer, contractAddress, config.Conf.HTTPServer.APIKey, tre.Chain)
 	resp, err := client.HTTPClient().Get(url)
 	if err != nil {
 		return model.ScanTXResponse{}, fmt.Errorf("get the contract source eth from etherscan is err: %v", err)
@@ -191,9 +188,13 @@ func (tre *TransactionRedisExporter) getSourceEthAddress(contractAddress string)
 
 func (tre *TransactionRedisExporter) getContractCode(contractAddress string) (model.ScanContractResponse, error) {
 	rand.Seed(time.Now().UnixNano())
-	ethScanAPIKEY := config.Conf.HTTPServerConfig.EtherScanAPIKeys[rand.Intn(len(config.Conf.HTTPServerConfig.EtherScanAPIKeys))]
+
+	scanAPI := utils.GetScanAPI(tre.Chain)
+	apiKeys := config.Conf.ScanInfos[tre.Chain].APIKeys
+
+	scanAPIKey := apiKeys[rand.Intn(len(apiKeys))]
 	contract := model.ScanContractResponse{}
-	url := fmt.Sprintf("https://api.etherscan.io/api?module=contract&action=getsourcecode&address=%s&apikey=%s", contractAddress, ethScanAPIKEY)
+	url := fmt.Sprintf("%s?module=contract&action=getsourcecode&address=%s&apikey=%s", scanAPI, contractAddress, scanAPIKey)
 	resp, err := client.HTTPClient().Get(url)
 	if err != nil {
 		return contract, fmt.Errorf("get the contract source code from etherscan is err %v", err)
@@ -227,9 +228,9 @@ func (tre *TransactionRedisExporter) filterContractIsErc20OrErc721(address strin
 	return false, nil
 }
 
-func (tre *TransactionRedisExporter) getOpcodes(addrss string) ([]string, error) {
+func (tre *TransactionRedisExporter) getOpcodes(chain, address string) ([]string, error) {
 	result := model.ScanStringResult{}
-	return result.GetOpCodes(addrss)
+	return result.GetOpCodes(chain, address)
 }
 
 func (tre *TransactionRedisExporter) GetContractPush20Args(opcodes []string) []string {
