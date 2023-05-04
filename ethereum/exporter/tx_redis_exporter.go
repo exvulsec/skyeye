@@ -139,7 +139,7 @@ func (tre *TransactionRedisExporter) appendItemToMessageQueue(item model.Transac
 				Stream: fmt.Sprintf("%s:v2", fmt.Sprintf(TransactionContractAddressStream, tre.Chain)),
 				ID:     "*",
 				Values: map[string]any{
-					"chain":    tre.Chain,
+					"chain":    utils.ConvertChainToDeFiHackLabChain(tre.Chain),
 					"txhash":   item.TxHash,
 					"contract": item.ContractAddress,
 					"fund":     fmt.Sprintf("%d-%s", len(tx.Nonce), fund),
