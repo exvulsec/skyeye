@@ -68,7 +68,6 @@ func (tx *Transaction) ConvertFromBlock(transaction *types.Transaction) {
 func (txs *Transactions) EnrichReceipts(batchSize, workers int, logsCh chan []*types.Log) {
 	calls := []rpc.BatchElem{}
 	for index := range *txs {
-		logrus.Infof("tx types is %d", (*txs)[index].TxType)
 		calls = append(calls, rpc.BatchElem{
 			Method: utils.RPCNameEthGetTransactionReceipt,
 			Args:   []any{common.HexToHash((*txs)[index].TxHash)},
