@@ -2,6 +2,7 @@ package config
 
 import (
 	"fmt"
+	"os"
 	"strings"
 
 	"github.com/sirupsen/logrus"
@@ -24,10 +25,15 @@ type config struct {
 }
 
 type HTTPServerConfig struct {
-	Host           string `mapstructure:"host" yaml:"host"`
-	Port           int    `mapstructure:"port" yaml:"port"`
-	APIKey         string `mapstructure:"apikey" yaml:"apikey"`
-	ClientMaxConns int    `mapstructure:"client_max_conns" yaml:"client_max_conns"`
+	Host           string                     `mapstructure:"host" yaml:"host"`
+	Port           int                        `mapstructure:"port" yaml:"port"`
+	APIKey         string                     `mapstructure:"apikey" yaml:"apikey"`
+	ClientMaxConns int                        `mapstructure:"client_max_conns" yaml:"client_max_conns"`
+	MultiEvmClient map[string]EvmClientConfig `mapstructure:"multi_evm_clients" yaml:"multi_evm_clients"`
+}
+
+type EvmClientConfig struct {
+	ProviderURL string `mapstructure:"provider_url" yaml:"provider_url"`
 }
 
 type ScanInfoConfig struct {
@@ -63,6 +69,7 @@ type ETLConfig struct {
 }
 
 func SetupConfig(configPath string) {
+	logrus.SetOutput(os.Stdout)
 	if configPath != "" {
 		viper.SetConfigFile(configPath)
 	} else {

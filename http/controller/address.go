@@ -177,7 +177,8 @@ func (ac *AddressController) ReadSolidityCode(c *gin.Context) {
 	chain := utils.GetChainFromQuery(c.Query(utils.ChainKey))
 	address := strings.ToLower(c.Param("address"))
 	hexAddress := common.HexToAddress(address)
-	byteCode, err := client.EvmClient().CodeAt(c, hexAddress, nil)
+	multiClient := client.MultiEvmClient()
+	byteCode, err := multiClient[chain].CodeAt(c, hexAddress, nil)
 	if err != nil {
 		c.JSON(http.StatusOK, model.Message{Code: http.StatusInternalServerError, Msg: fmt.Sprintf("get byte code from ethereum is err: %v", err)})
 		return
