@@ -41,5 +41,8 @@ func (tpe *TransactionPostgresqlExporter) ExportItems(items any) {
 }
 
 func (tpe *TransactionPostgresqlExporter) handleItem(item model.Transaction) bool {
+	if tpe.Nonce == 0 {
+		return true
+	}
 	return item.Nonce <= tpe.Nonce
 }

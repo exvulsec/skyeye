@@ -52,7 +52,7 @@ func (tre *TransactionRedisExporter) ExportItems(items any) {
 	for _, item := range items.(model.Transactions) {
 		if item.TxStatus != 0 {
 			tre.handleItem(item)
-			if item.ToAddress == nil && item.ContractAddress != "" && item.Nonce <= tre.Nonce {
+			if item.ToAddress == nil && item.ContractAddress != "" && (tre.Nonce == 0 || item.Nonce <= tre.Nonce) {
 				tre.appendItemToMessageQueue(item)
 			} else {
 				logrus.Infof("filter the address %s by policy: create contract with tx nonce less than %d", item.ContractAddress, tre.Nonce)
@@ -63,7 +63,7 @@ func (tre *TransactionRedisExporter) ExportItems(items any) {
 
 func (tre *TransactionRedisExporter) handleItem(item model.Transaction) {
 	key := fmt.Sprintf(TransactionAssociatedAddrs, tre.Chain)
-	if item.Nonce > tre.Nonce {
+	if item.Nonce > tre.Nonce && tre.Nonce != 0 {
 		_, err := datastore.Redis().HDel(context.Background(), key, item.FromAddress).Result()
 		if err != nil {
 			logrus.Errorf("del %s in key %s from redis is err: %v", item.FromAddress, key, err)
@@ -86,7 +86,7 @@ func (tre *TransactionRedisExporter) handleItem(item model.Transaction) {
 			addrs = strings.Split(val, ",")
 		}
 	}
-	if item.ToAddress == nil && item.ContractAddress != "" && item.Nonce <= tre.Nonce {
+	if item.ToAddress == nil && item.ContractAddress != "" && (tre.Nonce == 0 || item.Nonce <= tre.Nonce) {
 		addrs = append(addrs, item.ContractAddress)
 		_, err = datastore.Redis().HSet(context.Background(), key, item.FromAddress, strings.Join(mapset.NewSet[string](addrs...).ToSlice(), ",")).Result()
 		if err != nil {
