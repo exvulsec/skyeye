@@ -152,7 +152,7 @@ func (ac *AddressController) SourceETH(c *gin.Context) {
 		)
 
 		if address != "" {
-			nonce, err = client.EvmClient().PendingNonceAt(context.Background(), common.HexToAddress(address))
+			nonce, err = client.MultiEvmClient()[chain].PendingNonceAt(context.Background(), common.HexToAddress(address))
 			if err != nil {
 				c.JSON(http.StatusOK, model.Message{Code: http.StatusInternalServerError, Msg: fmt.Sprintf("get nonce for address %s is err: %v", address, err)})
 				return
@@ -184,7 +184,7 @@ func (ac *AddressController) ReadSolidityCode(c *gin.Context) {
 		return
 	}
 	if hexutil.Encode(byteCode) == "0x" {
-		c.JSON(http.StatusOK, model.Message{Code: http.StatusBadRequest, Msg: fmt.Sprintf("the address %s has emtpy byte code", address)})
+		c.JSON(http.StatusOK, model.Message{Code: http.StatusBadRequest, Msg: fmt.Sprintf("the address %s is not a contract address", address)})
 		return
 	}
 

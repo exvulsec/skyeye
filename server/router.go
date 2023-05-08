@@ -17,6 +17,7 @@ func addRouters(r gin.IRouter) {
 	ctrls := []controller.Controller{
 		&controller.AddressController{},
 		&controller.TokenController{},
+		&controller.TXController{},
 	}
 	apiV1.Use(middleware.CheckAPIKEY())
 	for _, ctrl := range ctrls {
