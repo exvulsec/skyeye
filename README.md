@@ -96,11 +96,11 @@ doker-compose up -d
 - **策略4: 过滤开源合约**
   - 等待十分钟后, 向 `EtherScan` 请求该合约是否开源
   - 若合约已开源, 则过滤掉该合约地址
-- **策略5: 过滤向合约地址发送 `Eth` 地址查询长度小于 5,且标签为`中心化交易所(Binance, Coinbase)`的合约**
-  - 查询当前合约地址的 `Eth` 来源地址, 根据 `Transaction` 和 `Trace` 查询,取时间较早的一个(如果数据为空则取另一个)
-  - 若查询到 `address` 当前的 `Transaction Nonce` 大于指定 `Threshold(暂定 200000)`, 则停止查询
-  - 待找到 `address` 后, 查询该 `address` 的 `label`
-  - 若该 `address` 查询次数小于指定值(当前为 5), 且`label` 的前缀为`中心化交易所(Binance, Coinbase)`, 则过滤该合约地址
+- ~~**策略5: 过滤向合约地址发送 `Eth` 地址查询长度小于 5,且标签为`中心化交易所(Binance, Coinbase)`的合约**~~
+  - ~~查询当前合约地址的 `Eth` 来源地址, 根据 `Transaction` 和 `Trace` 查询,取时间较早的一个(如果数据为空则取另一个)~~
+  - ~~若查询到 `address` 当前的 `Transaction Nonce` 大于指定 `Threshold(暂定 200000)`, 则停止查询~~
+  - ~~待找到 `address` 后, 查询该 `address` 的 `label`~~
+  - ~~若该 `address` 查询次数小于指定值(当前为 5), 且`label` 的前缀为`中心化交易所(Binance, Coinbase)`, 则过滤该合约地址~~
 
 推送到 Redis MQ 的 `Key` 为:
 - `<chain>:contract_address:stream:v2`

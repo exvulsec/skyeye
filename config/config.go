@@ -30,6 +30,7 @@ type HTTPServerConfig struct {
 	APIKey         string                     `mapstructure:"apikey" yaml:"apikey"`
 	ClientMaxConns int                        `mapstructure:"client_max_conns" yaml:"client_max_conns"`
 	MultiEvmClient map[string]EvmClientConfig `mapstructure:"multi_evm_clients" yaml:"multi_evm_clients"`
+	NonceThreshold uint64                     `mapstructure:"nonce_threshold" yaml:"nonce_threshold"`
 }
 
 type EvmClientConfig struct {

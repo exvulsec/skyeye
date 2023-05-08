@@ -32,8 +32,12 @@ var Erc721Signatures = []string{
 	"a22cb465", // setApprovalForAll(address,bool)
 	"081812fc", // getApproved(uint256)
 	"e985e9c5", // isApprovedForAll(address,address)
-
 }
+
+const (
+	Erc20SignatureThreshold  = 5
+	Erc721SignatureThreshold = 8
+)
 
 func IsErc20Or721(signatures []string, byteCode []byte, threshold int) bool {
 	code := hexutil.Encode(byteCode)

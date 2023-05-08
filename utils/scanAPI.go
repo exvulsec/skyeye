@@ -1,6 +1,9 @@
 package utils
 
-import "strings"
+import (
+	"regexp"
+	"strings"
+)
 
 const (
 	EtherScanAPIURL       = "https://api.etherscan.io/api"
@@ -33,4 +36,24 @@ func GetScanURL(chain string) string {
 	default:
 		return EtherScanURL
 	}
+}
+
+func GetChainFromScanURL(scanURL string) string {
+	switch {
+	case strings.HasPrefix(scanURL, EtherScanURL):
+		return ChainEthereum
+	case strings.HasPrefix(scanURL, BSCScanURL):
+		return ChainBSC
+	default:
+		return ChainEthereum
+	}
+}
+
+func GetTXHashFromScanURL(scanURL string) string {
+	re := regexp.MustCompile(`tx/([a-zA-Z0-9]+)`)
+	match := re.FindStringSubmatch(scanURL)
+	if len(match) > 1 {
+		return match[1]
+	}
+	return ""
 }
