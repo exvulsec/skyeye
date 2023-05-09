@@ -89,7 +89,7 @@ func (tre *TransactionRedisExporter) handleItem(item model.Transaction) {
 }
 
 func (tre *TransactionRedisExporter) appendItemToMessageQueue(item model.Transaction) {
-	policyCode, err := policy.FilterContractByPolicy(tre.Chain, item.ContractAddress, item.Nonce, tre.Nonce, 0, client.EvmClient())
+	policyCode, err := policy.FilterContractByPolicy(tre.Chain, item.ContractAddress, item.Nonce, tre.Nonce, 10, client.EvmClient())
 	if err != nil {
 		logrus.Errorf("filter contract %s by policy is err: %s", item.ContractAddress, err)
 		return
