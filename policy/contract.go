@@ -61,13 +61,15 @@ func SendItemToMessageQueue(chain, txhash, contractAddress, openApiServer string
 		scanTxResp model.ScanTXResponse
 		err        error
 		values     = map[string]any{}
+		fund       = ""
+		isTestAPI  = "false"
 	)
 	if isNastiff {
 		scanTxResp, err = getSourceEthAddress(chain, contractAddress, openApiServer)
 		if err != nil {
 			return nil, fmt.Errorf("get contract %s's eth source is err: %v", contractAddress, err)
 		}
-		fund := scanTxResp.Address
+		fund = scanTxResp.Address
 		if scanTxResp.Address != "" {
 			if scanTxResp.Label != "" {
 				fund = scanTxResp.Label
@@ -75,9 +77,8 @@ func SendItemToMessageQueue(chain, txhash, contractAddress, openApiServer string
 		} else {
 			fund = "scanError"
 		}
-		values["fund"] = fund
 	} else {
-		values["test"] = true
+		isTestAPI = "True"
 	}
 	opcodes, err := getOpcodes(chain, contractAddress)
 	if err != nil {
@@ -91,6 +92,8 @@ func SendItemToMessageQueue(chain, txhash, contractAddress, openApiServer string
 		//"push4":    strings.Join(tre.GetContractPush4Args(opcodes), ","),
 		"push20":   strings.Join(getContractPush20Args(chain, opcodes), ","),
 		"codeSize": len(code[2:]),
+		"fund":     fund,
+		"test":     isTestAPI,
 	}
 
 	_, err = datastore.Redis().XAdd(context.Background(), &redis.XAddArgs{
