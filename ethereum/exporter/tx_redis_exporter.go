@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	mapset "github.com/deckarep/golang-set/v2"
+	"github.com/ethereum/go-ethereum/common"
 	"github.com/sirupsen/logrus"
 
 	"go-etl/client"
@@ -89,13 +90,15 @@ func (tre *TransactionRedisExporter) handleItem(item model.Transaction) {
 }
 
 func (tre *TransactionRedisExporter) appendItemToMessageQueue(item model.Transaction) {
-	policyCode, err := policy.FilterContractByPolicy(tre.Chain, item.ContractAddress, item.Nonce, tre.Nonce, 10, client.EvmClient())
+	code, err := client.EvmClient().CodeAt(context.Background(), common.HexToAddress(item.ContractAddress), nil)
+	policyCode, err := policy.FilterContractByPolicy(tre.Chain, item.ContractAddress, item.Nonce, tre.Nonce, 10, code)
 	if err != nil {
 		logrus.Errorf("filter contract %s by policy is err: %s", item.ContractAddress, err)
 		return
 	}
 	if policyCode == policy.NoAnyDenied {
-		if err = policy.SendItemToMessageQueue(tre.Chain, item.TxHash, item.ContractAddress, tre.OpenAPIServer, true); err != nil {
+		_, err = policy.SendItemToMessageQueue(tre.Chain, item.TxHash, item.ContractAddress, tre.OpenAPIServer, code, true)
+		if err != nil {
 			logrus.Errorf("send to txhash %s's contract %s message queue is err %v", item.TxHash, item.ContractAddress, err)
 			return
 		}

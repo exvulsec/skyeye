@@ -36,7 +36,7 @@ func (tpe *TransactionPostgresqlExporter) ExportItems(items any) {
 			tpe.TableName),
 			config.Conf.Postgresql.MaxOpenConns,
 		)
-		logrus.Infof("insert %d txs into database cost: %.2f", len(txs), time.Since(startTimestamp).Seconds())
+		logrus.Infof("insert %d txs into database cost: %.2fs", len(txs), time.Since(startTimestamp).Seconds())
 	}
 }
 

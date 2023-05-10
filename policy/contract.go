@@ -11,8 +11,6 @@ import (
 	"time"
 
 	mapset "github.com/deckarep/golang-set/v2"
-	"github.com/ethereum/go-ethereum/common"
-	"github.com/ethereum/go-ethereum/ethclient"
 	"github.com/redis/go-redis/v9"
 	"github.com/sirupsen/logrus"
 
@@ -27,11 +25,16 @@ const (
 	TransactionContractAddressStream = "%s:contract_address:stream"
 )
 
-func FilterContractByPolicy(chain, contractAddress string, txNonce, thresholdNonce uint64, interval int64, client *ethclient.Client) (int64, error) {
+func FilterContractByPolicy(chain, contractAddress string, txNonce, thresholdNonce uint64, interval int64, byteCode []byte) (int64, error) {
 	if thresholdNonce > 0 && txNonce > thresholdNonce {
 		return NoncePolicyDenied, nil
 	}
-	isErc20OrErc721, err := filterContractIsErc20OrErc721(contractAddress, client)
+
+	if len(byteCode[2:]) < 1000 {
+		return ByteCodeLengthDenied, nil
+	}
+
+	isErc20OrErc721, err := filterContractIsErc20OrErc721(byteCode)
 	if err != nil {
 		return 0, fmt.Errorf("filter contract is erc20 or erc721 is err: %v", err)
 	}
@@ -53,41 +56,52 @@ func FilterContractByPolicy(chain, contractAddress string, txNonce, thresholdNon
 	return NoAnyDenied, nil
 }
 
-func SendItemToMessageQueue(chain, txhash, contractAddress, openApiServer string, isNastiff bool) error {
-	tx, err := getSourceEthAddress(chain, contractAddress, openApiServer)
-	if err != nil {
-		return fmt.Errorf("get contract %s's eth source is err: %v", contractAddress, err)
+func SendItemToMessageQueue(chain, txhash, contractAddress, openApiServer string, code []byte, isNastiff bool) (map[string]any, error) {
+	var (
+		scanTxResp model.ScanTXResponse
+		err        error
+		values     = map[string]any{}
+	)
+	if isNastiff {
+		scanTxResp, err = getSourceEthAddress(chain, contractAddress, openApiServer)
+		if err != nil {
+			return nil, fmt.Errorf("get contract %s's eth source is err: %v", contractAddress, err)
+		}
+		fund := scanTxResp.Address
+		if scanTxResp.Address != "" {
+			if scanTxResp.Label != "" {
+				fund = scanTxResp.Label
+			}
+		} else {
+			fund = "scanError"
+		}
+		values["fund"] = fund
+	} else {
+		values["test"] = true
 	}
 	opcodes, err := getOpcodes(chain, contractAddress)
 	if err != nil {
-		return fmt.Errorf("get contract address %s's opcodes is err: %v", contractAddress, err)
+		return nil, fmt.Errorf("get contract address %s's opcodes is err: %v", contractAddress, err)
 	}
-	fund := tx.Address
-	if tx.Address != "" {
-		if tx.Label != "" {
-			fund = tx.Label
-		}
-	} else {
-		fund = "scanError"
+
+	values = map[string]any{
+		"chain":    utils.ConvertChainToDeFiHackLabChain(chain),
+		"txhash":   txhash,
+		"contract": contractAddress,
+		//"push4":    strings.Join(tre.GetContractPush4Args(opcodes), ","),
+		"push20":   strings.Join(getContractPush20Args(chain, opcodes), ","),
+		"codeSize": len(code[2:]),
 	}
 
 	_, err = datastore.Redis().XAdd(context.Background(), &redis.XAddArgs{
 		Stream: fmt.Sprintf("%s:v2", fmt.Sprintf(TransactionContractAddressStream, chain)),
 		ID:     "*",
-		Values: map[string]any{
-			"chain":      utils.ConvertChainToDeFiHackLabChain(chain),
-			"txhash":     txhash,
-			"contract":   contractAddress,
-			"fund":       fmt.Sprintf("%d-%s", len(tx.Nonce), fund),
-			"is_nastiff": isNastiff,
-			//"push4":    strings.Join(tre.GetContractPush4Args(opcodes), ","),
-			"push20": strings.Join(getContractPush20Args(chain, opcodes), ","),
-		},
+		Values: values,
 	}).Result()
 	if err != nil {
-		return fmt.Errorf("send redis stream is err: %v", err)
+		return nil, fmt.Errorf("send values to redis stream is err: %v", err)
 	}
-	return nil
+	return values, nil
 }
 
 func getSourceEthAddress(chain, contractAddress, openApiServer string) (model.ScanTXResponse, error) {
@@ -148,11 +162,7 @@ func getContractCode(chain, contractAddress string) (model.ScanContractResponse,
 	return contract, nil
 }
 
-func filterContractIsErc20OrErc721(address string, client *ethclient.Client) (bool, error) {
-	code, err := client.CodeAt(context.Background(), common.HexToAddress(address), nil)
-	if err != nil {
-		return true, fmt.Errorf("failed to get byte code, got an err: %v", err)
-	}
+func filterContractIsErc20OrErc721(code []byte) (bool, error) {
 	if utils.IsErc20Or721(utils.Erc20Signatures, code, 5) ||
 		utils.IsErc20Or721(utils.Erc721Signatures, code, 8) {
 		return true, nil

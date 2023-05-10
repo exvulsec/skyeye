@@ -1,6 +1,7 @@
 package controller
 
 import (
+	"context"
 	"fmt"
 	"net/http"
 	"strings"
@@ -67,17 +68,27 @@ func (tc *TXController) Reviewed(c *gin.Context) {
 		return
 	}
 
-	policyCode, err := policy.FilterContractByPolicy(chain, receipt.ContractAddress.String(), tx.Nonce(), config.Conf.HTTPServer.NonceThreshold, 0, evmClient)
+	code, err := evmClient.CodeAt(context.Background(), receipt.ContractAddress, nil)
+	if err != nil {
+		c.JSON(http.StatusOK, model.Message{Code: http.StatusInternalServerError, Msg: fmt.Sprintf("get contract %s's bytecode is err %v ", receipt.ContractAddress.String(), err)})
+		return
+	}
+	policyCode, err := policy.FilterContractByPolicy(chain, receipt.ContractAddress.String(), tx.Nonce(), config.Conf.HTTPServer.NonceThreshold, 0, code)
 	if err != nil {
 		c.JSON(http.StatusOK, model.Message{Code: http.StatusInternalServerError, Msg: fmt.Sprintf("filter txhash's contract %s by policy is err %v", receipt.ContractAddress.String(), err)})
 		return
 	}
+
 	if policyCode == policy.NoAnyDenied {
-		if err = policy.SendItemToMessageQueue(chain, txhash,
-			receipt.ContractAddress.String(), "http://localhost:8088", false); err != nil {
+		values, err := policy.SendItemToMessageQueue(chain, txhash,
+			receipt.ContractAddress.String(), "http://localhost:8088", code, false)
+		if err != nil {
 			c.JSON(http.StatusOK, model.Message{Code: http.StatusInternalServerError, Msg: fmt.Sprintf("send to txhash %s's contract %s message queue is err %v", txhash, receipt.ContractAddress.String(), err)})
 			return
 		}
+		c.JSON(http.StatusOK, model.Message{Code: policyCode, Msg: fmt.Sprintf("contract address %s is %s", receipt.ContractAddress.String(), policy.DeniedMap[policyCode]), Data: values})
+		return
 	}
+
 	c.JSON(http.StatusOK, model.Message{Code: policyCode, Msg: fmt.Sprintf("contract address %s is %s", receipt.ContractAddress.String(), policy.DeniedMap[policyCode])})
 }
