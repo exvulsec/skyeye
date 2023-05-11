@@ -50,7 +50,6 @@ func FilterContractByPolicy(chain, contractAddress string, txNonce, thresholdNon
 		return 0, fmt.Errorf("get contract %s code is err: %v", contractAddress, err)
 	}
 	if contract.Result[0].SourceCode != "" {
-		logrus.Infof("filter the address %s by policy: contract code is open source", contractAddress)
 		return OpenSourceDenied, nil
 	}
 	return NoAnyDenied, nil
