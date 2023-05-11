@@ -30,7 +30,7 @@ func FilterContractByPolicy(chain, contractAddress string, txNonce, thresholdNon
 		return NoncePolicyDenied, nil
 	}
 
-	if len(byteCode[2:]) < 1000 {
+	if len(byteCode) == 0 || len(byteCode[2:]) < 1000 {
 		return ByteCodeLengthDenied, nil
 	}
 
@@ -57,53 +57,43 @@ func FilterContractByPolicy(chain, contractAddress string, txNonce, thresholdNon
 }
 
 func SendItemToMessageQueue(chain, txhash, contractAddress, openApiServer string, code []byte, isNastiff bool) (map[string]any, error) {
-	var (
-		scanTxResp model.ScanTXResponse
-		err        error
-		values     = map[string]any{}
-		fund       = ""
-		isTestAPI  = "false"
-	)
-	if isNastiff {
-		scanTxResp, err = getSourceEthAddress(chain, contractAddress, openApiServer)
-		if err != nil {
-			return nil, fmt.Errorf("get contract %s's eth source is err: %v", contractAddress, err)
-		}
-		fund = scanTxResp.Address
-		if scanTxResp.Address != "" {
-			if scanTxResp.Label != "" {
-				fund = scanTxResp.Label
-			}
-		} else {
-			fund = "scanError"
-		}
-	} else {
-		isTestAPI = "True"
-	}
 	opcodes, err := getOpcodes(chain, contractAddress)
 	if err != nil {
 		return nil, fmt.Errorf("get contract address %s's opcodes is err: %v", contractAddress, err)
 	}
 
-	values = map[string]any{
+	values := map[string]any{
 		"chain":    utils.ConvertChainToDeFiHackLabChain(chain),
 		"txhash":   txhash,
 		"contract": contractAddress,
 		//"push4":    strings.Join(tre.GetContractPush4Args(opcodes), ","),
 		"push20":   strings.Join(getContractPush20Args(chain, opcodes), ","),
 		"codeSize": len(code[2:]),
-		"fund":     fund,
-		"test":     isTestAPI,
+	}
+	if isNastiff {
+		scanTxResp, err := getSourceEthAddress(chain, contractAddress, openApiServer)
+		if err != nil {
+			return nil, fmt.Errorf("get contract %s's eth source is err: %v", contractAddress, err)
+		}
+		fund := scanTxResp.Address
+		if scanTxResp.Address != "" {
+			if scanTxResp.Label != "" {
+				fund = fmt.Sprintf("%d-%s", len(scanTxResp.Nonce), scanTxResp.Label)
+			}
+		} else {
+			fund = "0-scanError"
+		}
+		values["fund"] = fund
+		_, err = datastore.Redis().XAdd(context.Background(), &redis.XAddArgs{
+			Stream: fmt.Sprintf("%s:v2", fmt.Sprintf(TransactionContractAddressStream, chain)),
+			ID:     "*",
+			Values: values,
+		}).Result()
+		if err != nil {
+			return nil, fmt.Errorf("send values to redis stream is err: %v", err)
+		}
 	}
 
-	_, err = datastore.Redis().XAdd(context.Background(), &redis.XAddArgs{
-		Stream: fmt.Sprintf("%s:v2", fmt.Sprintf(TransactionContractAddressStream, chain)),
-		ID:     "*",
-		Values: values,
-	}).Result()
-	if err != nil {
-		return nil, fmt.Errorf("send values to redis stream is err: %v", err)
-	}
 	return values, nil
 }
 
