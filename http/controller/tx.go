@@ -57,14 +57,15 @@ func (tc *TXController) Reviewed(c *gin.Context) {
 		c.JSON(http.StatusOK, model.Message{Code: http.StatusInternalServerError, Msg: fmt.Sprintf("get transcation %s from rpc node is err %v ", txhash, err)})
 		return
 	}
-	if tx.To() != nil {
-		c.JSON(http.StatusOK, model.Message{Code: http.StatusBadRequest, Msg: fmt.Sprintf("get transcation %s from rpc node is err %v ", txhash, err)})
-		return
-	}
 
 	receipt, err := evmClient.TransactionReceipt(c, common.HexToHash(txhash))
 	if err != nil {
 		c.JSON(http.StatusOK, model.Message{Code: http.StatusInternalServerError, Msg: fmt.Sprintf("get transcation %s's receipt from rpc node is err %v ", txhash, err)})
+		return
+	}
+
+	if tx.To() != nil || receipt.ContractAddress.String() == utils.ZeroAddress {
+		c.JSON(http.StatusOK, model.Message{Code: http.StatusBadRequest, Msg: fmt.Sprintf("transaction %s is not a contract creation", txhash)})
 		return
 	}
 
