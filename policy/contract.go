@@ -30,8 +30,12 @@ func FilterContractByPolicy(chain, contractAddress string, txNonce, thresholdNon
 		return NoncePolicyDenied, nil
 	}
 
-	if len(byteCode) == 0 || len(byteCode[2:]) < 1000 {
+	if len(byteCode) == 0 || len(byteCode[2:]) < 500 {
 		return ByteCodeLengthDenied, nil
+	}
+
+	if err := GetDeDaubMd5(chain, contractAddress, byteCode); err != nil {
+		return 0, fmt.Errorf("get dedaub md5 for %s on chain %s is err %v", contractAddress, chain, err)
 	}
 
 	isErc20OrErc721, err := filterContractIsErc20OrErc721(byteCode)
@@ -45,6 +49,7 @@ func FilterContractByPolicy(chain, contractAddress string, txNonce, thresholdNon
 	if interval != 0 {
 		time.Sleep(time.Duration(interval) * time.Minute)
 	}
+
 	contract, err := getContractCode(chain, contractAddress)
 	if err != nil {
 		return 0, fmt.Errorf("get contract %s code is err: %v", contractAddress, err)
@@ -155,8 +160,8 @@ func getContractCode(chain, contractAddress string) (model.ScanContractResponse,
 }
 
 func filterContractIsErc20OrErc721(code []byte) (bool, error) {
-	if utils.IsErc20Or721(utils.Erc20Signatures, code, 5) ||
-		utils.IsErc20Or721(utils.Erc721Signatures, code, 8) {
+	if utils.IsErc20Or721(utils.Erc20Signatures, code, utils.Erc20SignatureThreshold) ||
+		utils.IsErc20Or721(utils.Erc721Signatures, code, utils.Erc721SignatureThreshold) {
 		return true, nil
 	}
 	return false, nil
@@ -211,4 +216,29 @@ func getContractPush4Args(opcodes []string) []string {
 		}
 	}
 	return mapset.NewSet[string](args...).ToSlice()
+}
+
+func GetDeDaubMd5(chain, address string, byteCode []byte) error {
+	d := model.DeDaub{
+		Chain:   chain,
+		Address: address,
+	}
+	if err := d.Get(); err != nil {
+		return fmt.Errorf("get chain %s address %s from db is err %v", chain, address, err)
+	}
+	if d.MD5 != "" && len(d.MD5) == 32 {
+		return nil
+	}
+
+	var drs model.DeDaubResponseString
+	if err := drs.GetCodeMD5(byteCode); err != nil {
+		return fmt.Errorf("get code md5 for %s is err %v", address, err)
+	}
+
+	d.MD5 = strings.Trim(string(drs), `"`)
+	if err := d.Create(); err != nil {
+		return fmt.Errorf("insert chain %s address %s md5 %s to db is err %v", chain, address, drs, err)
+	}
+	return nil
+
 }
