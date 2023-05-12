@@ -91,6 +91,10 @@ func (tre *TransactionRedisExporter) handleItem(item model.Transaction) {
 
 func (tre *TransactionRedisExporter) appendItemToMessageQueue(item model.Transaction) {
 	code, err := client.EvmClient().CodeAt(context.Background(), common.HexToAddress(item.ContractAddress), nil)
+	if err != nil {
+		logrus.Errorf("get byte code for %s is err %v", item.ContractAddress, err)
+		return
+	}
 	policyCode, err := policy.FilterContractByPolicy(tre.Chain, item.ContractAddress, item.Nonce, tre.Nonce, 10, code)
 	if err != nil {
 		logrus.Errorf("filter contract %s by policy is err: %s", item.ContractAddress, err)

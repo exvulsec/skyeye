@@ -1,28 +1,40 @@
 http_server:
   host: localhost
-  port: 8080
+  port: 8088
   apikey:
   client_max_conns: 5
-  scan_apikeys:
-  address_nonce_threshold: 200000
-  solidity_code_path:
+  dedaub_code_path: /mnt/dedaub/bsc
+  multi_evm_clients:
+    ethereum:
+      provider_url:
+    bsc:
+      provider_url:
+
+scan_infos:
+  ethereum:
+    apikeys:
+    solidity_code_path: /mnt/solidity/ethereum
+    address_nonce_threshold: 200000
+  bsc:
+    apikeys:
+    solidity_code_path: /mnt/solidity/bsc
+    address_nonce_threshold: 200000
+
+etl:
+  chain: ethereum
+  worker: 10
+  previous_file: ./config/.previous
+  provider_url:
 
 postgresql:
-  user: postgres
-  password: postgres
-  database: postgres
   host: localhost
   port: 5432
+  user: test
+  password: test
+  database: test
   log_mode: true
   max_idle_conns: 5
   max_open_conns: 10
-
-etl:
-  provider_url:
-  chain: ethereum
-  worker: 10
-  previous_file:
-  cex_list: Binance,Coinbase
 
 redis:
   addr: localhost:6379
