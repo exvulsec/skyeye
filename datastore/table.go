@@ -7,6 +7,10 @@ const (
 	TableTokens        = "tokens"
 	TableLogs          = "logs"
 	TableTokenPrices   = "token_prices"
-	SchemaPublic       = "public"
 	TableDeDaub        = "dedaub"
+	TableSignatures    = "signatures"
+)
+
+const (
+	SchemaPublic = "public"
 )

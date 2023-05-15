@@ -7,6 +7,7 @@ import (
 	"io"
 	"math/rand"
 	"net/http"
+	"sort"
 	"strings"
 	"time"
 
@@ -70,7 +71,7 @@ func SendItemToMessageQueue(chain, txhash, contractAddress, openApiServer string
 		"chain":    utils.ConvertChainToDeFiHackLabChain(chain),
 		"txhash":   txhash,
 		"contract": contractAddress,
-		//"push4":    strings.Join(tre.GetContractPush4Args(opcodes), ","),
+		"push4":    strings.Join(getContractPush4Args(opcodes), ","),
 		"push20":   strings.Join(getContractPush20Args(chain, opcodes), ","),
 		"codeSize": len(code[2:]),
 	}
@@ -174,6 +175,7 @@ func getOpcodes(chain, address string) ([]string, error) {
 
 func getContractPush20Args(chain string, opcodes []string) []string {
 	labelAddrs := []string{}
+	noneLabelAddrs := []string{}
 	args := []string{}
 	for _, opcode := range opcodes {
 		ops := strings.Split(opcode, " ")
@@ -195,14 +197,20 @@ func getContractPush20Args(chain string, opcodes []string) []string {
 			labelMap[label.Address] = label.Label
 		}
 		for _, addr := range addrs {
-			value := addr
 			if v, ok := labelMap[addr]; ok {
-				value = v
+				labelAddrs = append(labelAddrs, v)
+			} else {
+				noneLabelAddrs = append(noneLabelAddrs, addr)
 			}
-			labelAddrs = append(labelAddrs, value)
 		}
 	}
-	return labelAddrs
+	sort.SliceStable(labelAddrs, func(i, j int) bool {
+		return labelAddrs[i] < labelAddrs[j]
+	})
+	sort.SliceStable(noneLabelAddrs, func(i, j int) bool {
+		return noneLabelAddrs[i] < noneLabelAddrs[j]
+	})
+	return append(labelAddrs, noneLabelAddrs...)
 }
 
 func getContractPush4Args(opcodes []string) []string {
@@ -215,7 +223,13 @@ func getContractPush4Args(opcodes []string) []string {
 			}
 		}
 	}
-	return mapset.NewSet[string](args...).ToSlice()
+	signatures := mapset.NewSet[string](args...).ToSlice()
+	textSignatures, err := model.GetSignatures(signatures)
+	if err != nil {
+		logrus.Errorf("get signature is err %v", err)
+		return []string{}
+	}
+	return textSignatures
 }
 
 func GetDeDaubMd5(chain, address string, byteCode []byte) error {
