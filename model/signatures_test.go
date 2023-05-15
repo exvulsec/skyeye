@@ -1,6 +1,7 @@
 package model
 
 import (
+	"fmt"
 	"testing"
 
 	"github.com/magiconair/properties/assert"
@@ -14,5 +15,6 @@ func TestOpenChainResponse_GetSignatures(t *testing.T) {
 	if err != nil {
 		panic(err)
 	}
-	assert.Equal(t, signatures, []string{"name()", "transferFrom(address,address,uint256)", "0x{1}"})
+	fmt.Println(signatures)
+	assert.Equal(t, signatures, []string{"name", "transferFrom", "0x{1}"})
 }

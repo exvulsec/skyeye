@@ -207,10 +207,10 @@ func getContractPush20Args(chain string, opcodes []string) []string {
 	sort.SliceStable(labelAddrs, func(i, j int) bool {
 		return labelAddrs[i] < labelAddrs[j]
 	})
-	sort.SliceStable(noneLabelAddrs, func(i, j int) bool {
-		return noneLabelAddrs[i] < noneLabelAddrs[j]
-	})
-	return append(labelAddrs, noneLabelAddrs...)
+	if len(noneLabelAddrs) > 0 {
+		labelAddrs = append(labelAddrs, fmt.Sprintf("0x{%d}", len(noneLabelAddrs)))
+	}
+	return labelAddrs
 }
 
 func getContractPush4Args(opcodes []string) []string {
