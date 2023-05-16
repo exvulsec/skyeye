@@ -21,7 +21,7 @@ func NewTransactionExporters(chain, openAPIServer string, nonce uint64, isNastif
 	if !isNastiff {
 		exporters = append(exporters, NewTransactionPostgresqlExporter(chain, nonce))
 	} else {
-		exporters = append(exporters, NewNastiffTransferExporter(chain, openAPIServer, nonce, 0))
+		exporters = append(exporters, NewNastiffTransferExporter(chain, openAPIServer, nonce, 10))
 	}
 	return exporters
 }
