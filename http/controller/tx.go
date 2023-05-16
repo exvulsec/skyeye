@@ -103,12 +103,11 @@ func (tc *TXController) Reviewed(c *gin.Context) {
 		return
 	}
 
+	nt.NastiffValues["policies"] = nt.Policies
+
 	c.JSON(http.StatusOK, model.Message{
 		Code: http.StatusOK,
 		Msg:  "",
-		Data: map[string]any{
-			"policies":       nt.Policies,
-			"nastiff_values": nt.NastiffValues,
-		},
+		Data: nt.NastiffValues,
 	})
 }
