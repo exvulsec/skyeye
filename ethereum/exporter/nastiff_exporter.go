@@ -5,9 +5,11 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/ethereum/go-ethereum/common"
 	"github.com/redis/go-redis/v9"
 	"github.com/sirupsen/logrus"
 
+	"go-etl/client"
 	"go-etl/datastore"
 	"go-etl/model"
 )
@@ -39,6 +41,12 @@ func (nte *NastiffTransactionExporter) ExportItems(items any) {
 				nt := model.NastiffTransaction{}
 				nt.ConvertFromTransaction(item)
 				nt.Chain = nte.Chain
+				code, err := client.EvmClient().CodeAt(context.Background(), common.HexToAddress(nt.ContractAddress), nil)
+				if err != nil {
+					logrus.Errorf("get contract %s's bytecode is err %v ", nt.ContractAddress, err)
+					continue
+				}
+				nt.ByteCode = code
 				go nte.exportItem(nt)
 			}
 		}
@@ -48,16 +56,18 @@ func (nte *NastiffTransactionExporter) ExportItems(items any) {
 func (nte *NastiffTransactionExporter) exportItem(tx model.NastiffTransaction) {
 	isFilter := nte.FilterContractByPolicies(&tx)
 	if !isFilter {
+		logrus.Infof("start to insert tx %s's contract %s to redis stream", tx.TxHash, tx.ContractAddress)
 		if err := nte.exportToRedis(tx); err != nil {
 			logrus.Errorf("append txhash %s's contract %s to redis message queue is err %v", tx.TxHash, tx.ContractAddress, err)
 			return
 		}
 	}
+	logrus.Infof("start to insert tx %s's contract %s to db", tx.TxHash, tx.ContractAddress)
 	if err := tx.Insert(true, nte.OpenAPIServer); err != nil {
 		logrus.Errorf("insert txhash %s's contract %s to db is err %v", tx.TxHash, tx.ContractAddress, err)
 		return
 	}
-	logrus.Infof("insert tx %s's contract %s to database successfully", tx.TxHash, tx.ContractAddress)
+
 }
 
 func (nte *NastiffTransactionExporter) FilterContractByPolicies(tx *model.NastiffTransaction) bool {
@@ -71,7 +81,7 @@ func (nte *NastiffTransactionExporter) FilterContractByPolicies(tx *model.Nastif
 	isFilter := false
 	for _, p := range policies {
 		result := "1"
-		if !p.ApplyFilter(*tx) {
+		if p.ApplyFilter(*tx) {
 			result = "0"
 			isFilter = true
 		}
@@ -93,6 +103,5 @@ func (nte *NastiffTransactionExporter) exportToRedis(tx model.NastiffTransaction
 	if err != nil {
 		return fmt.Errorf("send values to redis stream is err: %v", err)
 	}
-	logrus.Infof("send tx %s's contract %s to database successfully", tx.TxHash, tx.ContractAddress)
 	return nil
 }
