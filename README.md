@@ -81,14 +81,17 @@ doker-compose up -d
 推送到 Redis `HSET` 的 `Value` 为:
 - `<from_address>`: `<contract_address>,<contract_address>,<contract_address>`
 
-##### 推送 Redis Message Queue 的策略
+##### 推送 Nastiff 监控策略
 根据如下策略判断是否需要过滤合约地址:
-- **策略1: 过滤失败交易**
+- **前置条件: 过滤失败交易**
   - 根据 `Receipt` 数据后,查看 `Status` 是否为 `1`
   - 若为 `Status` 为 `1` 则过滤该交易
-- **策略2: 过滤 Nonce 大于 10 的交易**
+- **策略1: 过滤 Nonce 大于 10 的交易**
   - 根据 `Transaction Nonce` 是否小于指定的 `Threshold(暂定 10)`
   - 若 `Transaction Nonce` 大于 `10` 则过滤掉该合约地址
+- **策略2: 过滤 ByteCode < 500 的合约**
+  - 根据合约的 `ByteCode` 大小, 判断 `ByteCode` Size除去 `0x` 是否小于 `500` 或为 `0`
+  - 若 `ByteCode` Size 小于 `500` 或为 `0` 则过滤合约
 - **策略3: 过滤合约为 Erc20 或 Erc721的合约**
   - 从 `RPC` 获取到该 `Contract Address` 的 `ByteCode`
   - 判断该 `ByteCode` 是否含有 `ERC20` 和 `ERC721` 的 `63{Signature Code}`
@@ -96,11 +99,6 @@ doker-compose up -d
 - **策略4: 过滤开源合约**
   - 等待十分钟后, 向 `EtherScan` 请求该合约是否开源
   - 若合约已开源, 则过滤掉该合约地址
-- ~~**策略5: 过滤向合约地址发送 `Eth` 地址查询长度小于 5,且标签为`中心化交易所(Binance, Coinbase)`的合约**~~
-  - ~~查询当前合约地址的 `Eth` 来源地址, 根据 `Transaction` 和 `Trace` 查询,取时间较早的一个(如果数据为空则取另一个)~~
-  - ~~若查询到 `address` 当前的 `Transaction Nonce` 大于指定 `Threshold(暂定 200000)`, 则停止查询~~
-  - ~~待找到 `address` 后, 查询该 `address` 的 `label`~~
-  - ~~若该 `address` 查询次数小于指定值(当前为 5), 且`label` 的前缀为`中心化交易所(Binance, Coinbase)`, 则过滤该合约地址~~
 
 推送到 Redis MQ 的 `Key` 为:
 - `<chain>:contract_address:stream:v2`
@@ -108,11 +106,13 @@ doker-compose up -d
 推送到 Redis MQ 的 `Value` 为:
 ```json
 {
+  "chain": <chain>,
   "txhash": <hash>,
   "contract": <contract_address>,
-  "eth_source_from":  <source address>,
-  "eth_source_label": <source address label>,
-  "source_depth": <source depth>
+  "fund":  <depth> - <label>,
+  "codeSize": <code size>,
+  "push4": <push4 args>,
+  "push20": <push20 args>,
 }
 ```
 

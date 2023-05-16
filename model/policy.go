@@ -28,18 +28,18 @@ type NonceFilter struct {
 
 func (nf *NonceFilter) ApplyFilter(tx NastiffTransaction) bool {
 	if nf.ThresholdNonce > 0 && tx.Nonce > nf.ThresholdNonce {
-		return false
+		return true
 	}
-	return true
+	return false
 }
 
 type ByteCodeFilter struct{}
 
 func (bf *ByteCodeFilter) ApplyFilter(tx NastiffTransaction) bool {
 	if len(tx.ByteCode) == 0 || len(tx.ByteCode[2:]) < 500 {
-		return false
+		return true
 	}
-	return true
+	return false
 }
 
 type ContractTypeFilter struct{}
@@ -47,9 +47,9 @@ type ContractTypeFilter struct{}
 func (cf *ContractTypeFilter) ApplyFilter(tx NastiffTransaction) bool {
 	if utils.IsErc20Or721(utils.Erc20Signatures, tx.ByteCode, utils.Erc20SignatureThreshold) ||
 		utils.IsErc20Or721(utils.Erc721Signatures, tx.ByteCode, utils.Erc721SignatureThreshold) {
-		return false
+		return true
 	}
-	return true
+	return false
 }
 
 type OpenSourceFilter struct {
@@ -67,12 +67,12 @@ func (of *OpenSourceFilter) ApplyFilter(tx NastiffTransaction) bool {
 	contract, err := GetContractCode(tx.Chain, tx.ContractAddress)
 	if err != nil {
 		logrus.Errorf("get contract %s code is err: %v", tx.ContractAddress, err)
-		return false
+		return true
 	}
 	if contract.Result[0].SourceCode != "" {
-		return false
+		return true
 	}
-	return true
+	return false
 }
 
 func GetSourceEthAddress(chain, contractAddress, openApiServer string) (ScanTXResponse, error) {

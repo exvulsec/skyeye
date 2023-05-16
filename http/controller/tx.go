@@ -92,7 +92,7 @@ func (tc *TXController) Reviewed(c *gin.Context) {
 	policyResults := []string{}
 	for _, p := range policies {
 		result := "1"
-		if !p.ApplyFilter(nt) {
+		if p.ApplyFilter(nt) {
 			result = "0"
 		}
 		policyResults = append(policyResults, result)
