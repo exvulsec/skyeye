@@ -164,7 +164,7 @@ func (ac *AddressController) SourceETH(c *gin.Context) {
 			nonce >= scanInfo.AddressNonceThreshold {
 			txResp.Address = address
 			label := utils.ScanGenesisAddress
-			if address != utils.ScanGenesisAddress {
+			if address != utils.ScanGenesisAddress && address != "" {
 				label = ac.getLabelFromMetaDock(chain, address)
 			}
 			txResp.Label = label

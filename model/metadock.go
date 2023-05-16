@@ -77,7 +77,7 @@ func (labels *MetaDockLabelsResponse) GetLabels(chain string, addrs []string) er
 	defer resp.Body.Close()
 
 	if err = json.Unmarshal(data, labels); err != nil {
-		return fmt.Errorf("unmarhsall data from resp.Body %s is err: %v", data, err)
+		return fmt.Errorf("unmarhsall data from resp.Body %s, request is %s is err: %v", data, body, err)
 	}
 	return nil
 }
