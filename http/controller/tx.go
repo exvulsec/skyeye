@@ -13,7 +13,6 @@ import (
 	"go-etl/client"
 	"go-etl/config"
 	"go-etl/model"
-	"go-etl/policy"
 	"go-etl/utils"
 )
 
@@ -74,22 +73,42 @@ func (tc *TXController) Reviewed(c *gin.Context) {
 		c.JSON(http.StatusOK, model.Message{Code: http.StatusInternalServerError, Msg: fmt.Sprintf("get contract %s's bytecode is err %v ", receipt.ContractAddress.String(), err)})
 		return
 	}
-	policyCode, err := policy.FilterContractByPolicy(chain, receipt.ContractAddress.String(), tx.Nonce(), config.Conf.HTTPServer.NonceThreshold, 0, code)
-	if err != nil {
-		c.JSON(http.StatusOK, model.Message{Code: http.StatusInternalServerError, Msg: fmt.Sprintf("filter txhash's contract %s by policy is err %v", receipt.ContractAddress.String(), err)})
-		return
+	nt := model.NastiffTransaction{
+		Chain:           chain,
+		BlockNumber:     receipt.BlockNumber.Int64(),
+		TxHash:          tx.Hash().String(),
+		TxPos:           int64(receipt.TransactionIndex),
+		ContractAddress: receipt.ContractAddress.String(),
+		Nonce:           tx.Nonce(),
+		ByteCode:        code,
 	}
 
-	if policyCode == policy.NoAnyDenied {
-		values, err := policy.SendItemToMessageQueue(chain, txhash,
-			receipt.ContractAddress.String(), "http://localhost:8088", code, false)
-		if err != nil {
-			c.JSON(http.StatusOK, model.Message{Code: http.StatusInternalServerError, Msg: fmt.Sprintf("send to txhash %s's contract %s message queue is err %v", txhash, receipt.ContractAddress.String(), err)})
-			return
+	policies := []model.FilterPolicy{
+		&model.NonceFilter{ThresholdNonce: config.Conf.HTTPServer.NonceThreshold},
+		&model.ByteCodeFilter{},
+		&model.ContractTypeFilter{},
+		&model.OpenSourceFilter{},
+	}
+	policyResults := []string{}
+	for _, p := range policies {
+		result := "1"
+		if !p.ApplyFilter(nt) {
+			result = "0"
 		}
-		c.JSON(http.StatusOK, model.Message{Code: policyCode, Msg: fmt.Sprintf("contract address %s is %s", receipt.ContractAddress.String(), policy.DeniedMap[policyCode]), Data: values})
+		policyResults = append(policyResults, result)
+	}
+	nt.Policies = strings.Join(policyResults, ",")
+	if err = nt.ComposeNastiffValues(false, "http://localhost:8088"); err != nil {
+		c.JSON(http.StatusOK, model.Message{Code: http.StatusInternalServerError, Msg: fmt.Sprintf("get contract %s's nastiff values is err %v ", receipt.ContractAddress.String(), err)})
 		return
 	}
 
-	c.JSON(http.StatusOK, model.Message{Code: policyCode, Msg: fmt.Sprintf("contract address %s is %s", receipt.ContractAddress.String(), policy.DeniedMap[policyCode])})
+	c.JSON(http.StatusOK, model.Message{
+		Code: http.StatusOK,
+		Msg:  "",
+		Data: map[string]any{
+			"policies":       nt.Policies,
+			"nastiff_values": nt.NastiffValues,
+		},
+	})
 }

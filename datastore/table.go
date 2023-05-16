@@ -1,14 +1,15 @@
 package datastore
 
 const (
-	TableTransactions  = "txs"
-	TableAssociatedTxs = "associated_txs"
-	TableLabels        = "labels"
-	TableTokens        = "tokens"
-	TableLogs          = "logs"
-	TableTokenPrices   = "token_prices"
-	TableDeDaub        = "dedaub"
-	TableSignatures    = "signatures"
+	TableTransactions       = "txs"
+	TableAssociatedTxs      = "associated_txs"
+	TableLabels             = "labels"
+	TableTokens             = "tokens"
+	TableLogs               = "logs"
+	TableTokenPrices        = "token_prices"
+	TableDeDaub             = "dedaub"
+	TableSignatures         = "signatures"
+	TableNastiffTransaction = "nastiff_txs"
 )
 
 const (
