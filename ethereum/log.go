@@ -11,25 +11,24 @@ import (
 	"github.com/sirupsen/logrus"
 
 	"go-etl/client"
+	"go-etl/datastore"
 	"go-etl/model"
 	"go-etl/utils"
 )
 
 type logExecutor struct {
 	chain      string
-	tableName  string
 	workerSize int
 	logsCh     chan []*types.Log
 	items      any
 	topics     []common.Hash
 }
 
-func NewLogExecutor(chain, tableName string, workers int, topics []common.Hash) Executor {
+func NewLogExecutor(chain string, workers int, topics []common.Hash) Executor {
 	return &logExecutor{
 		chain:      chain,
 		workerSize: workers,
 		topics:     topics,
-		tableName:  tableName,
 		logsCh:     make(chan []*types.Log, 10),
 	}
 }
@@ -81,7 +80,7 @@ func (le *logExecutor) Export() {
 	logs := le.items.(model.Logs)
 	if len(logs) > 0 {
 		startTimestamp := time.Now()
-		if err := logs.CreateBatchToDB(utils.ComposeTableName(le.chain, le.tableName), le.workerSize); err != nil {
+		if err := logs.CreateBatchToDB(utils.ComposeTableName(le.chain, datastore.TableLogs), le.workerSize); err != nil {
 			logrus.Fatalf("insert %d logs to database is err: %v", len(logs), err)
 			return
 		}

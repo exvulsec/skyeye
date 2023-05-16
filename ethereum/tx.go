@@ -20,29 +20,29 @@ import (
 )
 
 type transactionExecutor struct {
-	blockExecutor      BlockExecutor
-	logExecutor        Executor
-	blockNumber        int64
-	workers            int
-	batchSize          int
-	items              any
-	isCreationContract bool
-	exporters          []exporter.Exporter
+	blockExecutor BlockExecutor
+	logExecutor   Executor
+	blockNumber   int64
+	workers       int
+	batchSize     int
+	items         any
+	isNastiff     bool
+	exporters     []exporter.Exporter
 }
 
 func NewTransactionExecutor(blockExecutor BlockExecutor,
 	logExecutor Executor,
-	chain, table, openapi string,
+	chain, openapi string,
 	workers, batchSize int,
 	nonce uint64,
-	isCreationContract bool) Executor {
+	isNastiff bool) Executor {
 	return &transactionExecutor{
-		blockExecutor:      blockExecutor,
-		logExecutor:        logExecutor,
-		workers:            workers,
-		batchSize:          batchSize,
-		isCreationContract: isCreationContract,
-		exporters:          exporter.NewTransactionExporters(chain, table, openapi, nonce),
+		blockExecutor: blockExecutor,
+		logExecutor:   logExecutor,
+		workers:       workers,
+		batchSize:     batchSize,
+		isNastiff:     isNastiff,
+		exporters:     exporter.NewTransactionExporters(chain, openapi, nonce, isNastiff),
 	}
 }
 
@@ -142,7 +142,7 @@ func (te *transactionExecutor) Export() {
 }
 
 func (te *transactionExecutor) filterTransactions() {
-	if te.isCreationContract {
+	if te.isNastiff {
 		txs := model.Transactions{}
 		for _, item := range te.items.(model.Transactions) {
 			if item.ToAddress == nil {

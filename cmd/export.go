@@ -27,18 +27,16 @@ var txCmd = &cobra.Command{
 		nonce, _ := cmd.Flags().GetUint64("tx_nonce")
 		workers, _ := cmd.Flags().GetInt("workers")
 		batchSize, _ := cmd.Flags().GetInt("batch_size")
-		isCreationContract, _ := cmd.Flags().GetBool("creation_contract")
+		isNastiff, _ := cmd.Flags().GetBool("is_nastiff")
 		chain, _ := cmd.Flags().GetString("chain")
-		tableName, _ := cmd.Flags().GetString("table_name")
-		logTableName, _ := cmd.Flags().GetString("log_table")
 		openAPIServer, _ := cmd.Flags().GetString("openapi_server")
 		topicString, _ := cmd.Flags().GetString("topics")
 		blockExecutor := ethereum.NewBlockExecutor(chain, batchSize, workers)
 		var logExecutor ethereum.Executor
 		if topicString != "" {
-			logExecutor = ethereum.NewLogExecutor(chain, logTableName, workers, ethereum.ConvertTopicsFromString(topicString))
+			logExecutor = ethereum.NewLogExecutor(chain, workers, ethereum.ConvertTopicsFromString(topicString))
 		}
-		executor := ethereum.NewTransactionExecutor(blockExecutor, logExecutor, chain, tableName, openAPIServer, workers, batchSize, nonce, isCreationContract)
+		executor := ethereum.NewTransactionExecutor(blockExecutor, logExecutor, chain, openAPIServer, workers, batchSize, nonce, isNastiff)
 		executor.Run()
 	},
 }
@@ -46,7 +44,7 @@ var txCmd = &cobra.Command{
 func txCmdInit() {
 	txCmd.Flags().String("config", "", "set config file path")
 	txCmd.Flags().Uint64("tx_nonce", 0, "filter the less than nonce count txs, > 0 is available, default is 0")
-	txCmd.Flags().Bool("creation_contract", false, "filter the contract create txs")
+	txCmd.Flags().Bool("is_nastiff", false, "filter nastiff txs")
 	txCmd.Flags().Int("workers", 5, "batch call workers")
 	txCmd.Flags().Int("batch_size", 50, "one batch call workers ")
 	txCmd.Flags().String("chain", "ethereum", "chain name")
