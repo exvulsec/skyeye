@@ -55,15 +55,17 @@ func (nt *NastiffTransaction) ComposeNastiffValues(isNastiff bool, openAPIServer
 		if err != nil {
 			return fmt.Errorf("get contract %s's eth source is err: %v", nt.ContractAddress, err)
 		}
-		fund := scanTxResp.Address
+		fund := ""
 		if scanTxResp.Address != "" {
-			if len(scanTxResp.Nonce) == 5 {
-				label := scanTxResp.Label
-				if label == "" {
+			label := scanTxResp.Label
+			if label == "" {
+				if len(scanTxResp.Nonce) == 5 {
 					label = "UnKnown"
+				} else {
+					label = scanTxResp.Address
 				}
-				fund = fmt.Sprintf("%d-%s", len(scanTxResp.Nonce), label)
 			}
+			fund = fmt.Sprintf("%d-%s", len(scanTxResp.Nonce), label)
 		} else {
 			fund = "0-scanError"
 		}
