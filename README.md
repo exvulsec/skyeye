@@ -85,7 +85,7 @@ doker-compose up -d
 根据如下策略判断是否需要过滤合约地址:
 - **前置条件: 过滤失败交易**
   - 根据 `Receipt` 数据后,查看 `Status` 是否为 `1`
-  - 若为 `Status` 为 `1` 则过滤该交易
+  - 若为 `Status` 为 `0` 则过滤该交易
 - **策略1: 过滤 Nonce 大于 10 的交易**
   - 根据 `Transaction Nonce` 是否小于指定的 `Threshold(暂定 10)`
   - 若 `Transaction Nonce` 大于 `10` 则过滤掉该合约地址

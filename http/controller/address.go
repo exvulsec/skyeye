@@ -161,7 +161,7 @@ func (ac *AddressController) SourceETH(c *gin.Context) {
 			txResp.Nonce = append(txResp.Nonce, nonce)
 		}
 		if address == utils.ScanGenesisAddress || address == "" ||
-			nonce >= scanInfo.AddressNonceThreshold {
+			nonce >= scanInfo.AddressNonceThreshold || len(txResp.Nonce) == 4 {
 			txResp.Address = address
 			label := utils.ScanGenesisAddress
 			if address != utils.ScanGenesisAddress && address != "" {

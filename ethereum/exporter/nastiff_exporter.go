@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"strings"
+	"time"
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/redis/go-redis/v9"
@@ -75,13 +76,18 @@ func (nte *NastiffTransactionExporter) FilterContractByPolicies(tx *model.Nastif
 		&model.NonceFilter{ThresholdNonce: nte.Nonce},
 		&model.ByteCodeFilter{},
 		&model.ContractTypeFilter{},
-		&model.OpenSourceFilter{Interval: nte.Interval},
+		&model.OpenSourceFilter{},
 	}
 	policyResults := []string{}
 	isFilter := false
-	for _, p := range policies {
+	isWaiting := false
+	for index, p := range policies {
+		if index > 1 && !isWaiting {
+			time.Sleep(time.Duration(nte.Interval) * time.Minute)
+			isWaiting = true
+		}
 		result := "1"
-		if p.ApplyFilter(*tx) {
+		if p.ApplyFilter(tx) {
 			result = "0"
 			isFilter = true
 		}

@@ -6,6 +6,7 @@ import (
 	"io"
 	"math/rand"
 	"net/http"
+	"regexp"
 	"sort"
 	"strings"
 	"time"
@@ -19,14 +20,14 @@ import (
 )
 
 type FilterPolicy interface {
-	ApplyFilter(transaction NastiffTransaction) bool
+	ApplyFilter(transaction *NastiffTransaction) bool
 }
 
 type NonceFilter struct {
 	ThresholdNonce uint64
 }
 
-func (nf *NonceFilter) ApplyFilter(tx NastiffTransaction) bool {
+func (nf *NonceFilter) ApplyFilter(tx *NastiffTransaction) bool {
 	if nf.ThresholdNonce > 0 && tx.Nonce > nf.ThresholdNonce {
 		return true
 	}
@@ -35,7 +36,7 @@ func (nf *NonceFilter) ApplyFilter(tx NastiffTransaction) bool {
 
 type ByteCodeFilter struct{}
 
-func (bf *ByteCodeFilter) ApplyFilter(tx NastiffTransaction) bool {
+func (bf *ByteCodeFilter) ApplyFilter(tx *NastiffTransaction) bool {
 	if len(tx.ByteCode) == 0 || len(tx.ByteCode[2:]) < 500 {
 		return true
 	}
@@ -44,25 +45,25 @@ func (bf *ByteCodeFilter) ApplyFilter(tx NastiffTransaction) bool {
 
 type ContractTypeFilter struct{}
 
-func (cf *ContractTypeFilter) ApplyFilter(tx NastiffTransaction) bool {
-	if utils.IsErc20Or721(utils.Erc20Signatures, tx.ByteCode, utils.Erc20SignatureThreshold) ||
-		utils.IsErc20Or721(utils.Erc721Signatures, tx.ByteCode, utils.Erc721SignatureThreshold) {
+func (cf *ContractTypeFilter) ApplyFilter(tx *NastiffTransaction) bool {
+	opcodeString, err := GetOpCodes(tx.Chain, tx.ContractAddress)
+	if err != nil {
+		logrus.Errorf("get contract address %s's opcodes is err: %v", tx.ContractAddress, err)
+	}
+	tx.ByteSigns = GetPush4Args(opcodeString)
+	tx.OpCodeString = opcodeString
+	if utils.IsErc20Or721(utils.Erc20Signatures, tx.ByteSigns, utils.Erc20SignatureThreshold) ||
+		utils.IsErc20Or721(utils.Erc721Signatures, tx.ByteSigns, utils.Erc721SignatureThreshold) {
 		return true
 	}
 	return false
 }
 
-type OpenSourceFilter struct {
-	Interval int64
-}
+type OpenSourceFilter struct{}
 
-func (of *OpenSourceFilter) ApplyFilter(tx NastiffTransaction) bool {
+func (of *OpenSourceFilter) ApplyFilter(tx *NastiffTransaction) bool {
 	if err := GetDeDaubMd5(tx.Chain, tx.ContractAddress, tx.ByteCode); err != nil {
 		logrus.Errorf("get dedaub md5 for %s on chain %s is err %v", tx.ContractAddress, tx.Chain, err)
-	}
-	if of.Interval != 0 {
-		logrus.Infof("waiting contract %s is open source", tx.ContractAddress)
-		time.Sleep(time.Duration(of.Interval) * time.Minute)
 	}
 	contract, err := GetContractCode(tx.Chain, tx.ContractAddress)
 	if err != nil {
@@ -133,12 +134,32 @@ func GetContractCode(chain, contractAddress string) (ScanContractResponse, error
 	return contract, nil
 }
 
-func GetOpcodes(chain, address string) ([]string, error) {
-	result := ScanStringResult{}
-	return result.GetOpCodes(chain, address)
+func GetPush4Args(opcodeString string) []string {
+	exprString := "DUP1<br>PUSH4 0x[a-fA-F\\d]{8}<br>EQ"
+	r, _ := regexp.Compile(exprString)
+	matches := r.FindAllString(opcodeString, -1)
+	push4Args := []string{}
+	for _, match := range matches {
+		m := strings.Split(match, " ")
+		args := strings.Split(m[1], "<br>")
+		if strings.ToLower(args[1]) != utils.FFFFAddress {
+			push4Args = append(push4Args, args[0])
+		}
+	}
+	return mapset.NewSet[string](push4Args...).ToSlice()
 }
 
-func GetContractPush20Args(chain string, opcodes []string) []string {
+func GetFuncSignatures(args []string) []string {
+	textSignatures, err := GetSignatures(args)
+	if err != nil {
+		logrus.Errorf("get signature is err %v", err)
+		return []string{}
+	}
+	return textSignatures
+}
+
+func GetPush20Args(chain, opcodeString string) []string {
+	opcodes := strings.Split(opcodeString, "<br>")
 	labelAddrs := []string{}
 	noneLabelAddrs := []string{}
 	args := []string{}
@@ -178,23 +199,13 @@ func GetContractPush20Args(chain string, opcodes []string) []string {
 	return labelAddrs
 }
 
-func GetContractPush4Args(opcodes []string) []string {
-	args := []string{}
-	for _, opcode := range opcodes {
-		ops := strings.Split(opcode, " ")
-		if len(ops) > 1 {
-			if ops[0] == utils.PUSH4 && strings.ToLower(ops[1]) != utils.FFFFFunction {
-				args = append(args, strings.ToLower(ops[1]))
-			}
-		}
-	}
-	signatures := mapset.NewSet[string](args...).ToSlice()
-	textSignatures, err := GetSignatures(signatures)
+func GetOpCodes(chain, address string) (string, error) {
+	result := ScanStringResult{}
+	opcodeString, err := result.GetOpCodes(chain, address)
 	if err != nil {
-		logrus.Errorf("get signature is err %v", err)
-		return []string{}
+		return "", err
 	}
-	return textSignatures
+	return opcodeString, nil
 }
 
 func GetDeDaubMd5(chain, address string, byteCode []byte) error {

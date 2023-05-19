@@ -6,7 +6,6 @@ import (
 	"io"
 	"net/http"
 	"strconv"
-	"strings"
 
 	"go-etl/client"
 	"go-etl/utils"
@@ -58,8 +57,7 @@ func (st *ScanTransaction) ConvertStringToInt() error {
 	return nil
 }
 
-func (rs *ScanStringResult) GetOpCodes(chain, address string) ([]string, error) {
-	opcodes := []string{}
+func (rs *ScanStringResult) GetOpCodes(chain, address string) (string, error) {
 	scanURL := utils.GetScanURL(chain)
 
 	headers := map[string]string{
@@ -87,7 +85,7 @@ func (rs *ScanStringResult) GetOpCodes(chain, address string) ([]string, error) 
 	req, err := http.NewRequest(http.MethodGet, scanAPIURL, nil)
 	if err != nil {
 
-		return opcodes, fmt.Errorf("new request for get meta dock labels is err: %v", err)
+		return "", fmt.Errorf("new request for get meta dock labels is err: %v", err)
 	}
 
 	q := req.URL.Query()
@@ -103,17 +101,15 @@ func (rs *ScanStringResult) GetOpCodes(chain, address string) ([]string, error) 
 
 	resp, err := client.HTTPClient().Do(req)
 	if err != nil {
-		return opcodes, fmt.Errorf("receive response from %s is err: %v", scanAPIURL, err)
+		return "", fmt.Errorf("receive response from %s is err: %v", scanAPIURL, err)
 	}
 	data, err := io.ReadAll(resp.Body)
 	if err != nil {
-		return opcodes, fmt.Errorf("read data from resp.Body is err: %v", err)
+		return "", fmt.Errorf("read data from resp.Body is err: %v", err)
 	}
 	defer resp.Body.Close()
 	if err = json.Unmarshal(data, rs); err != nil {
-		return opcodes, fmt.Errorf("unmarshall data %s is err: %v", string(data), err)
+		return "", fmt.Errorf("unmarshall data %s is err: %v", string(data), err)
 	}
-	opcodes = strings.Split(rs.Result, "<br>")
-
-	return opcodes, nil
+	return rs.Result, nil
 }
