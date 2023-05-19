@@ -21,14 +21,14 @@ import (
 )
 
 type FilterPolicy interface {
-	ApplyFilter(transaction NastiffTransaction) bool
+	ApplyFilter(transaction *NastiffTransaction) bool
 }
 
 type NonceFilter struct {
 	ThresholdNonce uint64
 }
 
-func (nf *NonceFilter) ApplyFilter(tx NastiffTransaction) bool {
+func (nf *NonceFilter) ApplyFilter(tx *NastiffTransaction) bool {
 	if nf.ThresholdNonce > 0 && tx.Nonce > nf.ThresholdNonce {
 		return true
 	}
@@ -37,7 +37,7 @@ func (nf *NonceFilter) ApplyFilter(tx NastiffTransaction) bool {
 
 type ByteCodeFilter struct{}
 
-func (bf *ByteCodeFilter) ApplyFilter(tx NastiffTransaction) bool {
+func (bf *ByteCodeFilter) ApplyFilter(tx *NastiffTransaction) bool {
 	if len(tx.ByteCode) == 0 || len(tx.ByteCode[2:]) < 500 {
 		return true
 	}
@@ -46,10 +46,11 @@ func (bf *ByteCodeFilter) ApplyFilter(tx NastiffTransaction) bool {
 
 type ContractTypeFilter struct{}
 
-func (cf *ContractTypeFilter) ApplyFilter(tx NastiffTransaction) bool {
-	byteSigns := GetPushTypeArgs(tx.ByteCode)[utils.PUSH4]
-	if utils.IsErc20Or721(utils.Erc20Signatures, byteSigns, utils.Erc20SignatureThreshold) ||
-		utils.IsErc20Or721(utils.Erc721Signatures, byteSigns, utils.Erc721SignatureThreshold) {
+func (cf *ContractTypeFilter) ApplyFilter(tx *NastiffTransaction) bool {
+	opCodeArgs := GetPushTypeArgs(tx.ByteCode)
+	tx.OpCodeArgs = opCodeArgs
+	if utils.IsErc20Or721(utils.Erc20Signatures, opCodeArgs[utils.PUSH4], utils.Erc20SignatureThreshold) ||
+		utils.IsErc20Or721(utils.Erc721Signatures, opCodeArgs[utils.PUSH4], utils.Erc721SignatureThreshold) {
 		return true
 	}
 	return false
@@ -57,7 +58,7 @@ func (cf *ContractTypeFilter) ApplyFilter(tx NastiffTransaction) bool {
 
 type OpenSourceFilter struct{}
 
-func (of *OpenSourceFilter) ApplyFilter(tx NastiffTransaction) bool {
+func (of *OpenSourceFilter) ApplyFilter(tx *NastiffTransaction) bool {
 	if err := GetDeDaubMd5(tx.Chain, tx.ContractAddress, tx.ByteCode); err != nil {
 		logrus.Errorf("get dedaub md5 for %s on chain %s is err %v", tx.ContractAddress, tx.Chain, err)
 	}
@@ -132,34 +133,41 @@ func GetContractCode(chain, contractAddress string) (ScanContractResponse, error
 
 func GetPushTypeArgs(byteCode []byte) map[string][]string {
 	args := map[string][]string{}
-	it := asm.NewInstructionIterator(byteCode)
-	l1 := vm.INVALID
-	l2 := vm.INVALID
-	arg := []byte{}
-	opCodeArg := ""
-	for it.Next() {
-		if fmt.Sprintf("opcode %#x not defined", int(it.Op())) == it.Op().String() {
-			break
-		}
-		if l2 == vm.DUP1 && l1 == vm.PUSH4 && it.Op() == vm.EQ {
-			opCodeArg = fmt.Sprintf("%#x", arg)
-			if opCodeArg != utils.FFFFFunction {
-				args[utils.PUSH4] = append(args[utils.PUSH4], opCodeArg)
+	if len(byteCode) != 0 {
+		byteCode = byteCode[2:]
+		it := asm.NewInstructionIterator(byteCode)
+		l1 := vm.INVALID
+		l2 := vm.INVALID
+		arg := []byte{}
+		opCodeArg := ""
+		for it.Next() {
+			if fmt.Sprintf("opcode %#x not defined", int(it.Op())) == it.Op().String() {
+				break
 			}
-		} else if it.Op() == vm.PUSH4 {
-			arg = it.Arg()
-		} else if it.Op() == vm.PUSH20 {
-			opCodeArg = fmt.Sprintf("%#x", it.Arg())
-			if opCodeArg != utils.FFFFAddress {
-				args[utils.PUSH20] = append(args[utils.PUSH20], opCodeArg)
+			if l2 == vm.DUP1 && l1 == vm.PUSH4 && it.Op() == vm.EQ {
+				opCodeArg = fmt.Sprintf("%#x", arg)
+				if opCodeArg != utils.FFFFFunction {
+					args[utils.PUSH4] = append(args[utils.PUSH4], opCodeArg)
+				}
+			} else if it.Op() == vm.PUSH4 {
+				arg = it.Arg()
+			} else if it.Op() == vm.PUSH20 {
+				opCodeArg = fmt.Sprintf("%#x", it.Arg())
+				if opCodeArg != utils.FFFFAddress {
+					args[utils.PUSH20] = append(args[utils.PUSH20], opCodeArg)
+				}
+
 			}
+			l2 = l1
+			l1 = it.Op()
 
 		}
-		l2 = l1
-		l1 = it.Op()
-
+		return args
 	}
-	return args
+	return map[string][]string{
+		utils.PUSH20: []string{},
+		utils.PUSH4:  []string{},
+	}
 }
 
 func GetPush4Args(args []string) []string {

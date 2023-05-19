@@ -55,7 +55,7 @@ func (nte *NastiffTransactionExporter) ExportItems(items any) {
 }
 
 func (nte *NastiffTransactionExporter) exportItem(tx model.NastiffTransaction) {
-	isFilter := nte.FilterContractByPolicies(tx)
+	isFilter := nte.FilterContractByPolicies(&tx)
 	if !isFilter {
 		logrus.Infof("start to insert tx %s's contract %s to redis stream", tx.TxHash, tx.ContractAddress)
 		if err := nte.exportToRedis(tx); err != nil {
@@ -71,7 +71,7 @@ func (nte *NastiffTransactionExporter) exportItem(tx model.NastiffTransaction) {
 
 }
 
-func (nte *NastiffTransactionExporter) FilterContractByPolicies(tx model.NastiffTransaction) bool {
+func (nte *NastiffTransactionExporter) FilterContractByPolicies(tx *model.NastiffTransaction) bool {
 	policies := []model.FilterPolicy{
 		&model.NonceFilter{ThresholdNonce: nte.Nonce},
 		&model.ByteCodeFilter{},
@@ -82,7 +82,7 @@ func (nte *NastiffTransactionExporter) FilterContractByPolicies(tx model.Nastiff
 	isFilter := false
 	isWaiting := false
 	for index, p := range policies {
-		if index > 1 && !isWaiting {
+		if index > 2 && !isWaiting {
 			time.Sleep(time.Duration(nte.Interval) * time.Minute)
 			isWaiting = true
 		}
