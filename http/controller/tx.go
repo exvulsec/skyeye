@@ -82,17 +82,17 @@ func (tc *TXController) Reviewed(c *gin.Context) {
 		Nonce:           tx.Nonce(),
 		ByteCode:        code,
 	}
-
 	policies := []model.FilterPolicy{
 		&model.NonceFilter{ThresholdNonce: config.Conf.HTTPServer.NonceThreshold},
 		&model.ByteCodeFilter{},
 		&model.ContractTypeFilter{},
 		&model.OpenSourceFilter{},
 	}
+
 	policyResults := []string{}
 	for _, p := range policies {
 		result := "1"
-		if p.ApplyFilter(nt) {
+		if p.ApplyFilter(&nt) {
 			result = "0"
 		}
 		policyResults = append(policyResults, result)

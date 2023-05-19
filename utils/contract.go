@@ -1,11 +1,6 @@
 package utils
 
-import (
-	"fmt"
-	"strings"
-
-	"github.com/ethereum/go-ethereum/common/hexutil"
-)
+import "fmt"
 
 var Erc20Signatures = []string{
 	"06fdde03", // name()
@@ -39,16 +34,14 @@ const (
 	Erc721SignatureThreshold = 8
 )
 
-func IsErc20Or721(signatures []string, byteCode []byte, threshold int) bool {
-	code := hexutil.Encode(byteCode)
-	if code == "0x" {
-		return true
-	}
+func IsErc20Or721(signatures []string, funcSignatures []string, threshold int) bool {
 	count := 0
-	for _, sign := range signatures {
-		signature := fmt.Sprintf("63%s", sign)
-		if strings.Contains(code, signature) {
-			count++
+	for _, funcSign := range funcSignatures {
+		for _, sign := range signatures {
+			if fmt.Sprintf("0x%s", sign) == funcSign {
+				count++
+				break
+			}
 		}
 	}
 	return count >= threshold
