@@ -22,8 +22,6 @@ type NastiffTransaction struct {
 	NastiffValues      map[string]any `json:"nastiff_values" gorm:"-"`
 	NastiffValuesBytes []byte         `json:"-" gorm:"column:nastiff_values"`
 	ByteCode           []byte         `json:"-" gorm:"-"`
-	ByteSigns          []string       `json:"-" gorm:"-"`
-	OpCodeString       string         `json:"-" gorm:"-"`
 }
 
 func (nt *NastiffTransaction) ConvertFromTransaction(tx Transaction) {
@@ -43,12 +41,14 @@ func (nt *NastiffTransaction) ComposeNastiffValues(isNastiff bool, openAPIServer
 		codeSize = len(nt.ByteCode[2:])
 	}
 
+	opCodeArgs := GetPushTypeArgs(nt.ByteCode)
+
 	values := map[string]any{
 		"chain":    utils.ConvertChainToDeFiHackLabChain(nt.Chain),
 		"txhash":   nt.TxHash,
 		"contract": nt.ContractAddress,
-		"func":     strings.Join(GetFuncSignatures(nt.ByteSigns), ","),
-		"push20":   strings.Join(GetPush20Args(nt.Chain, nt.OpCodeString), ","),
+		"func":     strings.Join(GetPush4Args(opCodeArgs[utils.PUSH4]), ","),
+		"push20":   strings.Join(GetPush20Args(nt.Chain, opCodeArgs[utils.PUSH20]), ","),
 		"codeSize": codeSize,
 	}
 	if isNastiff {
@@ -58,8 +58,12 @@ func (nt *NastiffTransaction) ComposeNastiffValues(isNastiff bool, openAPIServer
 		}
 		fund := scanTxResp.Address
 		if scanTxResp.Address != "" {
-			if scanTxResp.Label != "" {
-				fund = fmt.Sprintf("%d-%s", len(scanTxResp.Nonce), scanTxResp.Label)
+			if len(scanTxResp.Nonce) == 5 {
+				label := scanTxResp.Label
+				if label == "" {
+					label = "UnKnown"
+				}
+				fund = fmt.Sprintf("%d-%s", len(scanTxResp.Nonce), label)
 			}
 		} else {
 			fund = "0-scanError"
