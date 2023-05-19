@@ -83,6 +83,7 @@ func (nte *NastiffTransactionExporter) FilterContractByPolicies(tx *model.Nastif
 	isWaiting := false
 	for index, p := range policies {
 		if index > 2 && !isWaiting {
+			logrus.Infof("waiting for address %s opensouce filter", tx.ContractAddress)
 			time.Sleep(time.Duration(nte.Interval) * time.Minute)
 			isWaiting = true
 		}
