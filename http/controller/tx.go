@@ -44,20 +44,20 @@ func (tc *TXController) Reviewed(c *gin.Context) {
 	}
 
 	var (
-		evmClient *ethclient.Client
+		ethClient *ethclient.Client
 		ok        bool
 	)
-	if evmClient, ok = client.MultiEvmClient()[chain]; !ok {
+	if ethClient, ok = client.MultiEvmClient()[chain]; !ok {
 		c.JSON(http.StatusOK, model.Message{Code: http.StatusBadRequest, Msg: fmt.Sprintf("not foudn evm client by given chain: %s", chain)})
 		return
 	}
-	tx, _, err := evmClient.TransactionByHash(c, common.HexToHash(txhash))
+	tx, _, err := ethClient.TransactionByHash(c, common.HexToHash(txhash))
 	if err != nil {
 		c.JSON(http.StatusOK, model.Message{Code: http.StatusInternalServerError, Msg: fmt.Sprintf("get transcation %s from rpc node is err %v ", txhash, err)})
 		return
 	}
 
-	receipt, err := evmClient.TransactionReceipt(c, common.HexToHash(txhash))
+	receipt, err := ethClient.TransactionReceipt(c, common.HexToHash(txhash))
 	if err != nil {
 		c.JSON(http.StatusOK, model.Message{Code: http.StatusInternalServerError, Msg: fmt.Sprintf("get transcation %s's receipt from rpc node is err %v ", txhash, err)})
 		return
@@ -68,7 +68,7 @@ func (tc *TXController) Reviewed(c *gin.Context) {
 		return
 	}
 
-	code, err := evmClient.CodeAt(context.Background(), receipt.ContractAddress, nil)
+	code, err := ethClient.CodeAt(context.Background(), receipt.ContractAddress, nil)
 	if err != nil {
 		c.JSON(http.StatusOK, model.Message{Code: http.StatusInternalServerError, Msg: fmt.Sprintf("get contract %s's bytecode is err %v ", receipt.ContractAddress.String(), err)})
 		return

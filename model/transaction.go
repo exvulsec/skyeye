@@ -74,7 +74,7 @@ func (txs *Transactions) EnrichReceipts(batchSize, workers int, logsCh chan []*t
 			Result: &types.Receipt{},
 		})
 	}
-	client.MultiCall(calls, batchSize, workers)
+	client.RPCClient().MultiCall(calls, batchSize)
 	for index := range *txs {
 		receipt, _ := calls[index].Result.(*types.Receipt)
 		(*txs)[index].enrichReceipt(*receipt)

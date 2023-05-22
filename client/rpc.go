@@ -9,6 +9,11 @@ import (
 	"go-etl/config"
 )
 
+type RPCBatchClient struct {
+	Workers chan int
+	Client  *rpc.Client
+}
+
 var rpcClient *RPCInstance
 
 type RPCInstance struct {
@@ -29,39 +34,42 @@ func initRPCClient() any {
 	if err != nil {
 		logrus.Fatalf("failed to connect provider url %s with rpcClient, err is %v", config.Conf.ETL.ProviderURL, err)
 	}
+	rpcBatchClient := &RPCBatchClient{
+		Workers: make(chan int, config.Conf.ETL.Worker),
+		Client:  client,
+	}
 	logrus.Infof("connect to provider with rpcClient is successfully")
-	return client
+	return rpcBatchClient
 }
 
-func RPCClient() *rpc.Client {
-	return rpcClient.Instance().(*rpc.Client)
+func RPCClient() *RPCBatchClient {
+	return rpcClient.Instance().(*RPCBatchClient)
 }
 
 func init() {
 	rpcClient = &RPCInstance{initializer: initRPCClient}
 }
 
-func MultiCall(calls []rpc.BatchElem, batchSize, workerCount int) {
+func (rb *RPCBatchClient) MultiCall(calls []rpc.BatchElem, batchSize int) {
 	wg := sync.WaitGroup{}
-	worker := make(chan int, workerCount)
 	count := len(calls) / batchSize
 	if len(calls)%batchSize != 0 {
 		count += 1
 	}
 	for i := 0; i < count; i++ {
-		worker <- 1
+		rb.Workers <- 1
 		wg.Add(1)
 		go func(index int) {
 			defer func() {
 				wg.Done()
-				<-worker
+				<-rb.Workers
 			}()
 			startIndex := index * batchSize
 			endIndex := (index + 1) * batchSize
 			if endIndex > len(calls) {
 				endIndex = len(calls)
 			}
-			if err := RPCClient().BatchCall(calls[startIndex:endIndex]); err != nil {
+			if err := rb.Client.BatchCall(calls[startIndex:endIndex]); err != nil {
 				logrus.Errorf("batch call is err %v", err)
 				return
 			}

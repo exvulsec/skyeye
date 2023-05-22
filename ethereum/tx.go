@@ -58,13 +58,13 @@ func (te *transactionExecutor) Run() {
 			Args:   []any{hexutil.EncodeUint64(blockNumber), true},
 			Result: &json.RawMessage{},
 		}}
-		client.MultiCall(calls, te.batchSize, te.workers)
+		client.RPCClient().MultiCall(calls, te.batchSize)
 		if result, _ := calls[0].Result.(*json.RawMessage); string(*result) == "null" {
 			retry := 1
 			for {
 				time.Sleep(1 * time.Second)
 				logrus.Infof("retry %d to get block: %d info", retry, blockNumber)
-				if err := client.RPCClient().BatchCall(calls); err != nil {
+				if err := client.RPCClient().Client.BatchCall(calls); err != nil {
 					logrus.Errorf("batch call is err %v", err)
 					return
 				}

@@ -60,7 +60,7 @@ func GetBlock(raw json.RawMessage) (*types.Block, error) {
 				Result: &uncles[i],
 			}
 		}
-		if err := client.RPCClient().BatchCallContext(context.Background(), reqs); err != nil {
+		if err := client.RPCClient().Client.BatchCallContext(context.Background(), reqs); err != nil {
 			return nil, err
 		}
 		for i := range reqs {
