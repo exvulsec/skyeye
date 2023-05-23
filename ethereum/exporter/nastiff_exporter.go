@@ -80,21 +80,20 @@ func (nte *NastiffTransactionExporter) FilterContractByPolicies(tx *model.Nastif
 		&model.Push20ArgsFilter{},
 	}
 	policyResults := []string{}
-	isFilter := false
+	score := 0
 	totalScore := 0
 	for _, p := range policies {
 		result := "1"
 		if p.ApplyFilter(tx) {
 			result = "0"
-			isFilter = true
-		} else {
-			totalScore += 1
+			score += 1
 		}
 		policyResults = append(policyResults, result)
+		totalScore += 1
 	}
 	tx.Policies = strings.Join(policyResults, ",")
-	tx.Score = totalScore
-	return isFilter
+	tx.Score = score * 100 / totalScore
+	return tx.Score != 100
 }
 
 func (nte *NastiffTransactionExporter) exportToRedis(tx model.NastiffTransaction) error {
