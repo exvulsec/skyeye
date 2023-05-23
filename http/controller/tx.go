@@ -87,17 +87,23 @@ func (tc *TXController) Reviewed(c *gin.Context) {
 		&model.ByteCodeFilter{},
 		&model.ContractTypeFilter{},
 		&model.OpenSourceFilter{},
+		&model.Push4ArgsFilter{},
+		&model.Push20ArgsFilter{},
 	}
 
 	policyResults := []string{}
+	totalScore := 0
 	for _, p := range policies {
 		result := "1"
 		if p.ApplyFilter(&nt) {
 			result = "0"
+		} else {
+			totalScore += 1
 		}
 		policyResults = append(policyResults, result)
 	}
 	nt.Policies = strings.Join(policyResults, ",")
+	nt.Score = totalScore
 	if err = nt.ComposeNastiffValues(false, "http://localhost:8088"); err != nil {
 		c.JSON(http.StatusOK, model.Message{Code: http.StatusInternalServerError, Msg: fmt.Sprintf("get contract %s's nastiff values is err %v ", receipt.ContractAddress.String(), err)})
 		return

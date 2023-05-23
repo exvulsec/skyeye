@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"strings"
-	"time"
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/redis/go-redis/v9"
@@ -76,25 +75,25 @@ func (nte *NastiffTransactionExporter) FilterContractByPolicies(tx *model.Nastif
 		&model.NonceFilter{ThresholdNonce: nte.Nonce},
 		&model.ByteCodeFilter{},
 		&model.ContractTypeFilter{},
-		&model.OpenSourceFilter{},
+		&model.OpenSourceFilter{Interval: 0},
+		&model.Push4ArgsFilter{},
+		&model.Push20ArgsFilter{},
 	}
 	policyResults := []string{}
 	isFilter := false
-	isWaiting := false
-	for index, p := range policies {
-		if index > 2 && !isWaiting {
-			logrus.Infof("waiting for address %s opensouce filter", tx.ContractAddress)
-			time.Sleep(time.Duration(nte.Interval) * time.Minute)
-			isWaiting = true
-		}
+	totalScore := 0
+	for _, p := range policies {
 		result := "1"
 		if p.ApplyFilter(tx) {
 			result = "0"
 			isFilter = true
+		} else {
+			totalScore += 1
 		}
 		policyResults = append(policyResults, result)
 	}
 	tx.Policies = strings.Join(policyResults, ",")
+	tx.Score = totalScore
 	return isFilter
 }
 
