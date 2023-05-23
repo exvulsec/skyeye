@@ -39,7 +39,7 @@ type Signatures []Signature
 
 func (s *Signature) GetTextSign() error {
 	tableName := utils.ComposeTableName(datastore.SchemaPublic, datastore.TableSignatures)
-	return datastore.DB().Table(tableName).Where("byte_sign = ?", s.ByteSign).Find(s).Error
+	return datastore.DB().Table(tableName).Where("byte_sign = ?", s.ByteSign).Limit(1).Find(s).Error
 }
 
 func (s *Signatures) Create() error {

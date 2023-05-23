@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/sirupsen/logrus"
+
 	"go-etl/datastore"
 	"go-etl/utils"
 )
@@ -54,11 +56,12 @@ func (nt *NastiffTransaction) ComposeNastiffValues(isNastiff bool, openAPIServer
 		"codeSize": codeSize,
 	}
 	if isNastiff {
+		var fund string
 		scanTxResp, err := GetSourceEthAddress(nt.Chain, nt.ContractAddress, openAPIServer)
 		if err != nil {
-			return fmt.Errorf("get contract %s's eth source is err: %v", nt.ContractAddress, err)
+			logrus.Errorf("get contract %s's eth source is err: %v", nt.ContractAddress, err)
 		}
-		fund := ""
+
 		if scanTxResp.Address != "" {
 			label := scanTxResp.Label
 			if label == "" {
@@ -67,6 +70,7 @@ func (nt *NastiffTransaction) ComposeNastiffValues(isNastiff bool, openAPIServer
 				} else {
 					label = scanTxResp.Address
 				}
+
 			}
 			fund = fmt.Sprintf("%d-%s", len(scanTxResp.Nonce), label)
 		} else {
