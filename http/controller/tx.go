@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"net/http"
+	"strconv"
 	"strings"
 
 	"github.com/ethereum/go-ethereum/common"
@@ -40,6 +41,15 @@ func (tc *TXController) Reviewed(c *gin.Context) {
 		if txhash == "" {
 			c.JSON(http.StatusOK, model.Message{Code: http.StatusBadRequest, Msg: fmt.Sprintf("invalid txhash in url %s", scanURL)})
 			return
+		}
+	}
+	weightStrings := c.Query("weights")
+	var weights = make([]string, 6)
+	if weightStrings != "" {
+		weights = strings.Split(weightStrings, ",")
+	} else {
+		for i := range weights {
+			weights[i] = "1"
 		}
 	}
 
@@ -92,25 +102,31 @@ func (tc *TXController) Reviewed(c *gin.Context) {
 	}
 
 	policyResults := []string{}
+	score := 0
 	totalScore := 0
-	for _, p := range policies {
+	for index, p := range policies {
 		result := "1"
+		weight, err := strconv.Atoi(weights[index])
 		if p.ApplyFilter(&nt) {
 			result = "0"
 		} else {
-			totalScore += 1
+			if err != nil {
+				c.JSON(http.StatusOK, model.Message{Code: http.StatusInternalServerError, Msg: fmt.Sprintf("convert weight %s to int is err: %v", weights[index], err)})
+				return
+			}
+			score += weight
 		}
 		policyResults = append(policyResults, result)
+		totalScore += weight
 	}
 	nt.Policies = strings.Join(policyResults, ",")
-	nt.Score = totalScore
+	nt.Score = score * 100 / totalScore
 	if err = nt.ComposeNastiffValues(false, "http://localhost:8088"); err != nil {
 		c.JSON(http.StatusOK, model.Message{Code: http.StatusInternalServerError, Msg: fmt.Sprintf("get contract %s's nastiff values is err %v ", receipt.ContractAddress.String(), err)})
 		return
 	}
 
 	nt.NastiffValues["policies"] = nt.Policies
-
 	c.JSON(http.StatusOK, model.Message{
 		Code: http.StatusOK,
 		Msg:  "",
