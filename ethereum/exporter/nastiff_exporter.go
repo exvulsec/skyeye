@@ -83,9 +83,9 @@ func (nte *NastiffTransactionExporter) FilterContractByPolicies(tx *model.Nastif
 	score := 0
 	totalScore := 0
 	for _, p := range policies {
-		result := "1"
-		if p.ApplyFilter(tx) {
-			result = "0"
+		result := "0"
+		if !p.ApplyFilter(tx) {
+			result = "1"
 			score += 1
 		}
 		policyResults = append(policyResults, result)
