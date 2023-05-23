@@ -48,20 +48,42 @@ type ContractTypeFilter struct{}
 
 func (cf *ContractTypeFilter) ApplyFilter(tx *NastiffTransaction) bool {
 	opCodeArgs := GetPushTypeArgs(tx.ByteCode)
-	tx.OpCodeArgs = opCodeArgs
-	if utils.IsErc20Or721(utils.Erc20Signatures, opCodeArgs[utils.PUSH4], utils.Erc20SignatureThreshold) ||
-		utils.IsErc20Or721(utils.Erc721Signatures, opCodeArgs[utils.PUSH4], utils.Erc721SignatureThreshold) {
+	push4Codes := opCodeArgs[utils.PUSH4]
+	push20Codes := opCodeArgs[utils.PUSH20]
+	tx.Push4Args = GetPush4Args(push4Codes)
+	tx.Push20Args = GetPush20Args(tx.Chain, push20Codes)
+
+	if utils.IsErc20Or721(utils.Erc20Signatures, push4Codes, utils.Erc20SignatureThreshold) ||
+		utils.IsErc20Or721(utils.Erc721Signatures, push4Codes, utils.Erc721SignatureThreshold) {
 		return true
 	}
 	return false
 }
 
-type OpenSourceFilter struct{}
+type Push4ArgsFilter struct{}
+
+func (p4 *Push4ArgsFilter) ApplyFilter(tx *NastiffTransaction) bool {
+	return false
+}
+
+type Push20ArgsFilter struct{}
+
+func (p20 *Push20ArgsFilter) ApplyFilter(tx *NastiffTransaction) bool {
+	return len(tx.Push20Args) == 0
+}
+
+type OpenSourceFilter struct {
+	Interval int
+}
 
 func (of *OpenSourceFilter) ApplyFilter(tx *NastiffTransaction) bool {
 	if err := GetDeDaubMd5(tx.Chain, tx.ContractAddress, tx.ByteCode); err != nil {
 		logrus.Errorf("get dedaub md5 for %s on chain %s is err %v", tx.ContractAddress, tx.Chain, err)
 	}
+	if of.Interval != 0 {
+		time.Sleep(time.Duration(of.Interval) * time.Minute)
+	}
+
 	contract, err := GetContractCode(tx.Chain, tx.ContractAddress)
 	if err != nil {
 		logrus.Errorf("get contract %s code is err: %v", tx.ContractAddress, err)
