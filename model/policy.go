@@ -214,7 +214,9 @@ func GetPush20Args(chain string, args []string) []string {
 		}
 		labelMap := map[string]string{}
 		for _, label := range labels {
-			labelMap[label.Address] = label.Label
+			if label.Label != "" {
+				labelMap[label.Address] = label.Label
+			}
 		}
 		for _, addr := range addrs {
 			if v, ok := labelMap[addr]; ok {
