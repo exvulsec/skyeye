@@ -4,13 +4,13 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"net/http"
 	"sort"
 	"strings"
 	"sync"
 
 	"github.com/sirupsen/logrus"
 
+	"go-etl/client"
 	"go-etl/config"
 	"go-etl/datastore"
 	"go-etl/utils"
@@ -79,7 +79,7 @@ func GetSignatures(byteSigns []string) ([]string, error) {
 	or := OpenChainResponse{}
 	for {
 		url := fmt.Sprintf("https://api.openchain.xyz/signature-database/v1/lookup?function=%s&filter=true", signs)
-		resp, err := http.Get(url)
+		resp, err := client.HTTPClient().Get(url)
 		if err != nil {
 			return []string{}, fmt.Errorf("receive response from %s is err: %v", url, err)
 		}
