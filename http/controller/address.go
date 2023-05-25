@@ -27,6 +27,7 @@ type AddressController struct{}
 func (ac *AddressController) Routers(routers gin.IRouter) {
 	api := routers.Group("/address")
 	{
+		api.POST("/monitor", ac.MonitorAddress)
 		api.GET("/:address/labels", ac.GetAddressLabel)
 		api.GET("/:address/associated", ac.AssociatedByAddress)
 		api.GET("/:address/source_eth", ac.SourceETH)
@@ -54,6 +55,22 @@ func (ac *AddressController) GetAddressLabel(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, model.Message{Code: http.StatusOK, Data: label})
+}
+
+func (ac *AddressController) MonitorAddress(c *gin.Context) {
+	chain := utils.GetChainFromQuery(c.Query(utils.ChainKey))
+	address := strings.ToLower(c.Query("address"))
+	monitorAddr := model.MonitorAddr{
+		Chain:   chain,
+		Address: address,
+	}
+
+	if err := monitorAddr.Create(); err != nil {
+		c.JSON(http.StatusOK, model.Message{Code: http.StatusInternalServerError, Msg: err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, model.Message{Code: http.StatusOK, Data: monitorAddr})
 }
 
 func (ac *AddressController) AssociatedByAddress(c *gin.Context) {
@@ -87,6 +104,7 @@ func (ac *AddressController) SourceETH(c *gin.Context) {
 		scanInfo := config.Conf.ScanInfos[chain]
 		index := rand.Intn(len(scanInfo.APIKeys))
 		scanAPIKEY := scanInfo.APIKeys[index]
+		tornado := model.Tornado{}
 		apis := []string{
 			fmt.Sprintf(scanAPI, scanAPIKEY, address, utils.ScanTransactionAction),
 			fmt.Sprintf(scanAPI, scanAPIKEY, address, utils.ScanTraceAction),
@@ -156,8 +174,13 @@ func (ac *AddressController) SourceETH(c *gin.Context) {
 			}
 			txResp.Nonce = append(txResp.Nonce, nonce)
 		}
-		if address == utils.ScanGenesisAddress || address == "" ||
-			nonce >= scanInfo.AddressNonceThreshold || len(txResp.Nonce) == 5 {
+
+		if tornado.Exist(chain, address) ||
+			address == "" ||
+			address == utils.ScanGenesisAddress ||
+			nonce >= scanInfo.AddressNonceThreshold ||
+			len(txResp.Nonce) == 5 {
+
 			txResp.Address = address
 			label := utils.ScanGenesisAddress
 			if address != utils.ScanGenesisAddress && address != "" {
