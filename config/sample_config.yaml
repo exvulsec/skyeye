@@ -25,6 +25,7 @@ etl:
   worker: 10
   previous_file: ./config/.previous
   provider_url:
+  scan_interval: 0
 
 postgresql:
   host: localhost

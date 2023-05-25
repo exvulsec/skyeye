@@ -10,6 +10,7 @@ import (
 	"github.com/sirupsen/logrus"
 
 	"go-etl/client"
+	"go-etl/config"
 	"go-etl/datastore"
 	"go-etl/model"
 )
@@ -75,7 +76,7 @@ func (nte *NastiffTransactionExporter) FilterContractByPolicies(tx *model.Nastif
 		&model.NonceFilter{ThresholdNonce: nte.Nonce},
 		&model.ByteCodeFilter{},
 		&model.ContractTypeFilter{},
-		&model.OpenSourceFilter{Interval: 0},
+		&model.OpenSourceFilter{Interval: config.Conf.ETL.ScanInterval},
 		&model.Push4ArgsFilter{},
 		&model.Push20ArgsFilter{},
 	}

@@ -8,6 +8,8 @@ import (
 	"io"
 	"net/http"
 
+	"github.com/sirupsen/logrus"
+
 	"go-etl/client"
 	"go-etl/utils"
 )
@@ -80,4 +82,16 @@ func (labels *MetaDockLabelsResponse) GetLabels(chain string, addrs []string) er
 		return fmt.Errorf("unmarhsall data from resp.Body %s, request is %s is err: %v", data, body, err)
 	}
 	return nil
+}
+
+func GetMetaDockLabel(chain, address string) string {
+	labels := MetaDockLabelsResponse{}
+	if err := labels.GetLabels(chain, []string{address}); err != nil {
+		logrus.Error(err)
+		return ""
+	}
+	if len(labels) > 0 {
+		return labels[0].Label
+	}
+	return ""
 }
