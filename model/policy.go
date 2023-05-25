@@ -207,22 +207,22 @@ func GetPush20Args(chain string, args []string) []string {
 	noneLabelAddrs := []string{}
 	addrs := mapset.NewSet[string](args...).ToSlice()
 	if len(addrs) > 0 {
-		labels := MetaDockLabelsResponse{}
-		if err := labels.GetLabels(chain, addrs); err != nil {
-			logrus.Errorf("get labels from metadocks in get opcode is err: %+v", err)
-			return labelAddrs
-		}
-		labelMap := map[string]string{}
-		for _, label := range labels {
-			if label.Label != "" {
-				labelMap[label.Address] = label.Label
-			}
-		}
+		addrLabels := []AddressLabel{}
 		for _, addr := range addrs {
-			if v, ok := labelMap[addr]; ok {
-				labelAddrs = append(labelAddrs, v)
+			label := AddressLabel{
+				Chain:   chain,
+				Address: addr,
+			}
+			if err := label.GetLabel(chain, addr); err != nil {
+				logrus.Errorf("get address %s label is err %v", addr, err)
+			}
+			addrLabels = append(addrLabels, label)
+		}
+		for _, label := range addrLabels {
+			if label.Label != "" {
+				labelAddrs = append(labelAddrs, label.Label)
 			} else {
-				noneLabelAddrs = append(noneLabelAddrs, addr)
+				noneLabelAddrs = append(noneLabelAddrs, label.Address)
 			}
 		}
 	}

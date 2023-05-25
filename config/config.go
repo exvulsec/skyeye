@@ -68,6 +68,7 @@ type ETLConfig struct {
 	Chain        string `mapstructure:"chain" yaml:"chain"`
 	Worker       int64  `mapstructure:"worker" yaml:"worker"`
 	PreviousFile string `mapstructure:"previous_file" yaml:"previous_file"`
+	ScanInterval int    `mapstructure:"scan_interval" yaml:"scan_interval"`
 }
 
 func SetupConfig(configPath string) {
@@ -98,7 +99,6 @@ func SetupConfig(configPath string) {
 			value.APIKeys = strings.Split(value.APIKeyString, ",")
 			Conf.ScanInfos[chain] = value
 		}
-
 	}
 
 	logrus.Infof("read configuration file successfully")

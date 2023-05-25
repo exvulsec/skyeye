@@ -61,7 +61,6 @@ func (nt *NastiffTransaction) ComposeNastiffValues(isNastiff bool, openAPIServer
 		if err != nil {
 			logrus.Errorf("get contract %s's eth source is err: %v", nt.ContractAddress, err)
 		}
-
 		if scanTxResp.Address != "" {
 			label := scanTxResp.Label
 			if label == "" {
@@ -70,7 +69,6 @@ func (nt *NastiffTransaction) ComposeNastiffValues(isNastiff bool, openAPIServer
 				} else {
 					label = scanTxResp.Address
 				}
-
 			}
 			fund = fmt.Sprintf("%d-%s", len(scanTxResp.Nonce), label)
 		} else {

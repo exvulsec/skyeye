@@ -10,6 +10,7 @@ const (
 	TableDeDaub             = "dedaub"
 	TableSignatures         = "signatures"
 	TableNastiffTransaction = "nastiff_txs"
+	TableTornadoLogs        = "tornado_logs"
 )
 
 const (

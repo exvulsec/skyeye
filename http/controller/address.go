@@ -27,7 +27,7 @@ type AddressController struct{}
 func (ac *AddressController) Routers(routers gin.IRouter) {
 	api := routers.Group("/address")
 	{
-		api.GET("/:address/labels", ac.FindLabelByAddress)
+		api.GET("/:address/labels", ac.GetAddressLabel)
 		api.GET("/:address/associated", ac.AssociatedByAddress)
 		api.GET("/:address/source_eth", ac.SourceETH)
 		api.GET("/:address/dedaub", ac.GetDeDaub)
@@ -44,20 +44,16 @@ func (ac *AddressController) Routers(routers gin.IRouter) {
 	}
 }
 
-func (ac *AddressController) FindLabelByAddress(c *gin.Context) {
-	addrLabel := model.AddressLabel{}
+func (ac *AddressController) GetAddressLabel(c *gin.Context) {
 	chain := utils.GetChainFromQuery(c.Query(utils.ChainKey))
 	address := strings.ToLower(c.Param("address"))
-	if err := addrLabel.GetLabels(chain, address); err != nil {
-		c.JSON(
-			http.StatusOK,
-			model.Message{
-				Code: http.StatusInternalServerError,
-				Msg:  fmt.Sprintf("get address %s is err: %v", address, err),
-			})
+	label := model.AddressLabel{}
+	if err := label.GetLabel(chain, address); err != nil {
+		c.JSON(http.StatusOK, model.Message{Code: http.StatusInternalServerError, Msg: err.Error()})
 		return
 	}
-	c.JSON(http.StatusOK, model.Message{Code: http.StatusOK, Data: addrLabel})
+
+	c.JSON(http.StatusOK, model.Message{Code: http.StatusOK, Data: label})
 }
 
 func (ac *AddressController) AssociatedByAddress(c *gin.Context) {
@@ -165,7 +161,12 @@ func (ac *AddressController) SourceETH(c *gin.Context) {
 			txResp.Address = address
 			label := utils.ScanGenesisAddress
 			if address != utils.ScanGenesisAddress && address != "" {
-				label = ac.getLabelFromMetaDock(chain, address)
+				addrLabel := model.AddressLabel{}
+				if err = addrLabel.GetLabel(chain, address); err != nil {
+					c.JSON(http.StatusOK, model.Message{Code: http.StatusInternalServerError, Msg: fmt.Sprintf("get address %s label is err: %v", address, err)})
+					return
+				}
+				label = addrLabel.Label
 			}
 			txResp.Label = label
 			break
@@ -197,18 +198,6 @@ func (ac *AddressController) ReadSolidityCode(c *gin.Context) {
 		return
 	}
 	c.Data(http.StatusOK, "text/plain", content)
-}
-
-func (ac *AddressController) getLabelFromMetaDock(chain string, address string) string {
-	labels := model.MetaDockLabelsResponse{}
-	if err := labels.GetLabels(chain, []string{address}); err != nil {
-		logrus.Error(err)
-		return ""
-	}
-	if len(labels) > 0 {
-		return labels[0].Label
-	}
-	return ""
 }
 
 func (ac *AddressController) GetDeDaub(c *gin.Context) {
