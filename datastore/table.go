@@ -11,6 +11,8 @@ const (
 	TableSignatures         = "signatures"
 	TableNastiffTransaction = "nastiff_txs"
 	TableTornadoLogs        = "tornado_logs"
+	TableMonitorAddrs       = "monitor_addrs"
+	TableBlockAddrs         = "block_addrs"
 )
 
 const (

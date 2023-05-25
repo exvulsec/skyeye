@@ -17,7 +17,7 @@ func (t *Tornado) GetTornadoAddress(chain, address string) error {
 	tableName := utils.ComposeTableName(datastore.SchemaPublic, datastore.TableTornadoLogs)
 	return datastore.DB().Table(tableName).
 		Where("chain = ?", chain).
-		Where("address = ?", address).
+		Where("receipt = ?", address).
 		Find(t).Error
 }
 
