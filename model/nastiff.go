@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"strings"
+	"time"
 
 	"github.com/sirupsen/logrus"
 
@@ -47,13 +48,14 @@ func (nt *NastiffTransaction) ComposeNastiffValues(isNastiff bool, openAPIServer
 	}
 
 	values := map[string]any{
-		"chain":    utils.ConvertChainToDeFiHackLabChain(nt.Chain),
-		"txhash":   nt.TxHash,
-		"contract": nt.ContractAddress,
-		"func":     strings.Join(nt.Push4Args, ","),
-		"push20":   strings.Join(nt.Push20Args, ","),
-		"score":    nt.Score,
-		"codeSize": codeSize,
+		"chain":      utils.ConvertChainToDeFiHackLabChain(nt.Chain),
+		"txhash":     nt.TxHash,
+		"createTime": time.Unix(nt.BlockTimestamp, 0).Format("2006-01-02 15:04:05"),
+		"contract":   nt.ContractAddress,
+		"func":       strings.Join(nt.Push4Args, ","),
+		"push20":     strings.Join(nt.Push20Args, ","),
+		"score":      nt.Score,
+		"codeSize":   codeSize,
 	}
 	if isNastiff {
 		var fund string

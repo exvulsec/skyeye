@@ -83,9 +83,16 @@ func (tc *TXController) Reviewed(c *gin.Context) {
 		c.JSON(http.StatusOK, model.Message{Code: http.StatusInternalServerError, Msg: fmt.Sprintf("get contract %s's bytecode is err %v ", receipt.ContractAddress.String(), err)})
 		return
 	}
+	block, err := ethClient.BlockByHash(c, receipt.BlockHash)
+	if err != nil {
+		c.JSON(http.StatusOK, model.Message{Code: http.StatusInternalServerError, Msg: fmt.Sprintf("get contract %s's block number is err %v ", receipt.ContractAddress.String(), err)})
+		return
+	}
+
 	nt := model.NastiffTransaction{
 		Chain:           chain,
-		BlockNumber:     receipt.BlockNumber.Int64(),
+		BlockNumber:     block.Number().Int64(),
+		BlockTimestamp:  int64(block.Time()),
 		TxHash:          tx.Hash().String(),
 		TxPos:           int64(receipt.TransactionIndex),
 		ContractAddress: receipt.ContractAddress.String(),
