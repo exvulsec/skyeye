@@ -6,8 +6,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/sirupsen/logrus"
-
 	"go-etl/datastore"
 	"go-etl/utils"
 )
@@ -21,13 +19,14 @@ type NastiffTransaction struct {
 	FromAddress        string         `json:"from_address" gorm:"column:from_address"`
 	ContractAddress    string         `json:"contract_address" gorm:"column:contract_address"`
 	Nonce              uint64         `json:"nonce" gorm:"column:nonce"`
-	Policies           string         `json:"policies" gorm:"column:policies"`
 	Score              int            `json:"score" gorm:"column:score"`
+	SplitScores        []string       `json:"split_scores" gorm:"split_scores"`
 	NastiffValues      map[string]any `json:"nastiff_values" gorm:"-"`
 	NastiffValuesBytes []byte         `json:"-" gorm:"column:nastiff_values"`
 	ByteCode           []byte         `json:"-" gorm:"-"`
 	Push4Args          []string       `json:"-" gorm:"-"`
 	Push20Args         []string       `json:"-" gorm:"-"`
+	Fund               string         `json:"-" gorm:"-"`
 }
 
 func (nt *NastiffTransaction) ConvertFromTransaction(tx Transaction) {
@@ -40,7 +39,18 @@ func (nt *NastiffTransaction) ConvertFromTransaction(tx Transaction) {
 	nt.Nonce = tx.Nonce
 }
 
-func (nt *NastiffTransaction) ComposeNastiffValues(isNastiff bool, openAPIServer string) error {
+func (nt *NastiffTransaction) hasFlashLoan(flashLoanFuncNames []string) bool {
+	for _, push4 := range nt.Push4Args {
+		for _, funcName := range flashLoanFuncNames {
+			if push4 == funcName {
+				return true
+			}
+		}
+	}
+	return false
+}
+
+func (nt *NastiffTransaction) ComposeNastiffValues() error {
 	var err error
 	codeSize := 0
 	if len(nt.ByteCode) != 0 {
@@ -48,35 +58,16 @@ func (nt *NastiffTransaction) ComposeNastiffValues(isNastiff bool, openAPIServer
 	}
 
 	values := map[string]any{
-		"chain":      utils.ConvertChainToDeFiHackLabChain(nt.Chain),
-		"txhash":     nt.TxHash,
-		"createTime": time.Unix(nt.BlockTimestamp, 0).Format("2006-01-02 15:04:05"),
-		"contract":   nt.ContractAddress,
-		"func":       strings.Join(nt.Push4Args, ","),
-		"push20":     strings.Join(nt.Push20Args, ","),
-		"score":      nt.Score,
-		"codeSize":   codeSize,
-	}
-	if isNastiff {
-		var fund string
-		scanTxResp, err := GetSourceEthAddress(nt.Chain, nt.ContractAddress, openAPIServer)
-		if err != nil {
-			logrus.Errorf("get contract %s's eth source is err: %v", nt.ContractAddress, err)
-		}
-		if scanTxResp.Address != "" {
-			label := scanTxResp.Label
-			if label == "" {
-				if len(scanTxResp.Nonce) == 5 {
-					label = "UnKnown"
-				} else {
-					label = scanTxResp.Address
-				}
-			}
-			fund = fmt.Sprintf("%d-%s", len(scanTxResp.Nonce), label)
-		} else {
-			fund = "0-scanError"
-		}
-		values["fund"] = fund
+		"chain":        utils.ConvertChainToDeFiHackLabChain(nt.Chain),
+		"txhash":       nt.TxHash,
+		"createTime":   time.Unix(nt.BlockTimestamp, 0).Format("2006-01-02 15:04:05"),
+		"contract":     nt.ContractAddress,
+		"func":         strings.Join(nt.Push4Args, ","),
+		"push20":       strings.Join(nt.Push20Args, ","),
+		"codeSize":     codeSize,
+		"fund":         nt.Fund,
+		"score":        nt.Score,
+		"split_scores": strings.Join(nt.SplitScores, ","),
 	}
 
 	nt.NastiffValuesBytes, err = json.Marshal(values)
@@ -87,9 +78,9 @@ func (nt *NastiffTransaction) ComposeNastiffValues(isNastiff bool, openAPIServer
 	return nil
 }
 
-func (nt *NastiffTransaction) Insert(isNastiff bool, openAPIServer string) error {
+func (nt *NastiffTransaction) Insert() error {
 	if len(nt.NastiffValues) == 0 {
-		if err := nt.ComposeNastiffValues(isNastiff, openAPIServer); err != nil {
+		if err := nt.ComposeNastiffValues(); err != nil {
 			return err
 		}
 	}

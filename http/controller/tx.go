@@ -44,7 +44,7 @@ func (tc *TXController) Reviewed(c *gin.Context) {
 		}
 	}
 	weightStrings := c.Query("weights")
-	var weights = make([]string, 6)
+	var weights = make([]string, 7)
 	if weightStrings != "" {
 		weights = strings.Split(weightStrings, ",")
 	} else {
@@ -99,41 +99,32 @@ func (tc *TXController) Reviewed(c *gin.Context) {
 		Nonce:           tx.Nonce(),
 		ByteCode:        code,
 	}
-	policies := []model.FilterPolicy{
-		&model.NonceFilter{ThresholdNonce: config.Conf.HTTPServer.NonceThreshold},
-		&model.ByteCodeFilter{},
-		&model.ContractTypeFilter{},
-		&model.OpenSourceFilter{},
-		&model.Push4ArgsFilter{},
-		&model.Push20ArgsFilter{},
+	policies := []model.PolicyCalc{
+		&model.NoncePolicyCalc{ThresholdNonce: config.Conf.HTTPServer.NonceThreshold},
+		&model.ByteCodePolicyCalc{},
+		&model.ContractTypePolicyCalc{},
+		&model.OpenSourcePolicyCalc{Interval: config.Conf.ETL.ScanInterval},
+		&model.Push4PolicyCalc{FlashLoanFuncNames: model.LoadFlashLoanFuncNames()},
+		&model.Push20PolicyCalc{},
+		&model.FundPolicyCalc{IsNastiff: false, OpenAPIServer: "http://localhost:8088"},
 	}
-
-	policyResults := []string{}
-	score := 0
+	splitScores := []string{}
 	totalScore := 0
 	for index, p := range policies {
-		result := "1"
 		weight, err := strconv.Atoi(weights[index])
-		if p.ApplyFilter(&nt) {
-			result = "0"
-		} else {
-			if err != nil {
-				c.JSON(http.StatusOK, model.Message{Code: http.StatusInternalServerError, Msg: fmt.Sprintf("convert weight %s to int is err: %v", weights[index], err)})
-				return
-			}
-			score += weight
+		if err != nil {
+			c.JSON(http.StatusOK, model.Message{Code: http.StatusInternalServerError, Msg: fmt.Sprintf("convert weight %s to int is err: %v", weights[index], err)})
 		}
-		policyResults = append(policyResults, result)
-		totalScore += weight
+		score := p.Calc(&nt)
+		splitScores = append(splitScores, fmt.Sprintf("%d", score))
+		totalScore += score * weight
 	}
-	nt.Policies = strings.Join(policyResults, ",")
-	nt.Score = score * 100 / totalScore
-	if err = nt.ComposeNastiffValues(false, "http://localhost:8088"); err != nil {
+	nt.Score = totalScore
+	nt.SplitScores = splitScores
+	if err = nt.ComposeNastiffValues(); err != nil {
 		c.JSON(http.StatusOK, model.Message{Code: http.StatusInternalServerError, Msg: fmt.Sprintf("get contract %s's nastiff values is err %v ", receipt.ContractAddress.String(), err)})
 		return
 	}
-
-	nt.NastiffValues["policies"] = nt.Policies
 	c.JSON(http.StatusOK, model.Message{
 		Code: http.StatusOK,
 		Msg:  "",

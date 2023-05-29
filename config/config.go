@@ -64,11 +64,13 @@ type RedisConfig struct {
 }
 
 type ETLConfig struct {
-	ProviderURL  string `mapstructure:"provider_url" yaml:"provider_url"`
-	Chain        string `mapstructure:"chain" yaml:"chain"`
-	Worker       int64  `mapstructure:"worker" yaml:"worker"`
-	PreviousFile string `mapstructure:"previous_file" yaml:"previous_file"`
-	ScanInterval int    `mapstructure:"scan_interval" yaml:"scan_interval"`
+	ProviderURL         string `mapstructure:"provider_url" yaml:"provider_url"`
+	Chain               string `mapstructure:"chain" yaml:"chain"`
+	Worker              int64  `mapstructure:"worker" yaml:"worker"`
+	PreviousFile        string `mapstructure:"previous_file" yaml:"previous_file"`
+	ScanInterval        int    `mapstructure:"scan_interval" yaml:"scan_interval"`
+	FlashLoanFile       string `mapstructure:"flash_loan_file" yaml:"flash_loan_file"`
+	ScoreAlertThreshold int    `mapstructure:"score_alert_threshold" yaml:"score_alert_threshold"`
 }
 
 func SetupConfig(configPath string) {
