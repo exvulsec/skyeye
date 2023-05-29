@@ -91,7 +91,7 @@ func (nte *NastiffTransactionExporter) CalcContractByPolicies(tx *model.NastiffT
 	}
 	tx.SplitScores = splitScores
 	tx.Score = totalScore
-	return tx.Score >= config.Conf.ETL.ScoreAlertThreshold
+	return tx.Score < config.Conf.ETL.ScoreAlertThreshold
 }
 
 func (nte *NastiffTransactionExporter) exportToRedis(tx model.NastiffTransaction) error {
