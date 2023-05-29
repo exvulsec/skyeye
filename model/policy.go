@@ -1,11 +1,13 @@
 package model
 
 import (
+	"bufio"
 	"encoding/json"
 	"fmt"
 	"io"
 	"math/rand"
 	"net/http"
+	"os"
 	"sort"
 	"strings"
 	"time"
@@ -20,33 +22,36 @@ import (
 	"go-etl/utils"
 )
 
-type FilterPolicy interface {
-	ApplyFilter(transaction *NastiffTransaction) bool
+type PolicyCalc interface {
+	Calc(transaction *NastiffTransaction) int
 }
 
-type NonceFilter struct {
+type NoncePolicyCalc struct {
 	ThresholdNonce uint64
 }
 
-func (nf *NonceFilter) ApplyFilter(tx *NastiffTransaction) bool {
-	if nf.ThresholdNonce > 0 && tx.Nonce > nf.ThresholdNonce {
-		return true
+func (npc *NoncePolicyCalc) Calc(tx *NastiffTransaction) int {
+	if npc.ThresholdNonce > 0 && tx.Nonce > npc.ThresholdNonce {
+		return 0
 	}
-	return false
+	if npc.ThresholdNonce == 0 {
+		return 0
+	}
+	return int(npc.ThresholdNonce - tx.Nonce)
 }
 
-type ByteCodeFilter struct{}
+type ByteCodePolicyCalc struct{}
 
-func (bf *ByteCodeFilter) ApplyFilter(tx *NastiffTransaction) bool {
+func (bpc *ByteCodePolicyCalc) Calc(tx *NastiffTransaction) int {
 	if len(tx.ByteCode) == 0 || len(tx.ByteCode[2:]) < 500 {
-		return true
+		return 0
 	}
-	return false
+	return 12
 }
 
-type ContractTypeFilter struct{}
+type ContractTypePolicyCalc struct{}
 
-func (cf *ContractTypeFilter) ApplyFilter(tx *NastiffTransaction) bool {
+func (cpc *ContractTypePolicyCalc) Calc(tx *NastiffTransaction) int {
 	opCodeArgs := GetPushTypeArgs(tx.ByteCode)
 	push4Codes := opCodeArgs[utils.PUSH4]
 	push20Codes := opCodeArgs[utils.PUSH20]
@@ -55,44 +60,90 @@ func (cf *ContractTypeFilter) ApplyFilter(tx *NastiffTransaction) bool {
 
 	if utils.IsErc20Or721(utils.Erc20Signatures, push4Codes, utils.Erc20SignatureThreshold) ||
 		utils.IsErc20Or721(utils.Erc721Signatures, push4Codes, utils.Erc721SignatureThreshold) {
-		return true
+		return 0
 	}
-	return false
+	return 13
 }
 
-type Push4ArgsFilter struct{}
-
-func (p4 *Push4ArgsFilter) ApplyFilter(tx *NastiffTransaction) bool {
-	return false
+type Push4PolicyCalc struct {
+	FlashLoanFuncNames []string
 }
 
-type Push20ArgsFilter struct{}
-
-func (p20 *Push20ArgsFilter) ApplyFilter(tx *NastiffTransaction) bool {
-	return len(tx.Push20Args) == 0
+func (p4pc *Push4PolicyCalc) Calc(tx *NastiffTransaction) int {
+	if tx.hasFlashLoan(p4pc.FlashLoanFuncNames) {
+		return 50
+	}
+	return 0
 }
 
-type OpenSourceFilter struct {
+type Push20PolicyCalc struct{}
+
+func (p20pc *Push20PolicyCalc) Calc(tx *NastiffTransaction) int {
+	if len(tx.Push20Args) == 0 {
+		return 0
+	}
+	return 2
+}
+
+type OpenSourcePolicyCalc struct {
 	Interval int
 }
 
-func (of *OpenSourceFilter) ApplyFilter(tx *NastiffTransaction) bool {
+func (opc *OpenSourcePolicyCalc) Calc(tx *NastiffTransaction) int {
 	if err := GetDeDaubMd5(tx.Chain, tx.ContractAddress, tx.ByteCode); err != nil {
 		logrus.Errorf("get dedaub md5 for %s on chain %s is err %v", tx.ContractAddress, tx.Chain, err)
 	}
-	if of.Interval != 0 {
-		time.Sleep(time.Duration(of.Interval) * time.Minute)
+	if opc.Interval != 0 {
+		time.Sleep(time.Duration(opc.Interval) * time.Minute)
 	}
 
 	contract, err := GetContractCode(tx.Chain, tx.ContractAddress)
 	if err != nil {
 		logrus.Errorf("get contract %s code is err: %v", tx.ContractAddress, err)
-		return true
+		return 0
 	}
 	if contract.Result[0].SourceCode != "" {
-		return true
+		return 0
 	}
-	return false
+	return 25
+}
+
+type FundPolicyCalc struct {
+	IsNastiff     bool
+	OpenAPIServer string
+}
+
+func (fpc *FundPolicyCalc) Calc(tx *NastiffTransaction) int {
+	if fpc.IsNastiff {
+		var fund string
+		scanTxResp, err := GetSourceEthAddress(tx.Chain, tx.ContractAddress, fpc.OpenAPIServer)
+		if err != nil {
+			logrus.Errorf("get contract %s's eth source is err: %v", tx.ContractAddress, err)
+		}
+		if scanTxResp.Address != "" {
+			label := scanTxResp.Label
+			if label == "" {
+				if len(scanTxResp.Nonce) == 5 {
+					label = "UnKnown"
+				} else {
+					label = scanTxResp.Address
+				}
+			}
+			fund = fmt.Sprintf("%d-%s", len(scanTxResp.Nonce), label)
+		} else {
+			fund = "0-scanError"
+		}
+		tx.Fund = fund
+
+	}
+	switch {
+	case strings.Contains(tx.Fund, TornadoCash):
+		return 40
+	case strings.Contains(tx.Fund, ChangeNow):
+		return 13
+	default:
+		return 0
+	}
 }
 
 func GetSourceEthAddress(chain, contractAddress, openApiServer string) (ScanTXResponse, error) {
@@ -258,4 +309,28 @@ func GetDeDaubMd5(chain, address string, byteCode []byte) error {
 	}
 	return nil
 
+}
+
+func LoadFlashLoanFuncNames() []string {
+	funcNameList := []string{}
+	f, err := os.Open(config.Conf.ETL.FlashLoanFile)
+	if err != nil {
+		logrus.Fatalf("read flash loan config file %s is err %v", config.Conf.ETL.FlashLoanFile, err)
+	}
+	defer f.Close()
+	scanner := bufio.NewScanner(f)
+	for scanner.Scan() {
+		if scanner.Text() != "" {
+			funcNames := strings.Split(scanner.Text(), "(")
+			if len(funcNames) > 0 {
+				funcNameList = append(funcNameList, funcNames[0])
+			}
+		}
+	}
+
+	if err := scanner.Err(); err != nil {
+		logrus.Fatalf("read flash loan function names is err %v", err)
+	}
+
+	return mapset.NewSet[string](funcNameList...).ToSlice()
 }

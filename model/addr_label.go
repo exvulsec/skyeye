@@ -7,6 +7,11 @@ import (
 	"go-etl/utils"
 )
 
+const (
+	TornadoCash = "Tornado.Cash"
+	ChangeNow   = "ChangeNow"
+)
+
 type AddressLabel struct {
 	Chain   string `json:"chain" gorm:"column:chain"`
 	Address string `json:"address" gorm:"column:address"`
@@ -18,7 +23,7 @@ func (al *AddressLabel) GetLabel(chain, address string) error {
 	if tornado.Exist(chain, address) {
 		al.Chain = chain
 		al.Address = address
-		al.Label = "Tornado.Cash"
+		al.Label = TornadoCash
 		return nil
 	}
 	tableName := utils.ComposeTableName(datastore.SchemaPublic, datastore.TableLabels)

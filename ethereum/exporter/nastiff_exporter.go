@@ -3,7 +3,6 @@ package exporter
 import (
 	"context"
 	"fmt"
-	"strings"
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/redis/go-redis/v9"
@@ -55,7 +54,7 @@ func (nte *NastiffTransactionExporter) ExportItems(items any) {
 }
 
 func (nte *NastiffTransactionExporter) exportItem(tx model.NastiffTransaction) {
-	isFilter := nte.FilterContractByPolicies(&tx)
+	isFilter := nte.CalcContractByPolicies(&tx)
 	if !isFilter {
 		logrus.Infof("start to insert tx %s's contract %s to redis stream", tx.TxHash, tx.ContractAddress)
 		if err := nte.exportToRedis(tx); err != nil {
@@ -64,41 +63,39 @@ func (nte *NastiffTransactionExporter) exportItem(tx model.NastiffTransaction) {
 		}
 	}
 	logrus.Infof("start to insert tx %s's contract %s to db", tx.TxHash, tx.ContractAddress)
-	if err := tx.Insert(true, nte.OpenAPIServer); err != nil {
+	if err := tx.Insert(); err != nil {
 		logrus.Errorf("insert txhash %s's contract %s to db is err %v", tx.TxHash, tx.ContractAddress, err)
 		return
 	}
 
 }
 
-func (nte *NastiffTransactionExporter) FilterContractByPolicies(tx *model.NastiffTransaction) bool {
-	policies := []model.FilterPolicy{
-		&model.NonceFilter{ThresholdNonce: nte.Nonce},
-		&model.ByteCodeFilter{},
-		&model.ContractTypeFilter{},
-		&model.OpenSourceFilter{Interval: config.Conf.ETL.ScanInterval},
-		&model.Push4ArgsFilter{},
-		&model.Push20ArgsFilter{},
+func (nte *NastiffTransactionExporter) CalcContractByPolicies(tx *model.NastiffTransaction) bool {
+	policies := []model.PolicyCalc{
+		&model.NoncePolicyCalc{ThresholdNonce: nte.Nonce},
+		&model.ByteCodePolicyCalc{},
+		&model.ContractTypePolicyCalc{},
+		&model.OpenSourcePolicyCalc{Interval: config.Conf.ETL.ScanInterval},
+		&model.Push4PolicyCalc{
+			FlashLoanFuncNames: model.LoadFlashLoanFuncNames(),
+		},
+		&model.Push20PolicyCalc{},
+		&model.FundPolicyCalc{IsNastiff: true, OpenAPIServer: nte.OpenAPIServer},
 	}
-	policyResults := []string{}
-	score := 0
+	splitScores := []string{}
 	totalScore := 0
 	for _, p := range policies {
-		result := "0"
-		if !p.ApplyFilter(tx) {
-			result = "1"
-			score += 1
-		}
-		policyResults = append(policyResults, result)
-		totalScore += 1
+		score := p.Calc(tx)
+		splitScores = append(splitScores, fmt.Sprintf("%d", score))
+		totalScore += score
 	}
-	tx.Policies = strings.Join(policyResults, ",")
-	tx.Score = score * 100 / totalScore
-	return tx.Score != 100
+	tx.SplitScores = splitScores
+	tx.Score = totalScore
+	return tx.Score >= config.Conf.ETL.ScoreAlertThreshold
 }
 
 func (nte *NastiffTransactionExporter) exportToRedis(tx model.NastiffTransaction) error {
-	if err := tx.ComposeNastiffValues(true, nte.OpenAPIServer); err != nil {
+	if err := tx.ComposeNastiffValues(); err != nil {
 		return err
 	}
 	_, err := datastore.Redis().XAdd(context.Background(), &redis.XAddArgs{
