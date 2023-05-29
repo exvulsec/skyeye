@@ -7,4 +7,5 @@ services:
     volumes:
       - ./config/config.dev.yaml:/app/config.dev.yaml
       - ./config/flashloan.txt:/app/flashloan.txt
+      - /mnt/dedaub:/app/dedaub
     command: /app/etl http -c /app
