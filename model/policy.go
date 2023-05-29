@@ -37,7 +37,7 @@ func (npc *NoncePolicyCalc) Calc(tx *NastiffTransaction) int {
 	if npc.ThresholdNonce == 0 {
 		return 0
 	}
-	return int(npc.ThresholdNonce - tx.Nonce)
+	return int(npc.ThresholdNonce + 1 - tx.Nonce)
 }
 
 type ByteCodePolicyCalc struct{}
