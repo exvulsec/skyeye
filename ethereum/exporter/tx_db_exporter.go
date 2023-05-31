@@ -16,12 +16,12 @@ type TransactionPostgresqlExporter struct {
 	Nonce uint64
 }
 
-func NewTransactionExporters(chain, openAPIServer string, nonce uint64, isNastiff bool) []Exporter {
+func NewTransactionExporters(chain, openAPIServer, alterWebHook string, nonce uint64, isNastiff bool) []Exporter {
 	exporters := []Exporter{}
 	if !isNastiff {
 		exporters = append(exporters, NewTransactionPostgresqlExporter(chain, nonce))
 	} else {
-		exporters = append(exporters, NewNastiffTransferExporter(chain, openAPIServer, nonce, 10))
+		exporters = append(exporters, NewNastiffTransferExporter(chain, openAPIServer, alterWebHook, nonce, 10))
 	}
 	return exporters
 }

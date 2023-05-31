@@ -3,7 +3,10 @@ package exporter
 import (
 	"context"
 	"fmt"
+	"strings"
 
+	goteamsnotify "github.com/atc0005/go-teams-notify/v2"
+	"github.com/atc0005/go-teams-notify/v2/messagecard"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/redis/go-redis/v9"
 	"github.com/sirupsen/logrus"
@@ -12,10 +15,11 @@ import (
 	"go-etl/config"
 	"go-etl/datastore"
 	"go-etl/model"
+	"go-etl/utils"
 )
 
 const (
-	TransactionContractAddressStream = "%s:contract_address:stream"
+	TransactionContractAddressStream = "evm:contract_address:stream"
 )
 
 type NastiffTransactionExporter struct {
@@ -23,14 +27,25 @@ type NastiffTransactionExporter struct {
 	Nonce         uint64
 	OpenAPIServer string
 	Interval      int64
+	TeamsClient   *goteamsnotify.TeamsClient
+	AlterWebHook  string
+	LinkURLs      map[string]string
 }
 
-func NewNastiffTransferExporter(chain, openserver string, nonce uint64, interval int64) Exporter {
+func NewNastiffTransferExporter(chain, openserver, alterWebHook string, nonce uint64, interval int64) Exporter {
 	return &NastiffTransactionExporter{
 		Chain:         chain,
 		Nonce:         nonce,
 		OpenAPIServer: openserver,
 		Interval:      interval,
+		LinkURLs: map[string]string{
+			"ScanAddress": fmt.Sprintf("%s/address/%%s", utils.GetScanURL(chain)),
+			"ScanTX":      fmt.Sprintf("%s/tx/%%s", utils.GetScanURL(chain)),
+			"Dedaub":      fmt.Sprintf("%s/api/v1/address/%%s/dedaub?apikey=%s&chain=%s", openserver, config.Conf.HTTPServer.APIKey, chain),
+			"MCL":         fmt.Sprintf("%s/api/v1/address/%%s/solidity?apikey=%s&chain=%s", openserver, config.Conf.HTTPServer.APIKey, chain),
+		},
+		TeamsClient:  goteamsnotify.NewTeamsClient(),
+		AlterWebHook: alterWebHook,
 	}
 }
 
@@ -57,8 +72,16 @@ func (nte *NastiffTransactionExporter) exportItem(tx model.NastiffTransaction) {
 	isFilter := nte.CalcContractByPolicies(&tx)
 	if !isFilter {
 		logrus.Infof("start to insert tx %s's contract %s to redis stream", tx.TxHash, tx.ContractAddress)
+		if err := tx.ComposeNastiffValues(); err != nil {
+			logrus.Errorf("compose nastiff value by txhash %s's contract %s is err %v", tx.TxHash, tx.ContractAddress, err)
+			return
+		}
 		if err := nte.exportToRedis(tx); err != nil {
 			logrus.Errorf("append txhash %s's contract %s to redis message queue is err %v", tx.TxHash, tx.ContractAddress, err)
+			return
+		}
+		if err := nte.Alert(tx); err != nil {
+			logrus.Errorf("alert txhash %s's contract %s to channel is err %v", tx.TxHash, tx.ContractAddress, err)
 			return
 		}
 	}
@@ -95,16 +118,71 @@ func (nte *NastiffTransactionExporter) CalcContractByPolicies(tx *model.NastiffT
 }
 
 func (nte *NastiffTransactionExporter) exportToRedis(tx model.NastiffTransaction) error {
-	if err := tx.ComposeNastiffValues(); err != nil {
-		return err
-	}
 	_, err := datastore.Redis().XAdd(context.Background(), &redis.XAddArgs{
-		Stream: fmt.Sprintf("%s:v2", fmt.Sprintf(TransactionContractAddressStream, nte.Chain)),
+		Stream: TransactionContractAddressStream,
 		ID:     "*",
 		Values: tx.NastiffValues,
 	}).Result()
 	if err != nil {
 		return fmt.Errorf("send values to redis stream is err: %v", err)
+	}
+	return nil
+}
+
+func (nte *NastiffTransactionExporter) ComposePotentialActionOpenURI(tx model.NastiffTransaction) []*messagecard.PotentialAction {
+	LinkURLKeys := []string{"ScanAddress", "ScanTX", "Dedaub", "MCL"}
+	potentialActions := []*messagecard.PotentialAction{}
+	for _, linkURLKey := range LinkURLKeys {
+		potentialAction, _ := messagecard.NewPotentialAction(messagecard.PotentialActionOpenURIType, linkURLKey)
+		linkURL := nte.LinkURLs[linkURLKey]
+		url := ""
+		if strings.ToLower(linkURLKey) == "scantx" {
+			url = fmt.Sprintf(linkURL, tx.TxHash)
+		} else {
+			url = fmt.Sprintf(linkURL, tx.ContractAddress)
+		}
+
+		potentialAction.PotentialActionOpenURI = messagecard.PotentialActionOpenURI{Targets: []messagecard.PotentialActionOpenURITarget{{OS: "default", URI: url}}}
+		potentialActions = append(potentialActions, potentialAction)
+	}
+	return potentialActions
+}
+
+func (nte *NastiffTransactionExporter) Alert(tx model.NastiffTransaction) error {
+	msgCard := messagecard.NewMessageCard()
+	msgCard.Title = fmt.Sprintf("%s %d", tx.Chain, tx.Score)
+	msgCard.Summary = "got an alert"
+	section := messagecard.NewSection()
+	facts := []messagecard.SectionFact{}
+	for key, value := range tx.NastiffValues {
+		if value == "" {
+			value = "None"
+		}
+		facts = append(facts, messagecard.SectionFact{
+			Name:  key,
+			Value: value,
+		})
+	}
+
+	if err := section.AddFact(facts...); err != nil {
+		return fmt.Errorf("add fact to section is err: %v", err)
+	}
+	if err := msgCard.AddSection(section); err != nil {
+		return fmt.Errorf("add seciton to message card is err: %v", err)
+	}
+
+	if tx.Score >= 90 {
+		msgCard.ThemeColor = "#E1395F"
+	} else {
+		msgCard.ThemeColor = "#1EC6A0"
+	}
+
+	if err := msgCard.AddPotentialAction(nte.ComposePotentialActionOpenURI(tx)...); err != nil {
+		return fmt.Errorf("add potential action to message card is err: %v", err)
+	}
+
+	if err := nte.TeamsClient.Send(nte.AlterWebHook, msgCard); err != nil {
+		return fmt.Errorf("send message to channel is err: %v", err)
 	}
 	return nil
 }

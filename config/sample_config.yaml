@@ -26,6 +26,8 @@ etl:
   previous_file: ./config/.previous
   provider_url:
   scan_interval: 0
+  flash_loan_file: ./config/flashloan.txt
+  score_alert_threshold: 50
 
 postgresql:
   host: localhost
