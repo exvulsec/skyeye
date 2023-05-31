@@ -9,7 +9,7 @@ import (
 
 const (
 	TornadoCash = "Tornado.Cash"
-	ChangeNow   = "ChangeNow"
+	ChangeNow   = "ChangeNOW"
 )
 
 type AddressLabel struct {
