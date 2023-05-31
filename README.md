@@ -81,38 +81,51 @@ doker-compose up -d
 推送到 Redis `HSET` 的 `Value` 为:
 - `<from_address>`: `<contract_address>,<contract_address>,<contract_address>`
 
-##### 推送 Nastiff 监控策略
+##### Nastiff 告警策略
+
+
 根据如下策略判断是否需要过滤合约地址:
 - **前置条件: 过滤失败交易**
   - 根据 `Receipt` 数据后,查看 `Status` 是否为 `1`
-  - 若为 `Status` 为 `0` 则过滤该交易
-- **策略1: 过滤 Nonce 大于 10 的交易**
-  - 根据 `Transaction Nonce` 是否小于指定的 `Threshold(暂定 10)`
-  - 若 `Transaction Nonce` 大于 `10` 则过滤掉该合约地址
-- **策略2: 过滤 ByteCode < 500 的合约**
-  - 根据合约的 `ByteCode` 大小, 判断 `ByteCode` Size除去 `0x` 是否小于 `500` 或为 `0`
-  - 若 `ByteCode` Size 小于 `500` 或为 `0` 则过滤合约
-- **策略3: 过滤合约为 Erc20 或 Erc721的合约**
-  - 从 `RPC` 获取到该 `Contract Address` 的 `ByteCode`
-  - 判断该 `ByteCode` 是否含有 `ERC20` 和 `ERC721` 的 `63{Signature Code}`
-  - 若含有 `ERC20` 和 `ERC721` 的 `63{Signature Code}` 的特征则过滤掉该合约地址
-- **策略4: 过滤开源合约**
-  - 等待十分钟后, 向 `EtherScan` 请求该合约是否开源
-  - 若合约已开源, 则过滤掉该合约地址
+- 若为 `Status` 为 `0` 则过滤该交易
+
+
+每个合约将进行独立的分数计算, 当前满足分数阈值为 >= 50 分时,推送告警 
+
+分数设置
+
+| name  | conditions | score |
+| ----- | ---------- | ----- |
+| nonce | 0 <= nonce <= 10 | 10-nonce |
+| bytecode | 0 < bytecode < 500 | 0 |
+|          |  bytecode >= 500 | 12 |
+| isERC20/721 | isERC20/721  | 0 |
+|          |  ~isERC20/721  | 13 |
+| opensource | True | 0 |
+|          |  False | 25 |
+| push20  | len(push20) == 0  | 0  |
+|         | len(push20) != 0  | 2  |
+| push4不含闪电贷 | True | 0 |
+|                | Flase | 50 |
+| fund           | Tornado| 40 |
+|            | ChangeNow | 13 |
 
 推送到 Redis MQ 的 `Key` 为:
-- `<chain>:contract_address:stream:v2`
+- `evm:contract_address:stream`
 
-推送到 Redis MQ 的 `Value` 为:
+推送到 Redis MQ 的 `Value` 的示例为:
 ```json
 {
-  "chain": <chain>,
-  "txhash": <hash>,
-  "contract": <contract_address>,
-  "fund":  <depth> - <label>,
-  "codeSize": <code size>,
-  "push4": <push4 args>,
-  "push20": <push20 args>,
+  "chain": "eth",
+  "codeSize": 3218,
+  "contract": "0xe911c2fd491931db7ee683ecb8ebb0b9a37332c5",
+  "createTime": "2023-05-31 03:15:59",
+  "func": "_buy,withdraw,withdrawToken,0x{1}",
+  "fund": "2-KuCoin_0xcad6",
+  "push20": "",
+  "score": 61,
+  "split_scores": [11, 12, 13, 25, 0, 0, 0],
+  "txhash": "0x7464c7dad2859bec2f03f9f231fe63b66570499454fb1bc414d093eba67e98a3"
 }
 ```
 
@@ -157,8 +170,10 @@ etl:
   worker: 10
   # 上一次执行到的区块高度的文件
   previous_file:
-  # 中心化交易所列表, 与 label 前缀匹配时则, 过滤合约数据, 支持多个交易所前缀, 以 ',' 分割
-  cex_list: Binance,Coinbase
+  # 所有 flash loan 的函数
+  flash_loan_file: ./config/flashloan.txt
+  # 推送监控的分数阈值
+  score_alert_threshold: 50
 
 # 配置该值, 则会在使用 etl export txs 时导出到 redis
 redis:

@@ -3,6 +3,7 @@ module go-etl
 go 1.19
 
 require (
+	github.com/atc0005/go-teams-notify/v2 v2.7.0
 	github.com/deckarep/golang-set/v2 v2.1.0
 	github.com/ethereum/go-ethereum v1.11.3
 	github.com/gin-gonic/gin v1.9.0
