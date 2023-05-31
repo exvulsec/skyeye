@@ -137,9 +137,9 @@ func (fpc *FundPolicyCalc) Calc(tx *NastiffTransaction) int {
 
 	}
 	switch {
-	case strings.Contains(tx.Fund, TornadoCash):
+	case strings.Contains(strings.ToLower(tx.Fund), strings.ToLower(TornadoCash)):
 		return 40
-	case strings.Contains(tx.Fund, ChangeNow):
+	case strings.Contains(strings.ToLower(tx.Fund), strings.ToLower(ChangeNow)):
 		return 13
 	default:
 		return 0

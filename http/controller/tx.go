@@ -53,6 +53,8 @@ func (tc *TXController) Reviewed(c *gin.Context) {
 		}
 	}
 
+	searchFund, _ := strconv.ParseBool(c.Query("search_fund"))
+
 	var (
 		ethClient *ethclient.Client
 		ok        bool
@@ -106,7 +108,7 @@ func (tc *TXController) Reviewed(c *gin.Context) {
 		&model.OpenSourcePolicyCalc{Interval: config.Conf.ETL.ScanInterval},
 		&model.Push4PolicyCalc{FlashLoanFuncNames: model.LoadFlashLoanFuncNames()},
 		&model.Push20PolicyCalc{},
-		&model.FundPolicyCalc{IsNastiff: false, OpenAPIServer: "http://localhost:8088"},
+		&model.FundPolicyCalc{IsNastiff: searchFund, OpenAPIServer: "http://localhost:8088"},
 	}
 	splitScores := []string{}
 	totalScore := 0
