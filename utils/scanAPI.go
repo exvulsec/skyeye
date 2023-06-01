@@ -8,8 +8,10 @@ import (
 const (
 	EtherScanAPIURL       = "https://api.etherscan.io/api"
 	BSCScanAPIURL         = "https://api.bscscan.com/api"
+	ArbitrumScanAPIURL    = "https://api.arbiscan.com/api"
 	EtherScanURL          = "https://etherscan.io"
 	BSCScanURL            = "https://bscscan.com"
+	ArbiturmScanURL       = "https://arbiscan.com"
 	APIQuery              = "?module=account&apikey=%s&address=%s&startblock=0&endblock=99999999&sort=asc&action=%s&page=1&offset=1"
 	ScanTransactionAction = "txlist"
 	ScanTraceAction       = "txlistinternal"
@@ -22,6 +24,8 @@ func GetScanAPI(chain string) string {
 		return EtherScanAPIURL
 	case ChainBSC:
 		return BSCScanAPIURL
+	case ChainArbitrum:
+		return ArbitrumScanAPIURL
 	default:
 		return EtherScanAPIURL
 	}
@@ -33,6 +37,8 @@ func GetScanURL(chain string) string {
 		return EtherScanURL
 	case ChainBSC:
 		return BSCScanURL
+	case ChainArbitrum:
+		return ArbiturmScanURL
 	default:
 		return EtherScanURL
 	}
@@ -44,6 +50,8 @@ func GetChainFromScanURL(scanURL string) string {
 		return ChainEthereum
 	case strings.HasPrefix(scanURL, BSCScanURL):
 		return ChainBSC
+	case strings.HasPrefix(scanURL, ArbiturmScanURL):
+		return ChainArbitrum
 	default:
 		return ChainEthereum
 	}

@@ -9,6 +9,7 @@ const (
 	ChainOptimism  = "optimism"
 	ChainFantom    = "fantom"
 	ChainArbitrum  = "arbitrum"
+	ChainArb       = "arb"
 	ChainAvalanche = "avalanche"
 	ChainPolygon   = "polygon"
 	ChainCelo      = "celo"
@@ -22,6 +23,8 @@ func GetChainFromQuery(chain string) string {
 		return ChainEthereum
 	case ChainBSC:
 		return ChainBSC
+	case ChainArbitrum, ChainArb:
+		return ChainArbitrum
 	default:
 		return chain
 	}
@@ -33,6 +36,8 @@ func ConvertChainToMetaDock(chain string) string {
 		return ChainEth
 	case ChainBSC:
 		return ChainBSC
+	case ChainArbitrum, ChainArb:
+		return ChainArbitrum
 	default:
 		return ChainEth
 	}
@@ -44,6 +49,8 @@ func ConvertChainToDeFiHackLabChain(chain string) string {
 		return ChainEth
 	case ChainBSC:
 		return ChainBSC
+	case ChainArbitrum, ChainArb:
+		return ChainArbitrum
 	default:
 		return ChainEth
 	}

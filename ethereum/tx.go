@@ -91,12 +91,16 @@ func (te *transactionExecutor) ExtractByBlock(block types.Block) any {
 	rwMutex := sync.RWMutex{}
 	wg := sync.WaitGroup{}
 
-	for index := range block.Transactions() {
+	for index, tx := range block.Transactions() {
+		if tx == nil {
+			continue
+		}
+		transaction := tx
 		wg.Add(1)
 		go func(index int) {
 			defer wg.Done()
 			t := model.Transaction{}
-			t.ConvertFromBlock(block.Transactions()[index])
+			t.ConvertFromBlock(transaction)
 			t.BlockNumber = block.Number().Int64()
 			t.BlockTimestamp = int64(block.Time())
 			if block.BaseFee() != nil {
