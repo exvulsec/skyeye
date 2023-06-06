@@ -6,6 +6,7 @@ import (
 
 	"go-etl/config"
 	"go-etl/ethereum"
+	"go-etl/log"
 )
 
 var exportCmd = &cobra.Command{
@@ -24,6 +25,7 @@ var txCmd = &cobra.Command{
 	Run: func(cmd *cobra.Command, args []string) {
 		configFile, _ := cmd.Flags().GetString("config")
 		config.SetupConfig(configFile)
+		log.InitLog(config.Conf.ETL.LogPath)
 		nonce, _ := cmd.Flags().GetUint64("tx_nonce")
 		workers, _ := cmd.Flags().GetInt("workers")
 		batchSize, _ := cmd.Flags().GetInt("batch_size")
