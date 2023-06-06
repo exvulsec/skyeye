@@ -2,7 +2,6 @@ package config
 
 import (
 	"fmt"
-	"os"
 	"strings"
 
 	"github.com/sirupsen/logrus"
@@ -33,6 +32,7 @@ type HTTPServerConfig struct {
 	MultiEvmClient map[string]EvmClientConfig `mapstructure:"multi_evm_clients" yaml:"multi_evm_clients"`
 	NonceThreshold uint64                     `mapstructure:"nonce_threshold" yaml:"nonce_threshold"`
 	DeDaubCodePath string                     `mapstructure:"dedaub_code_path" yaml:"dedaub_code_path"`
+	LogPath        string                     `mapstructure:"log_path" yaml:"log_path"`
 }
 
 type EvmClientConfig struct {
@@ -72,10 +72,10 @@ type ETLConfig struct {
 	ScanInterval        int    `mapstructure:"scan_interval" yaml:"scan_interval"`
 	FlashLoanFile       string `mapstructure:"flash_loan_file" yaml:"flash_loan_file"`
 	ScoreAlertThreshold int    `mapstructure:"score_alert_threshold" yaml:"score_alert_threshold"`
+	LogPath             string `mapstructure:"log_path" yaml:"log_path"`
 }
 
 func SetupConfig(configPath string) {
-	logrus.SetOutput(os.Stdout)
 	if configPath != "" {
 		viper.SetConfigFile(configPath)
 	} else {
@@ -104,5 +104,5 @@ func SetupConfig(configPath string) {
 		}
 	}
 
-	logrus.Infof("read configuration file successfully")
+	logrus.Info("read configuration file successfully")
 }
