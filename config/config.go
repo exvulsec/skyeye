@@ -28,6 +28,7 @@ type HTTPServerConfig struct {
 	Host           string                     `mapstructure:"host" yaml:"host"`
 	Port           int                        `mapstructure:"port" yaml:"port"`
 	APIKey         string                     `mapstructure:"apikey" yaml:"apikey"`
+	APIKeyForCMC   string                     `mapstructure:"apikey_for_cmc" yaml:"apikey_for_cmc"`
 	ClientMaxConns int                        `mapstructure:"client_max_conns" yaml:"client_max_conns"`
 	MultiEvmClient map[string]EvmClientConfig `mapstructure:"multi_evm_clients" yaml:"multi_evm_clients"`
 	NonceThreshold uint64                     `mapstructure:"nonce_threshold" yaml:"nonce_threshold"`
