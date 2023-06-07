@@ -33,7 +33,7 @@ func (tc *TXController) Reviewed(c *gin.Context) {
 		txhash string
 	)
 	if scanURL == "" {
-		chain = utils.GetChainFromQuery(c.Query(utils.ChainKey))
+		chain = utils.GetSupportChain(c.Query(utils.ChainKey))
 		txhash = strings.ToLower(c.Query("txhash"))
 	} else {
 		chain = utils.GetChainFromScanURL(scanURL)

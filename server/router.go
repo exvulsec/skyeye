@@ -16,6 +16,7 @@ func addRouters(r gin.IRouter) {
 	apiV1 := setV1Group(r)
 	ctrls := []controller.Controller{
 		&controller.AddressController{},
+		&controller.MonitorController{},
 		&controller.TokenController{},
 		&controller.TXController{},
 		&controller.CMCController{},

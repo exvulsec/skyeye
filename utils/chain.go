@@ -15,7 +15,7 @@ const (
 	ChainCelo      = "celo"
 )
 
-func GetChainFromQuery(chain string) string {
+func GetSupportChain(chain string) string {
 	switch chain {
 	case ChainEmpty:
 		return ChainEthereum

@@ -27,7 +27,6 @@ type AddressController struct{}
 func (ac *AddressController) Routers(routers gin.IRouter) {
 	api := routers.Group("/address")
 	{
-		api.POST("/monitor", ac.MonitorAddress)
 		api.GET("/:address/labels", ac.GetAddressLabel)
 		api.GET("/:address/associated", ac.AssociatedByAddress)
 		api.GET("/:address/fund", ac.GetFund)
@@ -46,7 +45,7 @@ func (ac *AddressController) Routers(routers gin.IRouter) {
 }
 
 func (ac *AddressController) GetAddressLabel(c *gin.Context) {
-	chain := utils.GetChainFromQuery(c.Query(utils.ChainKey))
+	chain := utils.GetSupportChain(c.Query(utils.ChainKey))
 	address := strings.ToLower(c.Param("address"))
 	label := model.AddressLabel{}
 	if err := label.GetLabel(chain, address); err != nil {
@@ -57,24 +56,8 @@ func (ac *AddressController) GetAddressLabel(c *gin.Context) {
 	c.JSON(http.StatusOK, model.Message{Code: http.StatusOK, Data: label})
 }
 
-func (ac *AddressController) MonitorAddress(c *gin.Context) {
-	chain := utils.GetChainFromQuery(c.Query(utils.ChainKey))
-	address := strings.ToLower(c.Query("address"))
-	monitorAddr := model.MonitorAddr{
-		Chain:   chain,
-		Address: address,
-	}
-
-	if err := monitorAddr.Create(); err != nil {
-		c.JSON(http.StatusOK, model.Message{Code: http.StatusInternalServerError, Msg: err.Error()})
-		return
-	}
-
-	c.JSON(http.StatusOK, model.Message{Code: http.StatusOK, Data: monitorAddr})
-}
-
 func (ac *AddressController) AssociatedByAddress(c *gin.Context) {
-	chain := utils.GetChainFromQuery(c.Query(utils.ChainKey))
+	chain := utils.GetSupportChain(c.Query(utils.ChainKey))
 	address := strings.ToLower(c.Param("address"))
 	filterAddrs := strings.Split(c.Query("filter_addrs"), ",")
 	txs := model.Transactions{}
@@ -94,7 +77,7 @@ func (ac *AddressController) AssociatedByAddress(c *gin.Context) {
 }
 
 func (ac *AddressController) GetFund(c *gin.Context) {
-	chain := utils.GetChainFromQuery(c.Query(utils.ChainKey))
+	chain := utils.GetSupportChain(c.Query(utils.ChainKey))
 	scanAPI := fmt.Sprintf("%s%s", utils.GetScanAPI(chain), utils.APIQuery)
 	address := strings.ToLower(c.Param("address"))
 
@@ -199,7 +182,7 @@ func (ac *AddressController) GetFund(c *gin.Context) {
 }
 
 func (ac *AddressController) ReadSolidityCode(c *gin.Context) {
-	chain := utils.GetChainFromQuery(c.Query(utils.ChainKey))
+	chain := utils.GetSupportChain(c.Query(utils.ChainKey))
 	address := strings.ToLower(c.Param("address"))
 	hexAddress := common.HexToAddress(address)
 	multiClient := client.MultiEvmClient()
@@ -224,7 +207,7 @@ func (ac *AddressController) ReadSolidityCode(c *gin.Context) {
 }
 
 func (ac *AddressController) GetDeDaub(c *gin.Context) {
-	chain := utils.GetChainFromQuery(c.Query(utils.ChainKey))
+	chain := utils.GetSupportChain(c.Query(utils.ChainKey))
 	address := strings.ToLower(c.Param("address"))
 	dedaub := model.DeDaub{
 		Chain:   chain,
