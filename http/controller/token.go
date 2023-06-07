@@ -25,7 +25,7 @@ func (tc *TokenController) Routers(routers gin.IRouter) {
 }
 
 func (tc *TokenController) GetTokenInfo(c *gin.Context) {
-	chain := utils.GetChainFromQuery(c.Query(utils.ChainKey))
+	chain := utils.GetSupportChain(c.Query(utils.ChainKey))
 	address := strings.ToLower(c.Param("address"))
 
 	token := model.Token{}
@@ -42,7 +42,7 @@ func (tc *TokenController) GetTokenInfo(c *gin.Context) {
 }
 
 func (tc *TokenController) GetTokenPrices(c *gin.Context) {
-	chain := utils.GetChainFromQuery(c.Query(utils.ChainKey))
+	chain := utils.GetSupportChain(c.Query(utils.ChainKey))
 	addressString := c.Query("address")
 	addrs := strings.Split(addressString, ",")
 	if len(addrs) == 0 {
