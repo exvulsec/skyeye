@@ -30,7 +30,7 @@ func (ac *AddressController) Routers(routers gin.IRouter) {
 		api.POST("/monitor", ac.MonitorAddress)
 		api.GET("/:address/labels", ac.GetAddressLabel)
 		api.GET("/:address/associated", ac.AssociatedByAddress)
-		api.GET("/:address/source_eth", ac.SourceETH)
+		api.GET("/:address/fund", ac.GetFund)
 		api.GET("/:address/dedaub", ac.GetDeDaub)
 		var exposeSolidityCodeAPI = true
 		for _, info := range config.Conf.ScanInfos {
@@ -93,7 +93,7 @@ func (ac *AddressController) AssociatedByAddress(c *gin.Context) {
 	c.JSON(http.StatusOK, model.Message{Code: http.StatusOK, Data: txs})
 }
 
-func (ac *AddressController) SourceETH(c *gin.Context) {
+func (ac *AddressController) GetFund(c *gin.Context) {
 	chain := utils.GetChainFromQuery(c.Query(utils.ChainKey))
 	scanAPI := fmt.Sprintf("%s%s", utils.GetScanAPI(chain), utils.APIQuery)
 	address := strings.ToLower(c.Param("address"))
