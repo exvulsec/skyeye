@@ -20,7 +20,7 @@ type NastiffTransaction struct {
 	ContractAddress    string            `json:"contract_address" gorm:"column:contract_address"`
 	Nonce              uint64            `json:"nonce" gorm:"column:nonce"`
 	Score              int               `json:"score" gorm:"column:score"`
-	SplitScores        []string          `json:"split_scores" gorm:"split_scores"`
+	SplitScores        string            `json:"split_scores" gorm:"column:split_scores"`
 	NastiffValues      map[string]string `json:"nastiff_values" gorm:"-"`
 	NastiffValuesBytes []byte            `json:"-" gorm:"column:nastiff_values"`
 	ByteCode           []byte            `json:"-" gorm:"-"`
@@ -67,7 +67,7 @@ func (nt *NastiffTransaction) ComposeNastiffValues() error {
 		"codeSize":     fmt.Sprintf("%d", codeSize),
 		"fund":         nt.Fund,
 		"score":        fmt.Sprintf("%d", nt.Score),
-		"split_scores": strings.Join(nt.SplitScores, ","),
+		"split_scores": nt.SplitScores,
 	}
 
 	nt.NastiffValuesBytes, err = json.Marshal(values)

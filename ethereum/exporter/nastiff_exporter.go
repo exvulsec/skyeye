@@ -84,6 +84,10 @@ func (nte *NastiffTransactionExporter) exportItem(tx model.NastiffTransaction) {
 			logrus.Errorf("alert txhash %s's contract %s to channel is err %v", tx.TxHash, tx.ContractAddress, err)
 			return
 		}
+		if err := nte.MonitorContractAddress(tx); err != nil {
+			logrus.Error(err)
+			return
+		}
 	}
 	logrus.Infof("start to insert tx %s's contract %s to db", tx.TxHash, tx.ContractAddress)
 	if err := tx.Insert(); err != nil {
@@ -98,7 +102,7 @@ func (nte *NastiffTransactionExporter) CalcContractByPolicies(tx *model.NastiffT
 		&model.NoncePolicyCalc{ThresholdNonce: nte.Nonce},
 		&model.ByteCodePolicyCalc{},
 		&model.ContractTypePolicyCalc{},
-		&model.OpenSourcePolicyCalc{Interval: config.Conf.ETL.ScanInterval},
+		//&model.OpenSourcePolicyCalc{Interval: config.Conf.ETL.ScanInterval},
 		&model.Push4PolicyCalc{
 			FlashLoanFuncNames: model.LoadFlashLoanFuncNames(),
 		},
@@ -112,7 +116,7 @@ func (nte *NastiffTransactionExporter) CalcContractByPolicies(tx *model.NastiffT
 		splitScores = append(splitScores, fmt.Sprintf("%d", score))
 		totalScore += score
 	}
-	tx.SplitScores = splitScores
+	tx.SplitScores = strings.Join(splitScores, ",")
 	tx.Score = totalScore
 	return tx.Score < config.Conf.ETL.ScoreAlertThreshold
 }
@@ -136,7 +140,7 @@ func (nte *NastiffTransactionExporter) ComposePotentialActionOpenURI(tx model.Na
 		potentialAction, _ := messagecard.NewPotentialAction(messagecard.PotentialActionOpenURIType, linkURLKey)
 		linkURL := nte.LinkURLs[linkURLKey]
 		url := ""
-		if strings.ToLower(linkURLKey) == "scantx" {
+		if strings.EqualFold(linkURLKey, "ScanTX") {
 			url = fmt.Sprintf(linkURL, tx.TxHash)
 		} else {
 			url = fmt.Sprintf(linkURL, tx.ContractAddress)
@@ -171,7 +175,7 @@ func (nte *NastiffTransactionExporter) Alert(tx model.NastiffTransaction) error 
 		return fmt.Errorf("add seciton to message card is err: %v", err)
 	}
 
-	if tx.Score >= 90 {
+	if tx.Score >= config.Conf.ETL.DangerScoreAlertThreshold {
 		msgCard.ThemeColor = "#E1395F"
 	} else {
 		msgCard.ThemeColor = "#1EC6A0"
@@ -183,6 +187,19 @@ func (nte *NastiffTransactionExporter) Alert(tx model.NastiffTransaction) error 
 
 	if err := nte.TeamsClient.Send(nte.AlterWebHook, msgCard); err != nil {
 		return fmt.Errorf("send message to channel is err: %v", err)
+	}
+	return nil
+}
+
+func (nte *NastiffTransactionExporter) MonitorContractAddress(tx model.NastiffTransaction) error {
+	if tx.Score >= config.Conf.ETL.DangerScoreAlertThreshold {
+		monitorAddr := model.MonitorAddr{
+			Chain:   strings.ToLower(tx.Chain),
+			Address: strings.ToLower(tx.ContractAddress),
+		}
+		if err := monitorAddr.Create(); err != nil {
+			return fmt.Errorf("create monitor address chain %s address %s is err %v", tx.Chain, tx.ContractAddress, err)
+		}
 	}
 	return nil
 }

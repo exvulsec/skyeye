@@ -122,7 +122,7 @@ func (tc *TXController) Reviewed(c *gin.Context) {
 		totalScore += score * weight
 	}
 	nt.Score = totalScore
-	nt.SplitScores = splitScores
+	nt.SplitScores = strings.Join(splitScores, ",")
 	if err = nt.ComposeNastiffValues(); err != nil {
 		c.JSON(http.StatusOK, model.Message{Code: http.StatusInternalServerError, Msg: fmt.Sprintf("get contract %s's nastiff values is err %v ", receipt.ContractAddress.String(), err)})
 		return

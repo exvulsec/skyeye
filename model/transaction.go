@@ -129,7 +129,7 @@ func (txs *Transactions) FilterAssociatedAddrs(chain, fromAddr string, filterAdd
 
 func (tx *Transaction) filterAddrs(addrs []string) bool {
 	for _, addr := range addrs {
-		if tx.ContractAddress == strings.ToLower(addr) {
+		if strings.EqualFold(tx.ContractAddress, addr) {
 			return true
 		}
 	}
