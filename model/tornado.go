@@ -8,9 +8,9 @@ import (
 )
 
 type Tornado struct {
-	ID      int64 `gorm:"column:id"`
-	Chain   int64 `gorm:"column:chain"`
-	Address int64 `gorm:"column:address"`
+	ID      int64  `gorm:"column:id"`
+	Chain   string `gorm:"column:chain"`
+	Address string `gorm:"column:address"`
 }
 
 func (t *Tornado) GetTornadoAddress(chain, address string) error {
