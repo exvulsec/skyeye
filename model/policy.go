@@ -116,9 +116,9 @@ type FundPolicyCalc struct {
 func (fpc *FundPolicyCalc) Calc(tx *NastiffTransaction) int {
 	if fpc.IsNastiff {
 		var fund string
-		scanTxResp, err := GetSourceEthAddress(tx.Chain, tx.ContractAddress, fpc.OpenAPIServer)
+		scanTxResp, err := GetFundAddress(tx.Chain, tx.ContractAddress, fpc.OpenAPIServer)
 		if err != nil {
-			logrus.Errorf("get contract %s's eth source is err: %v", tx.ContractAddress, err)
+			logrus.Errorf("get contract %s's fund is err: %v", tx.ContractAddress, err)
 		}
 		if scanTxResp.Address != "" {
 			label := scanTxResp.Label
@@ -146,16 +146,16 @@ func (fpc *FundPolicyCalc) Calc(tx *NastiffTransaction) int {
 	}
 }
 
-func GetSourceEthAddress(chain, contractAddress, openApiServer string) (ScanTXResponse, error) {
+func GetFundAddress(chain, contractAddress, openApiServer string) (ScanTXResponse, error) {
 	message := struct {
 		Code int            `json:"code"`
 		Msg  string         `json:"msg"`
 		Data ScanTXResponse `json:"data"`
 	}{}
-	url := fmt.Sprintf("%s/api/v1/address/%s/source_eth?apikey=%s&chain=%s", openApiServer, contractAddress, config.Conf.HTTPServer.APIKey, chain)
+	url := fmt.Sprintf("%s/api/v1/address/%s/fund?apikey=%s&chain=%s", openApiServer, contractAddress, config.Conf.HTTPServer.APIKey, chain)
 	resp, err := client.HTTPClient().Get(url)
 	if err != nil {
-		return ScanTXResponse{}, fmt.Errorf("get the contract source eth from etherscan is err: %v", err)
+		return ScanTXResponse{}, fmt.Errorf("get the contract fund from scan is err: %v", err)
 	}
 	defer resp.Body.Close()
 
@@ -185,7 +185,7 @@ func GetContractCode(chain, contractAddress string) (ScanContractResponse, error
 	url := fmt.Sprintf("%s?module=contract&action=getsourcecode&address=%s&apikey=%s", scanAPI, contractAddress, scanAPIKey)
 	resp, err := client.HTTPClient().Get(url)
 	if err != nil {
-		return contract, fmt.Errorf("get the contract source code from etherscan is err %v", err)
+		return contract, fmt.Errorf("get the contract source code from scan %s is err %v", scanAPI, err)
 	}
 	defer resp.Body.Close()
 	body, err := io.ReadAll(resp.Body)
