@@ -107,7 +107,10 @@ func (nte *NastiffTransactionExporter) exportItem(tx model.NastiffTransaction) {
 				logrus.Error(err)
 				return
 			}
-
+			if err := nte.SendToTelegram(tx); err != nil {
+				logrus.Error(err)
+				return
+			}
 		}
 
 	}
