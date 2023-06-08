@@ -63,7 +63,7 @@ func (nt *NastiffTransaction) ComposeNastiffValues() error {
 		"createTime":   time.Unix(nt.BlockTimestamp, 0).Format("2006-01-02 15:04:05"),
 		"contract":     nt.ContractAddress,
 		"func":         strings.Join(nt.Push4Args, ","),
-		"push20":       strings.Join(nt.Push20Args, ","),
+		"addr_labels":  strings.Join(nt.Push20Args, ","),
 		"codeSize":     fmt.Sprintf("%d", codeSize),
 		"fund":         nt.Fund,
 		"score":        fmt.Sprintf("%d", nt.Score),

@@ -4,10 +4,12 @@ import (
 	"context"
 	"fmt"
 	"strings"
+	"time"
 
 	goteamsnotify "github.com/atc0005/go-teams-notify/v2"
 	"github.com/atc0005/go-teams-notify/v2/messagecard"
 	"github.com/ethereum/go-ethereum/common"
+	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 	"github.com/redis/go-redis/v9"
 	"github.com/sirupsen/logrus"
 
@@ -27,11 +29,29 @@ type NastiffTransactionExporter struct {
 	OpenAPIServer string
 	Interval      int
 	TeamsClient   *goteamsnotify.TeamsClient
-	AlterWebHook  string
+	TGBots        []TGBot
 	LinkURLs      map[string]string
 }
 
-func NewNastiffTransferExporter(chain, openserver, alterWebHook string, interval int) Exporter {
+type TGBot struct {
+	ChatID int64
+	BoTAPI *tgbotapi.BotAPI
+}
+
+func NewNastiffTransferExporter(chain, openserver string, interval int) Exporter {
+	tgBots := []TGBot{}
+	for _, tgBotConfig := range config.Conf.ETL.TGBots {
+
+		botAPI, err := tgbotapi.NewBotAPI(tgBotConfig.Token)
+		if err != nil {
+			logrus.Panicf("new tg bot api is err: %v", err)
+		}
+		tgBots = append(tgBots, TGBot{
+			ChatID: tgBotConfig.ChatID,
+			BoTAPI: botAPI,
+		})
+	}
+
 	return &NastiffTransactionExporter{
 		Chain:         chain,
 		OpenAPIServer: openserver,
@@ -42,8 +62,8 @@ func NewNastiffTransferExporter(chain, openserver, alterWebHook string, interval
 			"Dedaub":      fmt.Sprintf("%s/api/v1/address/%%s/dedaub?apikey=%s&chain=%s", openserver, config.Conf.HTTPServer.APIKey, chain),
 			"MCL":         fmt.Sprintf("%s/api/v1/address/%%s/solidity?apikey=%s&chain=%s", openserver, config.Conf.HTTPServer.APIKey, chain),
 		},
-		TeamsClient:  goteamsnotify.NewTeamsClient(),
-		AlterWebHook: alterWebHook,
+		TeamsClient: goteamsnotify.NewTeamsClient(),
+		TGBots:      tgBots,
 	}
 }
 
@@ -82,10 +102,14 @@ func (nte *NastiffTransactionExporter) exportItem(tx model.NastiffTransaction) {
 			logrus.Errorf("alert txhash %s's contract %s to channel is err %v", tx.TxHash, tx.ContractAddress, err)
 			return
 		}
-		if err := nte.MonitorContractAddress(tx); err != nil {
-			logrus.Error(err)
-			return
+		if tx.Score >= config.Conf.ETL.DangerScoreAlertThreshold {
+			if err := nte.MonitorContractAddress(tx); err != nil {
+				logrus.Error(err)
+				return
+			}
+
 		}
+
 	}
 	logrus.Infof("start to insert tx %s's contract %s to db", tx.TxHash, tx.ContractAddress)
 	if err := tx.Insert(); err != nil {
@@ -183,21 +207,62 @@ func (nte *NastiffTransactionExporter) Alert(tx model.NastiffTransaction) error 
 		return fmt.Errorf("add potential action to message card is err: %v", err)
 	}
 
-	if err := nte.TeamsClient.Send(nte.AlterWebHook, msgCard); err != nil {
+	if err := nte.TeamsClient.Send(config.Conf.ETL.TeamsAlertWebHook, msgCard); err != nil {
 		return fmt.Errorf("send message to channel is err: %v", err)
 	}
 	return nil
 }
 
 func (nte *NastiffTransactionExporter) MonitorContractAddress(tx model.NastiffTransaction) error {
-	if tx.Score >= config.Conf.ETL.DangerScoreAlertThreshold {
-		monitorAddr := model.MonitorAddr{
-			Chain:   strings.ToLower(tx.Chain),
-			Address: strings.ToLower(tx.ContractAddress),
-		}
-		if err := monitorAddr.Create(); err != nil {
-			return fmt.Errorf("create monitor address chain %s address %s is err %v", tx.Chain, tx.ContractAddress, err)
+	monitorAddr := model.MonitorAddr{
+		Chain:   strings.ToLower(tx.Chain),
+		Address: strings.ToLower(tx.ContractAddress),
+	}
+	if err := monitorAddr.Create(); err != nil {
+		return fmt.Errorf("create monitor address chain %s address %s is err %v", tx.Chain, tx.ContractAddress, err)
+	}
+	return nil
+}
+
+func (nte *NastiffTransactionExporter) SendToTelegram(tx model.NastiffTransaction) error {
+	for _, bot := range nte.TGBots {
+		template := nte.composeTGTemplate(tx)
+
+		msg := tgbotapi.NewMessage(bot.ChatID, template)
+		msg.ParseMode = tgbotapi.ModeHTML
+
+		_, err := bot.BoTAPI.Send(msg)
+		if err != nil {
+			return fmt.Errorf("send message to chatID %d tg is err: %v", bot.ChatID, err)
 		}
 	}
 	return nil
+}
+
+func (nte *NastiffTransactionExporter) composeTGTemplate(tx model.NastiffTransaction) string {
+	scanURL := utils.GetScanURL(tx.Chain)
+	return fmt.Sprintf(`
+<tg-emoji emoji-id="5368324170671202286">‼️</tg-emoji><b> %s Alert</b><tg-emoji emoji-id="5368324170671202286">‼️</tg-emoji>
+
+<b>Chain:</b> %s
+<b>Block:</b> %d
+<b>TXhash:</b> <a href="%s">%s</a>
+<b>Date:</b> %s
+<b>Contract:</b> <a href="%s">%s</a>
+<b>Deployer:</b> <a href="%s">%s</a>
+<b>Score:</b> <pre>%d</pre>
+<b>Address Labels:</b> %s
+`,
+		strings.ToUpper(tx.Chain),
+		strings.ToUpper(tx.Chain),
+		tx.BlockNumber,
+		fmt.Sprintf("%s/tx/%s", scanURL, tx.TxHash),
+		tx.TxHash,
+		time.Unix(tx.BlockTimestamp, 0).Format("2006-01-02 15:04:05"),
+		fmt.Sprintf("%s/address/%s", utils.GetScanURL(tx.Chain), tx.ContractAddress),
+		tx.ContractAddress,
+		fmt.Sprintf("%s/address/%s", utils.GetScanURL(tx.Chain), tx.FromAddress),
+		tx.FromAddress,
+		tx.Score,
+		strings.Join(tx.Push20Args, ","))
 }

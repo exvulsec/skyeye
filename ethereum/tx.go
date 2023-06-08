@@ -32,7 +32,7 @@ type transactionExecutor struct {
 
 func NewTransactionExecutor(blockExecutor BlockExecutor,
 	logExecutor Executor,
-	chain, openapi, alterWebHook string,
+	chain, openapi string,
 	workers, batchSize int,
 	isNastiff bool) Executor {
 	return &transactionExecutor{
@@ -41,7 +41,7 @@ func NewTransactionExecutor(blockExecutor BlockExecutor,
 		workers:       workers,
 		batchSize:     batchSize,
 		isNastiff:     isNastiff,
-		exporters:     exporter.NewTransactionExporters(chain, openapi, alterWebHook, isNastiff),
+		exporters:     exporter.NewTransactionExporters(chain, openapi, isNastiff),
 	}
 }
 
