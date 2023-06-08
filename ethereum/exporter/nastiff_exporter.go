@@ -34,8 +34,9 @@ type NastiffTransactionExporter struct {
 }
 
 type TGBot struct {
-	ChatID int64
-	BoTAPI *tgbotapi.BotAPI
+	ChatID   int64
+	BoTAPI   *tgbotapi.BotAPI
+	External bool
 }
 
 func NewNastiffTransferExporter(chain, openserver string, interval int) Exporter {
@@ -229,10 +230,26 @@ func (nte *NastiffTransactionExporter) MonitorContractAddress(tx model.NastiffTr
 
 func (nte *NastiffTransactionExporter) SendToTelegram(tx model.NastiffTransaction) error {
 	for _, bot := range nte.TGBots {
-		template := nte.composeTGTemplate(tx)
+		template := nte.composeTGTemplate(tx, bot.External)
 
 		msg := tgbotapi.NewMessage(bot.ChatID, template)
 		msg.ParseMode = tgbotapi.ModeHTML
+		inlineKeyboardBtns := tgbotapi.InlineKeyboardMarkup{}
+		if !bot.External {
+			inlineKeyboardBtns = tgbotapi.NewInlineKeyboardMarkup(
+				tgbotapi.NewInlineKeyboardRow(
+					tgbotapi.NewInlineKeyboardButtonURL("Dedaub", fmt.Sprintf("%s/api/v1/address/%s/dedaub?apikey=%s&chain=%s",
+						nte.OpenAPIServer,
+						tx.ContractAddress,
+						config.Conf.HTTPServer.APIKey,
+						tx.Chain,
+					),
+					),
+				),
+			)
+
+		}
+		msg.ReplyMarkup = inlineKeyboardBtns
 
 		_, err := bot.BoTAPI.Send(msg)
 		if err != nil {
@@ -242,30 +259,59 @@ func (nte *NastiffTransactionExporter) SendToTelegram(tx model.NastiffTransactio
 	return nil
 }
 
-func (nte *NastiffTransactionExporter) composeTGTemplate(tx model.NastiffTransaction) string {
+func (nte *NastiffTransactionExporter) composeTGTemplate(tx model.NastiffTransaction, external bool) string {
 	scanURL := utils.GetScanURL(tx.Chain)
+	if external {
+		return fmt.Sprintf(`
+<tg-emoji emoji-id="5368324170671202286">‼️</tg-emoji><b> %s Alert</b><tg-emoji emoji-id="5368324170671202286">‼️</tg-emoji>
+
+<b>Chain:</b> %s
+<b>Block:</b> %d
+<b>TXhash:</b> <a href="%s">%s</a>
+<b>DateTime:</b> %s UTC
+<b>Contract:</b> <a href="%s">%s</a>
+<b>Deployer:</b> <a href="%s">%s</a>
+<b>Score:</b> <pre>%d</pre>
+<b>Address Labels:</b> %s
+`,
+			strings.ToUpper(tx.Chain),
+			strings.ToUpper(tx.Chain),
+			tx.BlockNumber,
+			fmt.Sprintf("%s/tx/%s", scanURL, tx.TxHash), tx.TxHash,
+			time.Unix(tx.BlockTimestamp, 0).Format("2006-01-02 15:04:05"),
+			fmt.Sprintf("%s/address/%s", utils.GetScanURL(tx.Chain), tx.ContractAddress), tx.ContractAddress,
+			fmt.Sprintf("%s/address/%s", utils.GetScanURL(tx.Chain), tx.FromAddress), tx.FromAddress,
+			tx.Score,
+			strings.Join(tx.Push20Args, ","))
+
+	}
 	return fmt.Sprintf(`
 <tg-emoji emoji-id="5368324170671202286">‼️</tg-emoji><b> %s Alert</b><tg-emoji emoji-id="5368324170671202286">‼️</tg-emoji>
 
 <b>Chain:</b> %s
 <b>Block:</b> %d
 <b>TXhash:</b> <a href="%s">%s</a>
-<b>Date:</b> %s
+<b>DateTime:</b> %s UTC
 <b>Contract:</b> <a href="%s">%s</a>
-<b>Deployer:</b> <a href="%s">%s</a>
+<b>CodeSize:</b> %d
+<b>Fund:</b> %s
 <b>Score:</b> <pre>%d</pre>
+<b>Split Scores:</b> %s
+<b>Deployer:</b> <a href="%s">%s</a>
+<b>Funcs: </b> %s
 <b>Address Labels:</b> %s
 `,
 		strings.ToUpper(tx.Chain),
 		strings.ToUpper(tx.Chain),
 		tx.BlockNumber,
-		fmt.Sprintf("%s/tx/%s", scanURL, tx.TxHash),
-		tx.TxHash,
+		fmt.Sprintf("%s/tx/%s", scanURL, tx.TxHash), tx.TxHash,
 		time.Unix(tx.BlockTimestamp, 0).Format("2006-01-02 15:04:05"),
-		fmt.Sprintf("%s/address/%s", utils.GetScanURL(tx.Chain), tx.ContractAddress),
-		tx.ContractAddress,
-		fmt.Sprintf("%s/address/%s", utils.GetScanURL(tx.Chain), tx.FromAddress),
-		tx.FromAddress,
+		fmt.Sprintf("%s/address/%s", utils.GetScanURL(tx.Chain), tx.ContractAddress), tx.ContractAddress,
+		len(tx.ByteCode),
+		tx.Fund,
 		tx.Score,
+		tx.SplitScores,
+		fmt.Sprintf("%s/address/%s", utils.GetScanURL(tx.Chain), tx.FromAddress), tx.FromAddress,
+		strings.Join(tx.Push4Args, ","),
 		strings.Join(tx.Push20Args, ","))
 }

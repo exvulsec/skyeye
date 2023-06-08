@@ -10,7 +10,7 @@ import (
 
 func TestNastiffTransactionExporter_SendToTelegram(t *testing.T) {
 	config.SetupConfig("../../config/config.bsc.yaml")
-	e := NewNastiffTransferExporter("bsc", "localhost:8088", 0)
+	e := NewNastiffTransferExporter("bsc", "http://47.243.70.228:8088", 0)
 	addrLabelString := "Binance_0xe9e7,JetswapFactory,JetswapRouter,PancakeSwap: Router v2,StrategyWingsLP,StrategyWingsLP, 0x{2}"
 	addrLabels := strings.Split(addrLabelString, ",")
 	tx := model.NastiffTransaction{
