@@ -1,9 +1,11 @@
 # ETL Read Me
 
-
 ## ETL
+
 ### Quick Start
+
 #### ETL Export Transaction
+
 ```shell
 # export contract creation transaction
 etl export txs --tx_nonce <nonce> \
@@ -13,7 +15,9 @@ etl export txs --tx_nonce <nonce> \
     --chain <chain> \
     --openapi_server <openapi_server>
 ```
+
 #### ETL HTTP Server
+
 ```shell
 # shell
 etl http --config <config_file_dir>
@@ -27,47 +31,52 @@ doker-compose up -d
 ```
 
 ### 命令
+
 #### Export
+
 导出数据, 当前支持 txs
 
-| 参数                  | 描述                                                       |
-|---------------------|----------------------------------------------------------|
-| tx_nonce            | 设置 transaction nonce 的值, 大于该值则会被过滤, 0 则不做过滤, 默认值为0       |
-| creation_contract   | 只筛选出创建合约的交易, 默认为 false                                   |
-| config | 设置 config 文件的路径, config 配置详见 [config](#config)           |
-| batch_size | 使用 BatchCall 时,一个 Batch 中最大的对象数量, 默认为 50                 |
-| chain | 指定链, 默认为 `ethereum`                                      |
-| openapi_server | openapi_server 地址, 可使用 `etl http` 命令启动, 详见 [HTTP](#http) |
-
-
-
+| 参数              | 描述                                                                     |
+| ----------------- | ------------------------------------------------------------------------ |
+| tx_nonce          | 设置 transaction nonce 的值, 大于该值则会被过滤, 0 则不做过滤, 默认值为0 |
+| creation_contract | 只筛选出创建合约的交易, 默认为 false                                     |
+| config            | 设置 config 文件的路径, config 配置详见 [config](#config)                |
+| batch_size        | 使用 BatchCall 时,一个 Batch 中最大的对象数量, 默认为 50                 |
+| chain             | 指定链, 默认为 `ethereum`                                                |
+| openapi_server    | openapi_server 地址, 可使用 `etl http` 命令启动, 详见 [HTTP](#http)      |
 
 #### HTTP
+
 启动 HTTP 服务
 
-| 参数                  | 描述                                                       |
-|---------------------|----------------------------------------------------------|
-| config | 设置 config 文件的路径, config 配置详见 [config](#config)           |
+| 参数   | 描述                                                      |
+| ------ | --------------------------------------------------------- |
+| config | 设置 config 文件的路径, config 配置详见 [config](#config) |
 
 ### 从 RPC 批量获取数据
+
 - 使用 `go-ethereum` RPC 的 `BatchElem` 构建了 `BatchCall` 用于批量从 `RPC Node` 上获取数据
 - `BatchCall` 能批量获取的数据包括 `Block` 数据, `Transaction` 数据, `Receipt` 数据
 
 ### 区块
+
 - 最新区块使用 `SubscribeNewHead`
 - 具有区块记录功能,记录当前运行到哪个区块,下次启动时从已执行完区块的下一个区块开始运行
 - 记录的区块高度写到文件上,文件可以在配置文件中配置
 
-
 ### 交易
+
 - 从区块中获取的所有 `Transaction`
 - 根据 `Transaction` 的 `Transaction Hash`, 从 `RPC Node` 获取到 `Transaction` 的 `Receipt` 数据
 
 #### 过滤 Contract Creation 的交易
+
 根据交易的 `To` 字段是否为空则去获取该交易的 `Receipt` 数据
 
 ##### 推送 Redis 的策略
+
 根据如下策略判断是否需要过滤合约地址:
+
 - **策略1: 过滤失败交易**
   - 根据 `Receipt` 数据后,查看 `Status` 是否为 `1`
   - 若为 `Status` 为 `1` 则过滤该交易
@@ -76,15 +85,17 @@ doker-compose up -d
   - 若 `Transaction Nonce` 大于 `10` 则过滤掉该合约地址
 
 推送到 Redis `HSET` 的 `Key` 为:
+
 - `<chain>:txs_associated:addrs`
 
 推送到 Redis `HSET` 的 `Value` 为:
+
 - `<from_address>`: `<contract_address>,<contract_address>,<contract_address>`
 
 ##### Nastiff 告警策略
 
-
 根据如下策略判断是否需要过滤合约地址:
+
 - **前置条件: 过滤失败交易**
   - 根据 `Receipt` 数据后,查看 `Status` 是否为 `1`
 - 若为 `Status` 为 `0` 则过滤该交易
@@ -94,26 +105,30 @@ doker-compose up -d
 
 分数设置
 
-| name  | conditions | score |
-| ----- | ---------- | ----- |
-| nonce | 0 <= nonce <= 10 | 10-nonce |
-| bytecode | 0 < bytecode < 500 | 0 |
-|          |  bytecode >= 500 | 12 |
-| isERC20/721 | isERC20/721  | 0 |
-|          |  ~isERC20/721  | 13 |
-| opensource | True | 0 |
-|          |  False | 25 |
-| push20  | len(push20) == 0  | 0  |
-|         | len(push20) != 0  | 2  |
-| push4不含闪电贷 | True | 0 |
-|                | Flase | 50 |
-| fund           | Tornado| 40 |
-|            | ChangeNow | 13 |
+| name            | conditions         | score |
+| --------------- | ------------------ | ----- |
+| nonce           | 0 <= nonce < 10    | 10    |
+|                 | 10 <= nonce < 50   | 5     |
+|                 | 50 <= nonce        | 0     |
+| bytecode        | 0 < bytecode < 500 | 0     |
+|                 | bytecode >= 500    | 12    |
+| isERC20/721     | isERC20/721        | 0     |
+|                 | ~isERC20/721       | 13    |
+| opensource      | True               | 0     |
+|                 | False              | 25    |
+| push20          | len(push20) == 0   | 0     |
+|                 | len(push20) != 0   | 2     |
+| push4不含闪电贷   | True               | 0     |
+|                 | Flase              | 50    |
+| fund            | Tornado            | 40    |
+|                 | ChangeNow          | 13    |
 
 推送到 Redis MQ 的 `Key` 为:
-- `evm:contract_address:stream`
 
+- `evm:contract_address:stream`
+  
 推送到 Redis MQ 的 `Value` 的示例为:
+
 ```json
 {
   "chain": "eth",
@@ -129,8 +144,8 @@ doker-compose up -d
 }
 ```
 
-
 ## Config
+
 ```yaml
 # http server 配置
 http_server:

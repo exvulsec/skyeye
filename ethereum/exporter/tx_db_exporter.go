@@ -13,21 +13,20 @@ import (
 
 type TransactionPostgresqlExporter struct {
 	Chain string
-	Nonce uint64
 }
 
-func NewTransactionExporters(chain, openAPIServer, alterWebHook string, nonce uint64, isNastiff bool) []Exporter {
+func NewTransactionExporters(chain, openAPIServer, alterWebHook string, isNastiff bool) []Exporter {
 	exporters := []Exporter{}
 	if !isNastiff {
-		exporters = append(exporters, NewTransactionPostgresqlExporter(chain, nonce))
+		exporters = append(exporters, NewTransactionPostgresqlExporter(chain))
 	} else {
-		exporters = append(exporters, NewNastiffTransferExporter(chain, openAPIServer, alterWebHook, nonce, 10))
+		exporters = append(exporters, NewNastiffTransferExporter(chain, openAPIServer, alterWebHook, config.Conf.ETL.ScanInterval))
 	}
 	return exporters
 }
 
-func NewTransactionPostgresqlExporter(chain string, nonce uint64) Exporter {
-	return &TransactionPostgresqlExporter{Chain: chain, Nonce: nonce}
+func NewTransactionPostgresqlExporter(chain string) Exporter {
+	return &TransactionPostgresqlExporter{Chain: chain}
 }
 
 func (tpe *TransactionPostgresqlExporter) ExportItems(items any) {

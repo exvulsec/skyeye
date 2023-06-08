@@ -12,7 +12,6 @@ import (
 	"github.com/gin-gonic/gin"
 
 	"go-etl/client"
-	"go-etl/config"
 	"go-etl/model"
 	"go-etl/utils"
 )
@@ -102,10 +101,10 @@ func (tc *TXController) Reviewed(c *gin.Context) {
 		ByteCode:        code,
 	}
 	policies := []model.PolicyCalc{
-		&model.NoncePolicyCalc{ThresholdNonce: config.Conf.HTTPServer.NonceThreshold},
+		&model.NoncePolicyCalc{},
 		&model.ByteCodePolicyCalc{},
 		&model.ContractTypePolicyCalc{},
-		&model.OpenSourcePolicyCalc{Interval: config.Conf.ETL.ScanInterval},
+		//&model.OpenSourcePolicyCalc{Interval: config.Conf.ETL.ScanInterval},
 		&model.Push4PolicyCalc{FlashLoanFuncNames: model.LoadFlashLoanFuncNames()},
 		&model.Push20PolicyCalc{},
 		&model.FundPolicyCalc{IsNastiff: searchFund, OpenAPIServer: "http://localhost:8088"},

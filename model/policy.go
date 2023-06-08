@@ -26,18 +26,16 @@ type PolicyCalc interface {
 	Calc(transaction *NastiffTransaction) int
 }
 
-type NoncePolicyCalc struct {
-	ThresholdNonce uint64
-}
+type NoncePolicyCalc struct{}
 
 func (npc *NoncePolicyCalc) Calc(tx *NastiffTransaction) int {
-	if npc.ThresholdNonce > 0 && tx.Nonce > npc.ThresholdNonce {
+	if tx.Nonce >= 50 {
 		return 0
 	}
-	if npc.ThresholdNonce == 0 {
-		return 0
+	if 10 <= tx.Nonce && tx.Nonce < 50 {
+		return 5
 	}
-	return int(npc.ThresholdNonce + 1 - tx.Nonce)
+	return 10
 }
 
 type ByteCodePolicyCalc struct{}

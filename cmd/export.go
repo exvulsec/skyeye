@@ -26,7 +26,6 @@ var txCmd = &cobra.Command{
 		configFile, _ := cmd.Flags().GetString("config")
 		config.SetupConfig(configFile)
 		log.InitLog(config.Conf.ETL.LogPath)
-		nonce, _ := cmd.Flags().GetUint64("tx_nonce")
 		workers, _ := cmd.Flags().GetInt("workers")
 		batchSize, _ := cmd.Flags().GetInt("batch_size")
 		isNastiff, _ := cmd.Flags().GetBool("is_nastiff")
@@ -39,7 +38,7 @@ var txCmd = &cobra.Command{
 		if topicString != "" {
 			logExecutor = ethereum.NewLogExecutor(chain, workers, ethereum.ConvertTopicsFromString(topicString))
 		}
-		executor := ethereum.NewTransactionExecutor(blockExecutor, logExecutor, chain, openAPIServer, alertWebHook, workers, batchSize, nonce, isNastiff)
+		executor := ethereum.NewTransactionExecutor(blockExecutor, logExecutor, chain, openAPIServer, alertWebHook, workers, batchSize, isNastiff)
 		executor.Run()
 	},
 }

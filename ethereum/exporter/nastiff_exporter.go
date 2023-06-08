@@ -24,18 +24,16 @@ const (
 
 type NastiffTransactionExporter struct {
 	Chain         string
-	Nonce         uint64
 	OpenAPIServer string
-	Interval      int64
+	Interval      int
 	TeamsClient   *goteamsnotify.TeamsClient
 	AlterWebHook  string
 	LinkURLs      map[string]string
 }
 
-func NewNastiffTransferExporter(chain, openserver, alterWebHook string, nonce uint64, interval int64) Exporter {
+func NewNastiffTransferExporter(chain, openserver, alterWebHook string, interval int) Exporter {
 	return &NastiffTransactionExporter{
 		Chain:         chain,
-		Nonce:         nonce,
 		OpenAPIServer: openserver,
 		Interval:      interval,
 		LinkURLs: map[string]string{
@@ -99,10 +97,10 @@ func (nte *NastiffTransactionExporter) exportItem(tx model.NastiffTransaction) {
 
 func (nte *NastiffTransactionExporter) CalcContractByPolicies(tx *model.NastiffTransaction) bool {
 	policies := []model.PolicyCalc{
-		&model.NoncePolicyCalc{ThresholdNonce: nte.Nonce},
+		&model.NoncePolicyCalc{},
 		&model.ByteCodePolicyCalc{},
 		&model.ContractTypePolicyCalc{},
-		//&model.OpenSourcePolicyCalc{Interval: config.Conf.ETL.ScanInterval},
+		//&model.OpenSourcePolicyCalc{Interval: nte.Interval},
 		&model.Push4PolicyCalc{
 			FlashLoanFuncNames: model.LoadFlashLoanFuncNames(),
 		},
