@@ -8,8 +8,10 @@ import (
 	"strings"
 
 	"github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/ethclient"
 	"github.com/gin-gonic/gin"
+	"github.com/sirupsen/logrus"
 
 	"go-etl/client"
 	"go-etl/model"
@@ -90,11 +92,17 @@ func (tc *TXController) Reviewed(c *gin.Context) {
 		return
 	}
 
+	fromAddr, err := types.Sender(types.LatestSignerForChainID(tx.ChainId()), tx)
+	if err != nil {
+		logrus.Fatalf("get from address is err: %v", err)
+	}
+
 	nt := model.NastiffTransaction{
 		Chain:           chain,
 		BlockNumber:     block.Number().Int64(),
 		BlockTimestamp:  int64(block.Time()),
 		TxHash:          tx.Hash().String(),
+		FromAddress:     fromAddr.String(),
 		TxPos:           int64(receipt.TransactionIndex),
 		ContractAddress: receipt.ContractAddress.String(),
 		Nonce:           tx.Nonce(),
