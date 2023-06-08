@@ -44,6 +44,9 @@ func (bpc *ByteCodePolicyCalc) Calc(tx *NastiffTransaction) int {
 	if len(tx.ByteCode) == 0 || len(tx.ByteCode[2:]) < 500 {
 		return 0
 	}
+	if err := GetDeDaubMd5(tx.Chain, tx.ContractAddress, tx.ByteCode); err != nil {
+		logrus.Errorf("get dedaub md5 for %s on chain %s is err %v", tx.ContractAddress, tx.Chain, err)
+	}
 	return 12
 }
 
@@ -88,9 +91,6 @@ type OpenSourcePolicyCalc struct {
 }
 
 func (opc *OpenSourcePolicyCalc) Calc(tx *NastiffTransaction) int {
-	if err := GetDeDaubMd5(tx.Chain, tx.ContractAddress, tx.ByteCode); err != nil {
-		logrus.Errorf("get dedaub md5 for %s on chain %s is err %v", tx.ContractAddress, tx.Chain, err)
-	}
 	if opc.Interval != 0 {
 		time.Sleep(time.Duration(opc.Interval) * time.Minute)
 	}
