@@ -31,14 +31,13 @@ var txCmd = &cobra.Command{
 		isNastiff, _ := cmd.Flags().GetBool("is_nastiff")
 		chain, _ := cmd.Flags().GetString("chain")
 		openAPIServer, _ := cmd.Flags().GetString("openapi_server")
-		alertWebHook, _ := cmd.Flags().GetString("alert_webhook")
 		topicString, _ := cmd.Flags().GetString("topics")
 		blockExecutor := ethereum.NewBlockExecutor(chain, batchSize, workers)
 		var logExecutor ethereum.Executor
 		if topicString != "" {
 			logExecutor = ethereum.NewLogExecutor(chain, workers, ethereum.ConvertTopicsFromString(topicString))
 		}
-		executor := ethereum.NewTransactionExecutor(blockExecutor, logExecutor, chain, openAPIServer, alertWebHook, workers, batchSize, isNastiff)
+		executor := ethereum.NewTransactionExecutor(blockExecutor, logExecutor, chain, openAPIServer, workers, batchSize, isNastiff)
 		executor.Run()
 	},
 }
@@ -52,7 +51,6 @@ func txCmdInit() {
 	txCmd.Flags().String("chain", "ethereum", "chain name")
 	txCmd.Flags().String("table_name", "txs", "table name")
 	txCmd.Flags().String("openapi_server", "http://47.243.70.228:8088", "open api server")
-	txCmd.Flags().String("alert_webhook", "https://numencyber.webhook.office.com/webhookb2/43f9ef25-f32d-40c0-8caa-7be80785a690@582c2f1a-19aa-4b3d-bc48-267f294bc659/IncomingWebhook/c3c89dc885f34faeacd10ab6aa0731ba/988af364-a2e4-4d34-a060-34fd816ff264", "teams alert webhook")
 	txCmd.Flags().String("topics", "", "filter the specified topics, split by comma")
 	txCmd.Flags().String("log_table", "logs", "log table name")
 }
