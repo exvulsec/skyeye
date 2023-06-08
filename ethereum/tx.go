@@ -34,7 +34,6 @@ func NewTransactionExecutor(blockExecutor BlockExecutor,
 	logExecutor Executor,
 	chain, openapi, alterWebHook string,
 	workers, batchSize int,
-	nonce uint64,
 	isNastiff bool) Executor {
 	return &transactionExecutor{
 		blockExecutor: blockExecutor,
@@ -42,7 +41,7 @@ func NewTransactionExecutor(blockExecutor BlockExecutor,
 		workers:       workers,
 		batchSize:     batchSize,
 		isNastiff:     isNastiff,
-		exporters:     exporter.NewTransactionExporters(chain, openapi, alterWebHook, nonce, isNastiff),
+		exporters:     exporter.NewTransactionExporters(chain, openapi, alterWebHook, isNastiff),
 	}
 }
 
