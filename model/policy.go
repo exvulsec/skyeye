@@ -114,7 +114,7 @@ type FundPolicyCalc struct {
 func (fpc *FundPolicyCalc) Calc(tx *NastiffTransaction) int {
 	if fpc.IsNastiff {
 		var fund string
-		scanTxResp, err := GetFundAddress(tx.Chain, tx.ContractAddress, fpc.OpenAPIServer)
+		scanTxResp, err := GetFundAddress(tx.Chain, tx.FromAddress, fpc.OpenAPIServer)
 		if err != nil {
 			logrus.Errorf("get contract %s's fund is err: %v", tx.ContractAddress, err)
 		}
