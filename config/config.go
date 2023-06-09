@@ -81,6 +81,7 @@ type TGBotConfig struct {
 	Token    string `mapstructure:"token" yaml:"token"`
 	ChatID   int64  `mapstructure:"chat_id" yaml:"chat_id"`
 	External bool   `mapstructure:"external" yaml:"external"`
+	ThreadID int    `mapstructure:"thread_id" yaml:"thread_id"`
 }
 
 func SetupConfig(configPath string) {
