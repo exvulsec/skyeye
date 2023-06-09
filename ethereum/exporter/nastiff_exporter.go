@@ -42,14 +42,14 @@ type TGBot struct {
 func NewNastiffTransferExporter(chain, openserver string, interval int) Exporter {
 	tgBots := []TGBot{}
 	for _, tgBotConfig := range config.Conf.ETL.TGBots {
-
 		botAPI, err := tgbotapi.NewBotAPI(tgBotConfig.Token)
 		if err != nil {
 			logrus.Panicf("new tg bot api is err: %v", err)
 		}
 		tgBots = append(tgBots, TGBot{
-			ChatID: tgBotConfig.ChatID,
-			BoTAPI: botAPI,
+			ChatID:   tgBotConfig.ChatID,
+			BoTAPI:   botAPI,
+			External: tgBotConfig.External,
 		})
 	}
 
@@ -234,8 +234,8 @@ func (nte *NastiffTransactionExporter) SendToTelegram(tx model.NastiffTransactio
 
 		msg := tgbotapi.NewMessage(bot.ChatID, template)
 		msg.ParseMode = tgbotapi.ModeHTML
-		inlineKeyboardBtns := tgbotapi.InlineKeyboardMarkup{}
 		if !bot.External {
+			inlineKeyboardBtns := tgbotapi.InlineKeyboardMarkup{}
 			inlineKeyboardBtns = tgbotapi.NewInlineKeyboardMarkup(
 				tgbotapi.NewInlineKeyboardRow(
 					tgbotapi.NewInlineKeyboardButtonURL("Dedaub", fmt.Sprintf("%s/api/v1/address/%s/dedaub?apikey=%s&chain=%s",
@@ -247,8 +247,8 @@ func (nte *NastiffTransactionExporter) SendToTelegram(tx model.NastiffTransactio
 					),
 				),
 			)
+			msg.ReplyMarkup = inlineKeyboardBtns
 		}
-		msg.ReplyMarkup = inlineKeyboardBtns
 
 		_, err := bot.BoTAPI.Send(msg)
 		if err != nil {
