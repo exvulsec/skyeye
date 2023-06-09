@@ -58,18 +58,18 @@ func (nt *NastiffTransaction) ComposeNastiffValues() error {
 	}
 
 	values := map[string]string{
-		"Chain":        utils.ConvertChainToDeFiHackLabChain(nt.Chain),
-		"Block":        fmt.Sprintf("%d", nt.BlockNumber),
-		"TXhash":       nt.TxHash,
-		"CreateTime":   fmt.Sprintf("%s UTC", time.Unix(nt.BlockTimestamp, 0).Format("2006-01-02 15:04:05")),
-		"Contract":     nt.ContractAddress,
-		"Deployer":     nt.FromAddress,
-		"Func":         strings.Join(nt.Push4Args, ","),
-		"Addr Labels":  strings.Join(nt.Push20Args, ","),
-		"Code Size":    fmt.Sprintf("%d", codeSize),
-		"Fund":         nt.Fund,
-		"Score":        fmt.Sprintf("%d", nt.Score),
-		"Split Scores": nt.SplitScores,
+		"Chain":       utils.ConvertChainToDeFiHackLabChain(nt.Chain),
+		"Block":       fmt.Sprintf("%d", nt.BlockNumber),
+		"TXhash":      nt.TxHash,
+		"CreateTime":  fmt.Sprintf("%s UTC", time.Unix(nt.BlockTimestamp, 0).Format("2006-01-02 15:04:05")),
+		"Contract":    nt.ContractAddress,
+		"Deployer":    nt.FromAddress,
+		"Func":        strings.Join(nt.Push4Args, ","),
+		"AddrLabels":  strings.Join(nt.Push20Args, ","),
+		"CodeSize":    fmt.Sprintf("%d", codeSize),
+		"Fund":        nt.Fund,
+		"Score":       fmt.Sprintf("%d", nt.Score),
+		"SplitScores": nt.SplitScores,
 	}
 
 	nt.NastiffValuesBytes, err = json.Marshal(values)
