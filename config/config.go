@@ -78,8 +78,9 @@ type ETLConfig struct {
 }
 
 type TGBotConfig struct {
-	Token  string `mapstructure:"token" yaml:"token"`
-	ChatID int64  `mapstructure:"chat_id" yaml:"chat_id"`
+	Token    string `mapstructure:"token" yaml:"token"`
+	ChatID   int64  `mapstructure:"chat_id" yaml:"chat_id"`
+	External bool   `mapstructure:"external" yaml:"external"`
 }
 
 func SetupConfig(configPath string) {
