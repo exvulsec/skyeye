@@ -14,7 +14,7 @@ func TestNastiffTransactionExporter_SendToTelegram(t *testing.T) {
 	addrLabelString := "Binance_0xe9e7,JetswapFactory,JetswapRouter,PancakeSwap: Router v2,StrategyWingsLP,StrategyWingsLP, 0x{2}"
 	addrLabels := strings.Split(addrLabelString, ",")
 	tx := model.NastiffTransaction{
-		Chain:           "bsc",
+		Chain:           "bsc-test",
 		BlockNumber:     28915853,
 		BlockTimestamp:  1686209690,
 		Score:           77,

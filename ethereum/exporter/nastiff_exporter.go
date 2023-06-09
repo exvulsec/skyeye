@@ -9,7 +9,8 @@ import (
 	goteamsnotify "github.com/atc0005/go-teams-notify/v2"
 	"github.com/atc0005/go-teams-notify/v2/messagecard"
 	"github.com/ethereum/go-ethereum/common"
-	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
+	tgbotAPI "github.com/go-telegram/bot"
+	tgbotModels "github.com/go-telegram/bot/models"
 	"github.com/redis/go-redis/v9"
 	"github.com/sirupsen/logrus"
 
@@ -35,14 +36,15 @@ type NastiffTransactionExporter struct {
 
 type TGBot struct {
 	ChatID   int64
-	BoTAPI   *tgbotapi.BotAPI
+	BoTAPI   *tgbotAPI.Bot
 	External bool
+	ThreadID int
 }
 
 func NewNastiffTransferExporter(chain, openserver string, interval int) Exporter {
 	tgBots := []TGBot{}
 	for _, tgBotConfig := range config.Conf.ETL.TGBots {
-		botAPI, err := tgbotapi.NewBotAPI(tgBotConfig.Token)
+		botAPI, err := tgbotAPI.New(tgBotConfig.Token)
 		if err != nil {
 			logrus.Panicf("new tg bot api is err: %v", err)
 		}
@@ -50,6 +52,7 @@ func NewNastiffTransferExporter(chain, openserver string, interval int) Exporter
 			ChatID:   tgBotConfig.ChatID,
 			BoTAPI:   botAPI,
 			External: tgBotConfig.External,
+			ThreadID: tgBotConfig.ThreadID,
 		})
 	}
 
@@ -231,28 +234,31 @@ func (nte *NastiffTransactionExporter) MonitorContractAddress(tx model.NastiffTr
 func (nte *NastiffTransactionExporter) SendToTelegram(tx model.NastiffTransaction) error {
 	for _, bot := range nte.TGBots {
 		template := nte.composeTGTemplate(tx, bot.External)
+		messageParams := &tgbotAPI.SendMessageParams{
+			ChatID:          bot.ChatID,
+			Text:            template,
+			ParseMode:       tgbotModels.ParseModeHTML,
+			MessageThreadID: bot.ThreadID,
+		}
 
-		msg := tgbotapi.NewMessage(bot.ChatID, template)
-		msg.ParseMode = tgbotapi.ModeHTML
 		if !bot.External {
-			inlineKeyboardBtns := tgbotapi.InlineKeyboardMarkup{}
-			inlineKeyboardBtns = tgbotapi.NewInlineKeyboardMarkup(
-				tgbotapi.NewInlineKeyboardRow(
-					tgbotapi.NewInlineKeyboardButtonURL("Dedaub", fmt.Sprintf("%s/api/v1/address/%s/dedaub?apikey=%s&chain=%s",
+			markup := tgbotModels.InlineKeyboardMarkup{}
+			inlineKeyboardButtons := []tgbotModels.InlineKeyboardButton{
+				{
+					Text: "Dedaub",
+					URL: fmt.Sprintf("%s/api/v1/address/%s/dedaub?apikey=%s&chain=%s",
 						nte.OpenAPIServer,
 						tx.ContractAddress,
 						config.Conf.HTTPServer.APIKey,
 						tx.Chain,
-					),
-					),
-				),
-			)
-			msg.ReplyMarkup = inlineKeyboardBtns
+					)},
+			}
+			markup.InlineKeyboard = [][]tgbotModels.InlineKeyboardButton{inlineKeyboardButtons}
+			messageParams.ReplyMarkup = markup
 		}
-
-		_, err := bot.BoTAPI.Send(msg)
+		_, err := bot.BoTAPI.SendMessage(context.Background(), messageParams)
 		if err != nil {
-			return fmt.Errorf("send message to chatID %d tg is err: %v", bot.ChatID, err)
+			return fmt.Errorf("send message to chat id %d is err %v", bot.ChatID, err)
 		}
 	}
 	return nil

@@ -7,7 +7,7 @@ require (
 	github.com/deckarep/golang-set/v2 v2.1.0
 	github.com/ethereum/go-ethereum v1.11.3
 	github.com/gin-gonic/gin v1.9.0
-	github.com/go-telegram-bot-api/telegram-bot-api/v5 v5.5.1
+	github.com/go-telegram/bot v0.7.11
 	github.com/magiconair/properties v1.8.7
 	github.com/redis/go-redis/v9 v9.0.3
 	github.com/shopspring/decimal v1.3.1
