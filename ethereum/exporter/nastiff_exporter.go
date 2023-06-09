@@ -247,7 +247,6 @@ func (nte *NastiffTransactionExporter) SendToTelegram(tx model.NastiffTransactio
 					),
 				),
 			)
-
 		}
 		msg.ReplyMarkup = inlineKeyboardBtns
 
