@@ -100,7 +100,6 @@ func (nte *NastiffTransactionExporter) exportItem(tx model.NastiffTransaction) {
 		}
 		if err := nte.exportToRedis(tx); err != nil {
 			logrus.Errorf("append txhash %s's contract %s to redis message queue is err %v", tx.TxHash, tx.ContractAddress, err)
-			return
 		}
 		if err := nte.Alert(tx); err != nil {
 			logrus.Errorf("alert txhash %s's contract %s to channel is err %v", tx.TxHash, tx.ContractAddress, err)
