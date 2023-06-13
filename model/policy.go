@@ -33,9 +33,9 @@ func (npc *NoncePolicyCalc) Calc(tx *NastiffTransaction) int {
 		return 0
 	}
 	if 10 <= tx.Nonce && tx.Nonce < 50 {
-		return 5
+		return 5 - (int(tx.Nonce)-10)/10
 	}
-	return 10
+	return 10 - int(tx.Nonce)
 }
 
 type ByteCodePolicyCalc struct{}
