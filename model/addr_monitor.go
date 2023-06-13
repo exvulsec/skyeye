@@ -8,9 +8,10 @@ import (
 )
 
 type MonitorAddr struct {
-	ID      int    `json:"id" gorm:"column:id"`
-	Chain   string `json:"chain" gorm:"column:chain"`
-	Address string `json:"address" gorm:"column:address"`
+	ID          int    `json:"id" gorm:"column:id"`
+	Chain       string `json:"chain" gorm:"column:chain"`
+	Address     string `json:"address" gorm:"column:address"`
+	Description string `json:"description" gorm:"column:description"`
 }
 
 func (ma *MonitorAddr) Create() error {

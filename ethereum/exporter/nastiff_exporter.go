@@ -186,6 +186,7 @@ func (nte *NastiffTransactionExporter) Alert(tx model.NastiffTransaction) error 
 	msgCard.Title = fmt.Sprintf("%s %d", tx.Chain, tx.Score)
 	msgCard.Summary = "got an alert"
 	section := messagecard.NewSection()
+
 	facts := []messagecard.SectionFact{}
 	for key, value := range tx.NastiffValues {
 		if value == "" {
@@ -195,6 +196,9 @@ func (nte *NastiffTransactionExporter) Alert(tx model.NastiffTransaction) error 
 			Name:  key,
 			Value: value,
 		})
+		if err := section.AddPotentialAction(nte.ComposePotentialActionOpenURI(tx)...); err != nil {
+			return fmt.Errorf("add potential action to message card is err: %v", err)
+		}
 	}
 
 	if err := section.AddFact(facts...); err != nil {
@@ -210,10 +214,6 @@ func (nte *NastiffTransactionExporter) Alert(tx model.NastiffTransaction) error 
 		msgCard.ThemeColor = "#1EC6A0"
 	}
 
-	if err := msgCard.AddPotentialAction(nte.ComposePotentialActionOpenURI(tx)...); err != nil {
-		return fmt.Errorf("add potential action to message card is err: %v", err)
-	}
-
 	if err := nte.TeamsClient.Send(config.Conf.ETL.TeamsAlertWebHook, msgCard); err != nil {
 		return fmt.Errorf("send message to channel is err: %v", err)
 	}
@@ -222,8 +222,9 @@ func (nte *NastiffTransactionExporter) Alert(tx model.NastiffTransaction) error 
 
 func (nte *NastiffTransactionExporter) MonitorContractAddress(tx model.NastiffTransaction) error {
 	monitorAddr := model.MonitorAddr{
-		Chain:   strings.ToLower(tx.Chain),
-		Address: strings.ToLower(tx.ContractAddress),
+		Chain:       strings.ToLower(tx.Chain),
+		Address:     strings.ToLower(tx.ContractAddress),
+		Description: "Nastiff Monitor",
 	}
 	if err := monitorAddr.Create(); err != nil {
 		return fmt.Errorf("create monitor address chain %s address %s is err %v", tx.Chain, tx.ContractAddress, err)
@@ -288,7 +289,6 @@ func (nte *NastiffTransactionExporter) composeTGTemplate(tx model.NastiffTransac
 			fmt.Sprintf("%s/address/%s", utils.GetScanURL(tx.Chain), tx.FromAddress), tx.FromAddress,
 			tx.Score,
 			strings.Join(tx.Push20Args, ","))
-
 	}
 	return fmt.Sprintf(`
 <tg-emoji emoji-id="5368324170671202286">‼️</tg-emoji><b> %s Alert</b><tg-emoji emoji-id="5368324170671202286">‼️</tg-emoji>
