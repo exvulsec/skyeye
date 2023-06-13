@@ -63,7 +63,7 @@ func (cpc *ContractTypePolicyCalc) Calc(tx *NastiffTransaction) int {
 		utils.IsErc20Or721(utils.Erc721Signatures, push4Codes, utils.Erc721SignatureThreshold) {
 		return 0
 	}
-	return 13
+	return 20
 }
 
 type Push4PolicyCalc struct {
