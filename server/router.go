@@ -14,12 +14,14 @@ import (
 func addRouters(r gin.IRouter) {
 	addHealthRouter(r)
 	apiV1 := setV1Group(r)
+	auditController := controller.AuditController{}
 	ctrls := []controller.Controller{
 		&controller.AddressController{},
 		&controller.MonitorController{},
 		&controller.TokenController{},
 		&controller.TXController{},
-		&controller.CMCController{},
+		&controller.CMCController{AuditController: auditController},
+		&auditController,
 	}
 	apiV1.Use(middleware.CheckAPIKEY())
 	for _, ctrl := range ctrls {
