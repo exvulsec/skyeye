@@ -13,7 +13,7 @@ const (
 	TableTornadoLogs        = "tornado_logs"
 	TableMonitorAddrs       = "monitor_addrs"
 	TableBlockAddrs         = "block_addrs"
-	TableAuditContracts     = "audit_contracts"
+	TableAuditReports       = "audit_reports"
 )
 
 const (

@@ -7,7 +7,7 @@ import (
 	"go-etl/utils"
 )
 
-type CMCAudit struct {
+type AuditReport struct {
 	CoinID      *int      `json:"coinId" gorm:"column:cmc_coinid"`
 	Name        string    `json:"coinName" gorm:"column:name"`
 	Symbol      string    `json:"symbol" gorm:"column:symbol"`
@@ -19,9 +19,9 @@ type CMCAudit struct {
 	ReportURL   string    `json:"reportUrl" gorm:"column:report_url"`
 }
 
-type CMCAudits []CMCAudit
+type AuditReports []AuditReport
 
-func (a *CMCAudits) GetCMCAudits() error {
-	tableName := utils.ComposeTableName(datastore.SchemaPublic, datastore.TableAuditContracts)
+func (a *AuditReports) GetAuditReports() error {
+	tableName := utils.ComposeTableName(datastore.SchemaPublic, datastore.TableAuditReports)
 	return datastore.DB().Table(tableName).Order("cmc_coinid IS NULL, cmc_coinid desc, audit_time desc").Find(a).Error
 }
