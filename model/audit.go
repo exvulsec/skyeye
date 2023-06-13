@@ -8,7 +8,6 @@ import (
 )
 
 type AuditReport struct {
-	ID          int       `json:"id" gorm:"column:id"`
 	Chain       string    `json:"contractPlatform" gorm:"column:chain"`
 	Address     string    `json:"contractAddress" gorm:"column:address"`
 	CoinID      *int      `json:"coinId" gorm:"column:cmc_coinid"`
