@@ -104,16 +104,13 @@ func (nte *NastiffTransactionExporter) exportItem(tx model.NastiffTransaction) {
 		}
 		if err := nte.Alert(tx); err != nil {
 			logrus.Errorf("alert txhash %s's contract %s to channel is err %v", tx.TxHash, tx.ContractAddress, err)
-			return
 		}
 		if tx.Score >= config.Conf.ETL.DangerScoreAlertThreshold {
 			if err := nte.MonitorContractAddress(tx); err != nil {
 				logrus.Error(err)
-				return
 			}
 			if err := nte.SendToTelegram(tx); err != nil {
 				logrus.Error(err)
-				return
 			}
 		}
 
@@ -196,9 +193,6 @@ func (nte *NastiffTransactionExporter) Alert(tx model.NastiffTransaction) error 
 			Name:  key,
 			Value: value,
 		})
-		if err := section.AddPotentialAction(nte.ComposePotentialActionOpenURI(tx)...); err != nil {
-			return fmt.Errorf("add potential action to message card is err: %v", err)
-		}
 	}
 
 	if err := section.AddFact(facts...); err != nil {
@@ -206,6 +200,9 @@ func (nte *NastiffTransactionExporter) Alert(tx model.NastiffTransaction) error 
 	}
 	if err := msgCard.AddSection(section); err != nil {
 		return fmt.Errorf("add seciton to message card is err: %v", err)
+	}
+	if err := msgCard.AddPotentialAction(nte.ComposePotentialActionOpenURI(tx)...); err != nil {
+		return fmt.Errorf("add potential action to message card is err: %v", err)
 	}
 
 	if tx.Score >= config.Conf.ETL.DangerScoreAlertThreshold {

@@ -106,16 +106,14 @@ doker-compose up -d
 分数设置
 
 | name            | conditions         | score |
-| --------------- | ------------------ | ----- |
+| --------------- | ------------------ |-------|
 | nonce           | 0 <= nonce < 10    | 10    |
 |                 | 10 <= nonce < 50   | 5     |
 |                 | 50 <= nonce        | 0     |
 | bytecode        | 0 < bytecode < 500 | 0     |
 |                 | bytecode >= 500    | 12    |
 | isERC20/721     | isERC20/721        | 0     |
-|                 | ~isERC20/721       | 13    |
-| opensource      | True               | 0     |
-|                 | False              | 25    |
+|                 | ~isERC20/721       | 20    |
 | push20          | len(push20) == 0   | 0     |
 |                 | len(push20) != 0   | 2     |
 | push4不含闪电贷   | True               | 0     |
