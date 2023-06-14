@@ -120,17 +120,22 @@ func (te *transactionExecutor) ExtractByBlock(block types.Block) any {
 
 func (te *transactionExecutor) Enrich() {
 	startTimestamp := time.Now()
-	te.filterTransactions()
-	txs := te.items.(model.Transactions)
-	if len(txs) > 0 {
-		var logCh chan []*types.Log
-		if te.logExecutor != nil {
-			lge, _ := te.logExecutor.(*logExecutor)
-			logCh = lge.logsCh
+	var logCh chan []*types.Log
+	var lge *logExecutor
+	if te.logExecutor != nil {
+		lge, _ = te.logExecutor.(*logExecutor)
+		logCh = lge.logsCh
+	}
+	if te.isNastiff {
+		te.filterContractCreation()
+		txs := te.items.(model.Transactions)
+		if len(txs) > 0 {
+			txs.EnrichReceipts(te.batchSize, logCh)
 		}
-
-		txs.EnrichReceipts(te.batchSize, te.workers, logCh)
 		logrus.Infof("enrich %d txs from receipt cost: %.2fs", len(txs), time.Since(startTimestamp).Seconds())
+	} else {
+		lge.filterLogsByTopics(te.blockNumber, te.blockNumber)
+
 	}
 }
 
@@ -144,14 +149,12 @@ func (te *transactionExecutor) Export() {
 	utils.WriteBlockNumberToFile(config.Conf.ETL.PreviousFile, te.blockNumber)
 }
 
-func (te *transactionExecutor) filterTransactions() {
-	if te.isNastiff {
-		txs := model.Transactions{}
-		for _, item := range te.items.(model.Transactions) {
-			if item.ToAddress == nil {
-				txs = append(txs, item)
-			}
+func (te *transactionExecutor) filterContractCreation() {
+	txs := model.Transactions{}
+	for _, item := range te.items.(model.Transactions) {
+		if item.ToAddress == nil {
+			txs = append(txs, item)
 		}
-		te.items = txs
 	}
+	te.items = txs
 }
