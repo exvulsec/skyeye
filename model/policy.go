@@ -86,11 +86,11 @@ func (p20pc *Push20PolicyCalc) Calc(tx *NastiffTransaction) int {
 	return 2
 }
 
-type OpenSourcePolicyCalc struct {
+type OpenSourcePolicy struct {
 	Interval int
 }
 
-func (opc *OpenSourcePolicyCalc) Calc(tx *NastiffTransaction) int {
+func (opc *OpenSourcePolicy) IsOpenSource(tx NastiffTransaction) bool {
 	if opc.Interval != 0 {
 		time.Sleep(time.Duration(opc.Interval) * time.Minute)
 	}
@@ -98,12 +98,9 @@ func (opc *OpenSourcePolicyCalc) Calc(tx *NastiffTransaction) int {
 	contract, err := GetContractCode(tx.Chain, tx.ContractAddress)
 	if err != nil {
 		logrus.Errorf("get contract %s code is err: %v", tx.ContractAddress, err)
-		return 0
+		return false
 	}
-	if contract.Result[0].SourceCode != "" {
-		return 0
-	}
-	return 25
+	return contract.Result[0].SourceCode != ""
 }
 
 type FundPolicyCalc struct {
