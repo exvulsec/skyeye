@@ -26,48 +26,43 @@ const (
 )
 
 type NastiffTransactionExporter struct {
-	Chain         string
-	OpenAPIServer string
-	Interval      int
-	TeamsClient   *goteamsnotify.TeamsClient
-	TGBots        []TGBot
-	LinkURLs      map[string]string
+	Chain            string
+	OpenAPIServer    string
+	Interval         int
+	TeamsClient      *goteamsnotify.TeamsClient
+	TGBot            TGBot
+	LinkURLs         map[string]string
+	OpenSourcePolicy model.OpenSourcePolicy
 }
 
 type TGBot struct {
-	ChatID   int64
-	BoTAPI   *tgbotAPI.Bot
-	External bool
-	ThreadID int
+	BoTAPI      *tgbotAPI.Bot
+	ChatConfigs []config.TGChatConfig
 }
 
 func NewNastiffTransferExporter(chain, openserver string, interval int) Exporter {
-	tgBots := []TGBot{}
-	for _, tgBotConfig := range config.Conf.ETL.TGBots {
-		botAPI, err := tgbotAPI.New(tgBotConfig.Token)
-		if err != nil {
-			logrus.Panicf("new tg bot api is err: %v", err)
-		}
-		tgBots = append(tgBots, TGBot{
-			ChatID:   tgBotConfig.ChatID,
-			BoTAPI:   botAPI,
-			External: tgBotConfig.External,
-			ThreadID: tgBotConfig.ThreadID,
-		})
+
+	botAPI, err := tgbotAPI.New(config.Conf.ETL.TGBot.Token)
+	if err != nil {
+		logrus.Panicf("new tg bot api is err: %v", err)
+	}
+	tgBot := TGBot{
+		BoTAPI:      botAPI,
+		ChatConfigs: config.Conf.ETL.TGBot.ChatConfigs,
 	}
 
 	return &NastiffTransactionExporter{
 		Chain:         chain,
 		OpenAPIServer: openserver,
-		Interval:      interval,
 		LinkURLs: map[string]string{
 			"ScanAddress": fmt.Sprintf("%s/address/%%s", utils.GetScanURL(chain)),
 			"ScanTX":      fmt.Sprintf("%s/tx/%%s", utils.GetScanURL(chain)),
 			"Dedaub":      fmt.Sprintf("%s/api/v1/address/%%s/dedaub?apikey=%s&chain=%s", openserver, config.Conf.HTTPServer.APIKey, chain),
 			"MCL":         fmt.Sprintf("%s/api/v1/address/%%s/solidity?apikey=%s&chain=%s", openserver, config.Conf.HTTPServer.APIKey, chain),
 		},
-		TeamsClient: goteamsnotify.NewTeamsClient(),
-		TGBots:      tgBots,
+		OpenSourcePolicy: model.OpenSourcePolicy{Interval: interval},
+		TeamsClient:      goteamsnotify.NewTeamsClient(),
+		TGBot:            tgBot,
 	}
 }
 
@@ -108,18 +103,44 @@ func (nte *NastiffTransactionExporter) exportItem(tx model.NastiffTransaction) {
 			if err := nte.MonitorContractAddress(tx); err != nil {
 				logrus.Error(err)
 			}
-			if err := nte.SendToTelegram(tx); err != nil {
+			sentMsgs, err := nte.SendToTelegram(tx)
+			if err != nil {
 				logrus.Error(err)
 			}
+			go func() {
+				if nte.OpenSourcePolicy.IsOpenSource(tx) {
+					if err = nte.RemoveMonitorContractAddress(tx); err != nil {
+						logrus.Error(err)
+					}
+					if err = nte.UpdateTGMessage(sentMsgs); err != nil {
+						logrus.Error(err)
+					}
+				}
+			}()
 		}
-
 	}
 	logrus.Infof("start to insert tx %s's contract %s to db", tx.TxHash, tx.ContractAddress)
 	if err := tx.Insert(); err != nil {
 		logrus.Errorf("insert txhash %s's contract %s to db is err %v", tx.TxHash, tx.ContractAddress, err)
 		return
 	}
+}
 
+func (nte *NastiffTransactionExporter) UpdateTGMessage(sentMsgs []*tgbotModels.Message) error {
+	for _, sentMsg := range sentMsgs {
+		editMsgTextParams := &tgbotAPI.EditMessageTextParams{
+			ChatID:      sentMsg.Chat.ID,
+			MessageID:   sentMsg.ID,
+			ParseMode:   tgbotModels.ParseModeHTML,
+			Text:        fmt.Sprintf("<strike>%s</strike>", sentMsg.Text),
+			ReplyMarkup: sentMsg.ReplyMarkup,
+		}
+		_, err := nte.TGBot.BoTAPI.EditMessageText(context.Background(), editMsgTextParams)
+		if err != nil {
+			return fmt.Errorf("edit tg msg %d on chat %d is err %v", sentMsg.ID, sentMsg.Chat.ID, err)
+		}
+	}
+	return nil
 }
 
 func (nte *NastiffTransactionExporter) CalcContractByPolicies(tx *model.NastiffTransaction) bool {
@@ -127,7 +148,6 @@ func (nte *NastiffTransactionExporter) CalcContractByPolicies(tx *model.NastiffT
 		&model.NoncePolicyCalc{},
 		&model.ByteCodePolicyCalc{},
 		&model.ContractTypePolicyCalc{},
-		//&model.OpenSourcePolicyCalc{Interval: nte.Interval},
 		&model.Push4PolicyCalc{
 			FlashLoanFuncNames: model.LoadFlashLoanFuncNames(),
 		},
@@ -228,37 +248,64 @@ func (nte *NastiffTransactionExporter) MonitorContractAddress(tx model.NastiffTr
 	return nil
 }
 
-func (nte *NastiffTransactionExporter) SendToTelegram(tx model.NastiffTransaction) error {
-	for _, bot := range nte.TGBots {
-		template := nte.composeTGTemplate(tx, bot.External)
-		messageParams := &tgbotAPI.SendMessageParams{
-			ChatID:          bot.ChatID,
-			Text:            template,
-			ParseMode:       tgbotModels.ParseModeHTML,
-			MessageThreadID: bot.ThreadID,
-		}
-
-		if !bot.External {
-			markup := tgbotModels.InlineKeyboardMarkup{}
-			inlineKeyboardButtons := []tgbotModels.InlineKeyboardButton{
-				{
-					Text: "Dedaub",
-					URL: fmt.Sprintf("%s/api/v1/address/%s/dedaub?apikey=%s&chain=%s",
-						nte.OpenAPIServer,
-						tx.ContractAddress,
-						config.Conf.HTTPServer.APIKey,
-						tx.Chain,
-					)},
-			}
-			markup.InlineKeyboard = [][]tgbotModels.InlineKeyboardButton{inlineKeyboardButtons}
-			messageParams.ReplyMarkup = markup
-		}
-		_, err := bot.BoTAPI.SendMessage(context.Background(), messageParams)
-		if err != nil {
-			return fmt.Errorf("send message to chat id %d is err %v", bot.ChatID, err)
-		}
+func (nte *NastiffTransactionExporter) RemoveMonitorContractAddress(tx model.NastiffTransaction) error {
+	monitorAddr := model.MonitorAddr{
+		Chain:   strings.ToLower(tx.Chain),
+		Address: strings.ToLower(tx.ContractAddress),
+	}
+	if err := monitorAddr.Delete(); err != nil {
+		return fmt.Errorf("remove monitor address on chain %s address %s is err %v", tx.Chain, tx.ContractAddress, err)
 	}
 	return nil
+}
+
+func (nte *NastiffTransactionExporter) ComposeTGMessageMarkUp(tx model.NastiffTransaction) tgbotModels.InlineKeyboardMarkup {
+	markup := tgbotModels.InlineKeyboardMarkup{}
+	inlineKeyboardButtons := []tgbotModels.InlineKeyboardButton{
+		{
+			Text: "Dedaub",
+			URL: fmt.Sprintf("%s/api/v1/address/%s/dedaub?apikey=%s&chain=%s",
+				nte.OpenAPIServer,
+				tx.ContractAddress,
+				config.Conf.HTTPServer.APIKey,
+				tx.Chain,
+			)},
+	}
+	markup.InlineKeyboard = [][]tgbotModels.InlineKeyboardButton{inlineKeyboardButtons}
+	return markup
+}
+
+func (nte *NastiffTransactionExporter) SendToTelegram(tx model.NastiffTransaction) ([]*tgbotModels.Message, error) {
+	sentMsgs := []*tgbotModels.Message{}
+	for _, cfg := range nte.TGBot.ChatConfigs {
+		msgParams := []*tgbotAPI.SendMessageParams{}
+		template := nte.composeTGTemplate(tx, cfg.External)
+		chatMsgParams := &tgbotAPI.SendMessageParams{
+			ChatID:    cfg.ChatID,
+			Text:      template,
+			ParseMode: tgbotModels.ParseModeHTML,
+		}
+		if !cfg.External {
+			chatMsgParams.ReplyMarkup = nte.ComposeTGMessageMarkUp(tx)
+		}
+		if len(cfg.ThreadIDs) > 0 {
+			for _, threadID := range cfg.ThreadIDs {
+				threadMsgParams := chatMsgParams
+				threadMsgParams.MessageThreadID = threadID
+				msgParams = append(msgParams, threadMsgParams)
+			}
+		} else {
+			msgParams = append(msgParams, chatMsgParams)
+		}
+		for _, msgParam := range msgParams {
+			messageInfo, err := nte.TGBot.BoTAPI.SendMessage(context.Background(), msgParam)
+			if err != nil {
+				return sentMsgs, fmt.Errorf("send message to chat id %d is err %v", cfg.ChatID, err)
+			}
+			sentMsgs = append(sentMsgs, messageInfo)
+		}
+	}
+	return sentMsgs, nil
 }
 
 func (nte *NastiffTransactionExporter) composeTGTemplate(tx model.NastiffTransaction, external bool) string {
