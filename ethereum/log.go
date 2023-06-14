@@ -6,6 +6,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/ethereum/go-ethereum"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/sirupsen/logrus"
@@ -49,11 +50,9 @@ func (le *logExecutor) Run() {
 			} else {
 				for index := range logs {
 					log := logs[index]
-					if le.filterLogsByTopics(log.Topics) {
-						modelLog := model.Log{}
-						modelLog.ConvertFromEthereumLog(*log)
-						items = append(items, modelLog)
-					}
+					modelLog := model.Log{}
+					modelLog.ConvertFromEthereumLog(*log)
+					items = append(items, modelLog)
 				}
 			}
 		}
@@ -89,15 +88,24 @@ func (le *logExecutor) Export() {
 
 }
 
-func (le *logExecutor) filterLogsByTopics(topics []common.Hash) bool {
-	for _, topic := range topics {
-		for _, needTopic := range le.topics {
-			if topic == needTopic {
-				return true
-			}
-		}
+func (le *logExecutor) filterLogsByTopics(fromBlock, toBlock int64) {
+	startTimestamp := time.Now()
+	filterQuery := ethereum.FilterQuery{
+		FromBlock: big.NewInt(fromBlock),
+		ToBlock:   big.NewInt(toBlock),
+		Topics:    [][]common.Hash{le.topics},
 	}
-	return false
+	logs, err := client.EvmClient().FilterLogs(context.Background(), filterQuery)
+	if err != nil {
+		logrus.Panicf("filter logs from block %d to block %d is err %v", fromBlock, toBlock, err)
+	}
+	logPtrs := []*types.Log{}
+	for _, log := range logs {
+		logPtr := &log
+		logPtrs = append(logPtrs, logPtr)
+	}
+	le.logsCh <- logPtrs
+	logrus.Infof("get %d logs cost: %.2fs", len(logPtrs), time.Since(startTimestamp).Seconds())
 }
 
 func ConvertTopicsFromString(topicString string) []common.Hash {
