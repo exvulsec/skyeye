@@ -41,14 +41,16 @@ type TGBot struct {
 }
 
 func NewNastiffTransferExporter(chain, openserver string, interval int) Exporter {
-
-	botAPI, err := tgbotAPI.New(config.Conf.ETL.TGBot.Token)
-	if err != nil {
-		logrus.Panicf("new tg bot api is err: %v", err)
-	}
-	tgBot := TGBot{
-		BoTAPI:      botAPI,
-		ChatConfigs: config.Conf.ETL.TGBot.ChatConfigs,
+	var tgBot TGBot
+	if config.Conf.ETL.TGBot.Token != "" {
+		botAPI, err := tgbotAPI.New(config.Conf.ETL.TGBot.Token)
+		if err != nil {
+			logrus.Panicf("new tg bot api is err: %v", err)
+		}
+		tgBot = TGBot{
+			BoTAPI:      botAPI,
+			ChatConfigs: config.Conf.ETL.TGBot.ChatConfigs,
+		}
 	}
 
 	return &NastiffTransactionExporter{
@@ -104,20 +106,22 @@ func (nte *NastiffTransactionExporter) exportItem(tx model.NastiffTransaction) {
 				logrus.Error(err)
 			}
 
-			sentMsgs, err := nte.SendToTelegram(tx)
-			if err != nil {
-				logrus.Error(err)
-			}
-			go func() {
-				if nte.OpenSourcePolicy.IsOpenSource(tx) {
-					if err = nte.RemoveMonitorContractAddress(tx); err != nil {
-						logrus.Error(err)
-					}
-					if err = nte.UpdateTGMessage(sentMsgs); err != nil {
-						logrus.Error(err)
-					}
+			if len(nte.TGBot.ChatConfigs) != 0 {
+				sentMsgs, err := nte.SendToTelegram(tx)
+				if err != nil {
+					logrus.Error(err)
 				}
-			}()
+				go func() {
+					if nte.OpenSourcePolicy.IsOpenSource(tx) {
+						if err = nte.RemoveMonitorContractAddress(tx); err != nil {
+							logrus.Error(err)
+						}
+						if err = nte.UpdateTGMessage(sentMsgs); err != nil {
+							logrus.Error(err)
+						}
+					}
+				}()
+			}
 		}
 	}
 	logrus.Infof("start to insert tx %s's contract %s to db", tx.TxHash, tx.ContractAddress)
