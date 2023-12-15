@@ -41,12 +41,18 @@ var latestBlockNumber uint64
 func (be *BlockExecutor) getPreviousBlocks() {
 	var err error
 	previousBlockNumber := uint64(utils.ReadBlockNumberFromFile(config.Conf.ETL.PreviousFile))
+
 	logrus.Infof("previous block number is %d", previousBlockNumber)
 	latestBlockNumber, err = client.EvmClient().BlockNumber(context.Background())
 	if err != nil {
 		logrus.Fatal("failed to get to the latest Block number", err)
 		return
 	}
+
+	if previousBlockNumber == 0 {
+		previousBlockNumber = latestBlockNumber - 1
+	}
+
 	logrus.Infof("latest block number is %d", latestBlockNumber)
 	if previousBlockNumber < latestBlockNumber {
 		currentBlockNumber := previousBlockNumber + 1
