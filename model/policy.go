@@ -241,6 +241,15 @@ func GetPushTypeArgs(byteCode []byte) map[string][]string {
 func GetPush4Args(args []string) []string {
 	byteSignatures := mapset.NewSet[string](args...).ToSlice()
 	textSignatures, err := GetSignatures(byteSignatures)
+
+	for index := range textSignatures {
+		textSignature := textSignatures[index]
+		texts := strings.Split(textSignature, "(")
+		if len(texts) > 0 {
+			textSignatures[index] = texts[0]
+		}
+	}
+
 	if err != nil {
 		logrus.Errorf("get signature is err %v", err)
 		return []string{}

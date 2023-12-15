@@ -25,6 +25,9 @@ func TestNastiffTransactionExporter_SendToTelegram(t *testing.T) {
 		FromAddress:     "0x3d4609330e3d9df2ea7b5d87e9f5283ec98f13dd",
 		ContractAddress: "0x5d0bd2528d426270a63e352ad0fcacee5c227cbf",
 		Push4Args:       funcs,
+		Fund:            "2-Binance: Hot Wallet 10",
+		SplitScores:     "0,12,20,50,2,0",
+		ByteCode:        make([]byte, 4277),
 	}
 	nte := e.(*NastiffTransactionExporter)
 	sentMsgs, err := nte.SendToTelegram(tx)

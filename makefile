@@ -28,7 +28,7 @@ build-linux:
 	  -e GOPROXY=https://goproxy.io,direct                            \
 	  -e GOPATH=/go                                                   \
 	  -e SHELLOPTS="$(SHELLOPTS)"                                     \
-	  golang:1.20.2-buster                                            \
+	  golang:1.20.12-buster                                           \
 	    /bin/bash -c 'go mod download;                                \
 	    CGO_ENABLED=0 GOOS=linux GOARCH=amd64                         \
 	    go build -v -o $(OUTPUT_DIR)/$(TARGET) main.go;'
