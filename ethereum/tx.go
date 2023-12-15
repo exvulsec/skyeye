@@ -120,22 +120,18 @@ func (te *transactionExecutor) ExtractByBlock(block types.Block) any {
 
 func (te *transactionExecutor) Enrich() {
 	startTimestamp := time.Now()
-	var logCh chan []*types.Log
-	var lge *logExecutor
-	if te.logExecutor != nil {
-		lge, _ = te.logExecutor.(*logExecutor)
-		logCh = lge.logsCh
-	}
 	if te.isNastiff {
 		te.filterContractCreation()
 		txs := te.items.(model.Transactions)
 		if len(txs) > 0 {
-			txs.EnrichReceipts(te.batchSize, logCh)
+			txs.EnrichReceipts(te.batchSize)
 		}
 		logrus.Infof("enrich %d txs from receipt cost: %.2fs", len(txs), time.Since(startTimestamp).Seconds())
 	} else {
-		lge.filterLogsByTopics(te.blockNumber, te.blockNumber)
-
+		if te.logExecutor != nil {
+			lge, _ := te.logExecutor.(*logExecutor)
+			lge.filterLogsByTopics(te.blockNumber, te.blockNumber)
+		}
 	}
 }
 

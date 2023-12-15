@@ -20,7 +20,7 @@ import (
 type logExecutor struct {
 	chain      string
 	workerSize int
-	logsCh     chan []*types.Log
+	logsCh     chan []types.Log
 	items      any
 	topics     []common.Hash
 }
@@ -30,32 +30,22 @@ func NewLogExecutor(chain string, workers int, topics []common.Hash) Executor {
 		chain:      chain,
 		workerSize: workers,
 		topics:     topics,
-		logsCh:     make(chan []*types.Log, 10),
+		logsCh:     make(chan []types.Log, 10),
 	}
 }
 
 func (le *logExecutor) Run() {
-	var (
-		currentBlockNumber uint64
-		items              = model.Logs{}
-	)
 	for logs := range le.logsCh {
-		if len(logs) > 0 {
-			if logs[0].BlockNumber != currentBlockNumber {
-				currentBlockNumber = logs[0].BlockNumber
-				le.items = items
-				le.Enrich()
-				le.Export()
-				items = model.Logs{}
-			} else {
-				for index := range logs {
-					log := logs[index]
-					modelLog := model.Log{}
-					modelLog.ConvertFromEthereumLog(*log)
-					items = append(items, modelLog)
-				}
-			}
+		var items = model.Logs{}
+		for index := range logs {
+			log := logs[index]
+			modelLog := model.Log{}
+			modelLog.ConvertFromEthereumLog(log)
+			items = append(items, modelLog)
 		}
+		le.items = items
+		le.Enrich()
+		le.Export()
 	}
 }
 
@@ -99,13 +89,8 @@ func (le *logExecutor) filterLogsByTopics(fromBlock, toBlock int64) {
 	if err != nil {
 		logrus.Panicf("filter logs from block %d to block %d is err %v", fromBlock, toBlock, err)
 	}
-	logPtrs := []*types.Log{}
-	for _, log := range logs {
-		logPtr := &log
-		logPtrs = append(logPtrs, logPtr)
-	}
-	le.logsCh <- logPtrs
-	logrus.Infof("get %d logs cost: %.2fs", len(logPtrs), time.Since(startTimestamp).Seconds())
+	le.logsCh <- logs
+	logrus.Infof("get %d logs cost: %.2fs", len(logs), time.Since(startTimestamp).Seconds())
 }
 
 func ConvertTopicsFromString(topicString string) []common.Hash {

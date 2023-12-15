@@ -119,14 +119,6 @@ func GetSignatures(byteSigns []string) ([]string, error) {
 		return textSignatures[i] < textSignatures[j]
 	})
 
-	for index := range textSignatures {
-		textSignature := textSignatures[index]
-		texts := strings.Split(textSignature, "(")
-		if len(texts) > 0 {
-			textSignatures[index] = texts[0]
-		}
-	}
-
 	if len(byteSignatures) > 0 {
 		textSignatures = append(textSignatures, fmt.Sprintf("0x{%d}", len(byteSignatures)))
 	}
