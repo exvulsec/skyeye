@@ -54,9 +54,10 @@ func (te *transactionExecutor) Run() {
 		block, err := client.EvmClient().BlockByNumber(timeoutContext, big.NewInt(int64(blockNumber)))
 		if err != nil {
 			if strings.Contains(err.Error(), "not found") || strings.Contains(err.Error(), "context deadline exceeded") {
-				for index := 0; index < 3; index++ {
+				retry := 1
+				for {
 					time.Sleep(1 * time.Second)
-					logrus.Infof("retry %d to get block: %d info", index+1, blockNumber)
+					logrus.Infof("retry %d to get block: %d info", retry, blockNumber)
 					block, err = client.EvmClient().BlockByNumber(timeoutContext, big.NewInt(int64(blockNumber)))
 					if err != nil && (!strings.Contains(err.Error(), "not found") && !strings.Contains(err.Error(), "context deadline exceeded")) {
 						logrus.Errorf("get block %d info is err: %v, drop it ", blockNumber, err)
@@ -64,6 +65,7 @@ func (te *transactionExecutor) Run() {
 					if block != nil {
 						break
 					}
+					retry++
 				}
 			} else {
 				logrus.Errorf("get block %d info is err: %v, drop it ", blockNumber, err)
