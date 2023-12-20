@@ -1,13 +1,12 @@
 package ethereum
 
 import (
-	"encoding/json"
+	"context"
+	"math/big"
 	"sync"
 	"time"
 
-	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/ethereum/go-ethereum/core/types"
-	"github.com/ethereum/go-ethereum/rpc"
 	"github.com/shopspring/decimal"
 	"github.com/sirupsen/logrus"
 
@@ -15,7 +14,6 @@ import (
 	"go-etl/config"
 	"go-etl/ethereum/exporter"
 	"go-etl/model"
-	etlRPC "go-etl/rpc"
 	"go-etl/utils"
 )
 
@@ -52,31 +50,27 @@ func (te *transactionExecutor) Run() {
 	}
 
 	for blockNumber := range te.blockExecutor.blocks {
-		calls := []rpc.BatchElem{{
-			Method: utils.RPCNameEthGetBlockByNumber,
-			Args:   []any{hexutil.EncodeUint64(blockNumber), true},
-			Result: &json.RawMessage{},
-		}}
-		client.RPCClient().MultiCall(calls, te.batchSize)
-		if result, _ := calls[0].Result.(*json.RawMessage); string(*result) == "null" {
+		block, err := client.EvmClient().BlockByNumber(context.Background(), big.NewInt(int64(blockNumber)))
+		if err != nil {
+			logrus.Fatalf("get block from raw json message is err: %v, item is %+v", err, blockNumber)
+		}
+		logrus.Infof("geting the block: %d infos", blockNumber)
+		if block.Number() == nil {
 			retry := 1
 			for {
 				time.Sleep(1 * time.Second)
 				logrus.Infof("retry %d to get block: %d info", retry, blockNumber)
-				if err := client.RPCClient().Client.BatchCall(calls); err != nil {
-					logrus.Errorf("batch call is err %v", err)
-					return
+				block, err = client.EvmClient().BlockByNumber(context.Background(), big.NewInt(int64(blockNumber)))
+				if err != nil {
+					logrus.Fatalf("get block from raw json message is err: %v, item is %+v", err, blockNumber)
 				}
-				if result, _ = calls[0].Result.(*json.RawMessage); string(*result) != "null" {
+				if block.Number() != nil {
 					break
 				}
 				retry++
 			}
 		}
-		block, err := etlRPC.GetBlock(*calls[0].Result.(*json.RawMessage))
-		if err != nil {
-			logrus.Fatalf("get block from raw json message is err: %v, item is %+v", err, blockNumber)
-		}
+		logrus.Infof("start to extract transaction infos from the block: %d infos", blockNumber)
 		te.blockNumber = block.Number().Int64()
 		te.items = te.ExtractByBlock(*block)
 		te.Enrich()

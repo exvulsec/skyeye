@@ -50,6 +50,7 @@ func (be *BlockExecutor) subNewHeader() {
 		case header := <-headers:
 			logrus.Infof("receive new block %d", header.Number.Uint64())
 			be.blocks <- header.Number.Uint64()
+			logrus.Infof("extract the txs info from block %d", header.Number.Uint64())
 		}
 	}
 }
