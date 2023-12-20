@@ -37,8 +37,6 @@ func skyEyeCmdInit() {
 	skyeyeCmd.Flags().Int("batch_size", 50, "one batch call workers ")
 	skyeyeCmd.Flags().String("chain", "ethereum", "chain name")
 	skyeyeCmd.Flags().String("openapi_server", "http://localhost:8088", "open api server")
-	skyeyeCmd.Flags().String("topics", "", "filter the specified topics, split by comma")
-	skyeyeCmd.Flags().String("log_table", "logs", "log table name")
 }
 
 func init() {
