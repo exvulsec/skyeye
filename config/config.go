@@ -64,28 +64,16 @@ type RedisConfig struct {
 }
 
 type ETLConfig struct {
-	ProviderURL               string      `mapstructure:"provider_url" yaml:"provider_url"`
-	Chain                     string      `mapstructure:"chain" yaml:"chain"`
-	Worker                    int64       `mapstructure:"worker" yaml:"worker"`
-	PreviousFile              string      `mapstructure:"previous_file" yaml:"previous_file"`
-	ScanInterval              int         `mapstructure:"scan_interval" yaml:"scan_interval"`
-	FlashLoanFile             string      `mapstructure:"flash_loan_file" yaml:"flash_loan_file"`
-	ScoreAlertThreshold       int         `mapstructure:"score_alert_threshold" yaml:"score_alert_threshold"`
-	DangerScoreAlertThreshold int         `mapstructure:"danger_score_alert_threshold" yaml:"danger_score_alert_threshold"`
-	LogPath                   string      `mapstructure:"log_path" yaml:"log_path"`
-	TeamsAlertWebHook         string      `mapstructure:"teams_alert_webhook" yaml:"teams_alert_webhook"`
-	TGBot                     TGBotConfig `mapstructure:"tg_bot" yaml:"tg_bot"`
-}
-
-type TGBotConfig struct {
-	Token       string         `mapstructure:"token" yaml:"token"`
-	ChatConfigs []TGChatConfig `mapstructure:"chat_configs" yaml:"chat_configs"`
-}
-
-type TGChatConfig struct {
-	ChatID    int64 `mapstructure:"chat_id" yaml:"chat_id"`
-	External  bool  `mapstructure:"external" yaml:"external"`
-	ThreadIDs []int `mapstructure:"thread_ids" yaml:"thread_ids"`
+	ProviderURL               string `mapstructure:"provider_url" yaml:"provider_url"`
+	Chain                     string `mapstructure:"chain" yaml:"chain"`
+	Worker                    int64  `mapstructure:"worker" yaml:"worker"`
+	PreviousFile              string `mapstructure:"previous_file" yaml:"previous_file"`
+	ScanInterval              int    `mapstructure:"scan_interval" yaml:"scan_interval"`
+	FlashLoanFile             string `mapstructure:"flash_loan_file" yaml:"flash_loan_file"`
+	ScoreAlertThreshold       int    `mapstructure:"score_alert_threshold" yaml:"score_alert_threshold"`
+	DangerScoreAlertThreshold int    `mapstructure:"danger_score_alert_threshold" yaml:"danger_score_alert_threshold"`
+	LogPath                   string `mapstructure:"log_path" yaml:"log_path"`
+	SlackWebHook              string `mapstructure:"slack_webhook" yaml:"slack_webhook"`
 }
 
 func SetupConfig(configPath string) {

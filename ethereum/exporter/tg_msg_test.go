@@ -30,14 +30,5 @@ func TestNastiffTransactionExporter_SendToTelegram(t *testing.T) {
 		ByteCode:        make([]byte, 4277),
 	}
 	nte := e.(*NastiffTransactionExporter)
-	sentMsgs, err := nte.SendToTelegram(tx)
-	if err != nil {
-		panic(err)
-	}
-
-	if nte.OpenSourcePolicy.IsOpenSource(tx) {
-		if err = nte.UpdateTGMessage(sentMsgs); err != nil {
-			panic(err)
-		}
-	}
+	nte.SendMessageToSlack(tx)
 }
