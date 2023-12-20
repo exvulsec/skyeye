@@ -52,22 +52,22 @@ func (te *transactionExecutor) Run() {
 
 	for blockNumber := range te.blockExecutor.blocks {
 		block, err := client.EvmClient().BlockByNumber(context.Background(), big.NewInt(int64(blockNumber)))
-		if strings.Contains(err.Error(), "not found") {
-			retry := 1
-			for {
-				time.Sleep(1 * time.Second)
-				logrus.Infof("retry %d to get block: %d info", retry, blockNumber)
-				block, err = client.EvmClient().BlockByNumber(context.Background(), big.NewInt(int64(blockNumber)))
-				if err != nil && !strings.Contains(err.Error(), "not found") {
-					logrus.Fatalf("get block from raw json message is err: %v, item is %+v", err, blockNumber)
+		if err != nil {
+			if strings.Contains(err.Error(), "not found") {
+				for index := 0; index < 3; index++ {
+					time.Sleep(1 * time.Second)
+					logrus.Infof("retry %d to get block: %d info", index+1, blockNumber)
+					block, err = client.EvmClient().BlockByNumber(context.Background(), big.NewInt(int64(blockNumber)))
+					if err != nil && !strings.Contains(err.Error(), "not found") {
+						logrus.Fatalf("get block from raw json message is err: %v, item is %+v", err, blockNumber)
+					}
+					if block != nil {
+						break
+					}
 				}
-				if block.Number() != nil {
-					break
-				}
-				retry++
+			} else {
+				logrus.Fatalf("get block from raw json message is err: %v, item is %+v", err, blockNumber)
 			}
-		} else {
-			logrus.Fatalf("get block from raw json message is err: %v, item is %+v", err, blockNumber)
 		}
 		logrus.Infof("start to extract transaction infos from the block: %d infos", blockNumber)
 		te.blockNumber = block.Number().Int64()
