@@ -49,33 +49,36 @@ func (te *transactionExecutor) Run() {
 	if te.logExecutor != nil {
 		go te.logExecutor.Run()
 	}
-	timeoutContext, _ := context.WithTimeout(context.Background(), 10)
+
 	for blockNumber := range te.blockExecutor.blocks {
+		timeoutContext, _ := context.WithTimeout(context.Background(), 5*time.Second)
 		block, err := client.EvmClient().BlockByNumber(timeoutContext, big.NewInt(int64(blockNumber)))
 		if err != nil {
 			if strings.Contains(err.Error(), "not found") || strings.Contains(err.Error(), "context deadline exceeded") {
-				retry := 1
-				for {
+				for i := 0; i < 10; i++ {
 					time.Sleep(1 * time.Second)
-					logrus.Infof("retry %d to get block: %d info", retry, blockNumber)
-					block, err = client.EvmClient().BlockByNumber(timeoutContext, big.NewInt(int64(blockNumber)))
+					retryContextTimeout, _ := context.WithTimeout(context.Background(), 5*time.Second)
+					logrus.Infof("retry %d to get block: %d info", i+1, blockNumber)
+					block, err = client.EvmClient().BlockByNumber(retryContextTimeout, big.NewInt(int64(blockNumber)))
 					if err != nil && (!strings.Contains(err.Error(), "not found") && !strings.Contains(err.Error(), "context deadline exceeded")) {
 						logrus.Errorf("get block %d info is err: %v, drop it ", blockNumber, err)
+						continue
 					}
 					if block != nil {
 						break
 					}
-					retry++
 				}
-			} else {
-				logrus.Errorf("get block %d info is err: %v, drop it ", blockNumber, err)
 			}
 		}
-		logrus.Infof("start to extract transaction infos from the block: %d infos", blockNumber)
-		te.blockNumber = block.Number().Int64()
-		te.items = te.ExtractByBlock(*block)
-		te.Enrich()
-		te.Export()
+		if block != nil {
+			logrus.Infof("start to extract transaction infos from the block: %d infos", blockNumber)
+			te.blockNumber = block.Number().Int64()
+			te.items = te.ExtractByBlock(*block)
+			te.Enrich()
+			te.Export()
+		} else {
+			logrus.Errorf("get block %d failed, drop it ", blockNumber)
+		}
 	}
 }
 
