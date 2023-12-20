@@ -54,10 +54,11 @@ func (te *transactionExecutor) Run() {
 		block, err := client.EvmClient().BlockByNumber(context.Background(), big.NewInt(int64(blockNumber)))
 		if err != nil {
 			if strings.Contains(err.Error(), "not found") {
+				timeoutContext, _ := context.WithTimeout(context.Background(), 3)
 				for index := 0; index < 3; index++ {
 					time.Sleep(1 * time.Second)
 					logrus.Infof("retry %d to get block: %d info", index+1, blockNumber)
-					block, err = client.EvmClient().BlockByNumber(context.Background(), big.NewInt(int64(blockNumber)))
+					block, err = client.EvmClient().BlockByNumber(timeoutContext, big.NewInt(int64(blockNumber)))
 					if err != nil && !strings.Contains(err.Error(), "not found") {
 						logrus.Fatalf("get block from raw json message is err: %v, item is %+v", err, blockNumber)
 					}
