@@ -33,17 +33,15 @@ var skyeyeCmd = &cobra.Command{
 
 func skyEyeCmdInit() {
 	skyeyeCmd.Flags().String("config", "", "set config file path")
-	skyeyeCmd.Flags().Bool("is_nastiff", false, "filter nastiff txs")
 	skyeyeCmd.Flags().Int("workers", 5, "batch call workers")
 	skyeyeCmd.Flags().Int("batch_size", 50, "one batch call workers ")
 	skyeyeCmd.Flags().String("chain", "ethereum", "chain name")
 	skyeyeCmd.Flags().String("openapi_server", "http://localhost:8088", "open api server")
 	skyeyeCmd.Flags().String("topics", "", "filter the specified topics, split by comma")
 	skyeyeCmd.Flags().String("log_table", "logs", "log table name")
-
 }
 
 func init() {
-	exportCmd.AddCommand(skyeyeCmd)
+	etlCmd.AddCommand(skyeyeCmd)
 	skyEyeCmdInit()
 }
