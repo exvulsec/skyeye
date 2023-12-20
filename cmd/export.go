@@ -49,10 +49,8 @@ func txCmdInit() {
 	txCmd.Flags().Int("workers", 5, "batch call workers")
 	txCmd.Flags().Int("batch_size", 50, "one batch call workers ")
 	txCmd.Flags().String("chain", "ethereum", "chain name")
-	txCmd.Flags().String("table_name", "txs", "table name")
-	txCmd.Flags().String("openapi_server", "http://47.243.70.228:8088", "open api server")
+	txCmd.Flags().String("openapi_server", "http://localhost:8088", "open api server")
 	txCmd.Flags().String("topics", "", "filter the specified topics, split by comma")
-	txCmd.Flags().String("log_table", "logs", "log table name")
 }
 
 func init() {

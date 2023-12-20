@@ -42,13 +42,6 @@ func (al *AddressLabel) GetLabel(chain, address string) error {
 	al.Address = address
 	al.Chain = chain
 
-	label := GetMetaDockLabel(chain, address)
-	if label != "" {
-		al.Label = label
-		if err := al.Create(); err != nil {
-			return fmt.Errorf("insert %s's label to db is err: %v", address, err)
-		}
-	}
 	return nil
 }
 

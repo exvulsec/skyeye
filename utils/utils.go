@@ -62,7 +62,7 @@ func ComposeTableName(schema string, tableName string) string {
 
 func CheckHeaderIsGZip(header http.Header) bool {
 	for k, v := range header {
-		if strings.ToLower(k) == "content-encoding" && strings.ToLower(v[0]) == "gzip" {
+		if strings.ToLower(k) == "content-encoding" && strings.Contains(strings.ToLower(v[0]), "gzip") {
 			return true
 		}
 	}
