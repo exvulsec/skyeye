@@ -3,7 +3,6 @@ http_server:
   port: 8088
   apikey:
   client_max_conns: 5
-  dedaub_code_path: /mnt/dedaub/bsc
   multi_evm_clients:
     ethereum:
       provider_url:
