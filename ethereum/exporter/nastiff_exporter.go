@@ -37,10 +37,8 @@ func NewNastiffTransferExporter(chain, openserver string, interval int) Exporter
 		Chain:         chain,
 		OpenAPIServer: openserver,
 		LinkURLs: map[string]string{
-			"ScanAddress": fmt.Sprintf("%s/address/%%s", utils.GetScanURL(chain)),
-			"ScanTX":      fmt.Sprintf("%s/tx/%%s", utils.GetScanURL(chain)),
-			"Dedaub":      fmt.Sprintf("%s/api/v1/address/%%s/dedaub?apikey=%s&chain=%s", openserver, config.Conf.HTTPServer.APIKey, chain),
-			"MCL":         fmt.Sprintf("%s/api/v1/address/%%s/solidity?apikey=%s&chain=%s", openserver, config.Conf.HTTPServer.APIKey, chain),
+			"Scan_Contract": fmt.Sprintf("%s/address/%%s", utils.GetScanURL(chain)),
+			"Dedaub":        fmt.Sprintf("https://library.dedaub.com/%s/address/%%s/decompiled", chain),
 		},
 		OpenSourcePolicy: model.OpenSourcePolicy{Interval: interval},
 	}
@@ -75,6 +73,9 @@ func (nte *NastiffTransactionExporter) exportItem(tx model.NastiffTransaction) {
 		}
 		if err := nte.exportToRedis(tx); err != nil {
 			logrus.Errorf("append txhash %s's contract %s to redis message queue is err %v", tx.TxHash, tx.ContractAddress, err)
+		}
+		if err := nte.SendMessageToSlack(tx); err != nil {
+			logrus.Errorf("send txhash %s's contract %s message to slack is err %v", tx.TxHash, tx.ContractAddress, err)
 		}
 		if tx.Score >= config.Conf.ETL.DangerScoreAlertThreshold {
 			if err := nte.MonitorContractAddress(tx); err != nil {
@@ -147,7 +148,7 @@ func (nte *NastiffTransactionExporter) RemoveMonitorContractAddress(tx model.Nas
 	return nil
 }
 
-func (net *NastiffTransactionExporter) ComposeMessage(tx model.NastiffTransaction) string {
+func (nte *NastiffTransactionExporter) ComposeMessage(tx model.NastiffTransaction) string {
 	scanURL := utils.GetScanURL(tx.Chain)
 	text := fmt.Sprintf("*Chain:* `%s`\n", strings.ToUpper(tx.Chain))
 	text += fmt.Sprintf("*Block:* `%d`\n", tx.BlockNumber)
@@ -162,25 +163,34 @@ func (net *NastiffTransactionExporter) ComposeMessage(tx model.NastiffTransactio
 	text += fmt.Sprintf("*CodeSize:* `%d`\n", len(tx.ByteCode))
 	text += fmt.Sprintf("*Split Scores:* `%s`\n", tx.SplitScores)
 	return text
-
 }
 
-func (net *NastiffTransactionExporter) SendMessageToSlack(tx model.NastiffTransaction) {
-	summary := fmt.Sprintf("⚠️Detected a suspected risk transaction on *%s*⚠️\n", strings.ToUpper(net.Chain))
+func (nte *NastiffTransactionExporter) ComposeSlackAction(tx model.NastiffTransaction) []slack.AttachmentAction {
+	actions := []slack.AttachmentAction{}
+	for key, url := range nte.LinkURLs {
+		actions = append(actions, slack.AttachmentAction{
+			Name: key,
+			Text: key,
+			Type: "button",
+			URL:  fmt.Sprintf(url, tx.ContractAddress),
+		})
+	}
+	return actions
+}
+
+func (nte *NastiffTransactionExporter) SendMessageToSlack(tx model.NastiffTransaction) error {
+	summary := fmt.Sprintf("⚠️Detected a suspected risk transaction on *%s*⚠️\n", strings.ToUpper(nte.Chain))
 	attachment := slack.Attachment{
 		Color:      "warning",
 		AuthorName: "EXVul",
 		Fallback:   summary,
-		Text:       summary + net.ComposeMessage(tx),
-		Footer:     fmt.Sprintf("skyeye-on-%s", net.Chain),
+		Text:       summary + nte.ComposeMessage(tx),
+		Footer:     fmt.Sprintf("skyeye-on-%s", nte.Chain),
 		Ts:         json.Number(strconv.FormatInt(time.Now().Unix(), 10)),
+		Actions:    nte.ComposeSlackAction(tx),
 	}
 	msg := slack.WebhookMessage{
 		Attachments: []slack.Attachment{attachment},
 	}
-
-	err := slack.PostWebhook(config.Conf.ETL.SlackWebHook, &msg)
-	if err != nil {
-		fmt.Println(err)
-	}
+	return slack.PostWebhook(config.Conf.ETL.SlackWebHook, &msg)
 }

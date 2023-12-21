@@ -44,9 +44,6 @@ func (bpc *ByteCodePolicyCalc) Calc(tx *NastiffTransaction) int {
 	if len(tx.ByteCode) == 0 || len(tx.ByteCode[2:]) < 500 {
 		return 0
 	}
-	if err := GetDeDaubMd5(tx.Chain, tx.ContractAddress, tx.ByteCode); err != nil {
-		logrus.Errorf("get dedaub md5 for %s on chain %s is err %v", tx.ContractAddress, tx.Chain, err)
-	}
 	return 12
 }
 
@@ -288,31 +285,6 @@ func GetPush20Args(chain string, args []string) []string {
 		labelAddrs = append(labelAddrs, fmt.Sprintf("0x{%d}", len(noneLabelAddrs)))
 	}
 	return labelAddrs
-}
-
-func GetDeDaubMd5(chain, address string, byteCode []byte) error {
-	d := DeDaub{
-		Chain:   chain,
-		Address: address,
-	}
-	if err := d.Get(); err != nil {
-		return fmt.Errorf("get chain %s address %s from db is err %v", chain, address, err)
-	}
-	if d.MD5 != "" && len(d.MD5) == 32 {
-		return nil
-	}
-
-	var drs DeDaubResponseString
-	if err := drs.GetCodeMD5(byteCode); err != nil {
-		return fmt.Errorf("get code md5 for %s is err %v", address, err)
-	}
-
-	d.MD5 = strings.Trim(string(drs), `"`)
-	if err := d.Create(); err != nil {
-		return fmt.Errorf("insert chain %s address %s md5 %s to db is err %v", chain, address, drs, err)
-	}
-	return nil
-
 }
 
 func LoadFlashLoanFuncNames() []string {

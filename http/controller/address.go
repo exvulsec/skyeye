@@ -30,7 +30,6 @@ func (ac *AddressController) Routers(routers gin.IRouter) {
 		api.GET("/:address/labels", ac.GetAddressLabel)
 		api.GET("/:address/associated", ac.AssociatedByAddress)
 		api.GET("/:address/fund", ac.GetFund)
-		api.GET("/:address/dedaub", ac.GetDeDaub)
 		var exposeSolidityCodeAPI = true
 		for _, info := range config.Conf.ScanInfos {
 			if info.SolidityCodePath == "" {
@@ -204,55 +203,4 @@ func (ac *AddressController) ReadSolidityCode(c *gin.Context) {
 		return
 	}
 	c.Data(http.StatusOK, "text/plain", content)
-}
-
-func (ac *AddressController) GetDeDaub(c *gin.Context) {
-	chain := utils.GetSupportChain(c.Query(utils.ChainKey))
-	address := strings.ToLower(c.Param("address"))
-	dedaub := model.DeDaub{
-		Chain:   chain,
-		Address: address,
-	}
-	if err := dedaub.Get(); err != nil {
-		c.JSON(http.StatusOK, model.Message{Code: http.StatusInternalServerError, Msg: fmt.Sprintf("get chain %s address %s's dedaub is err: %v", chain, address, err)})
-		return
-	}
-
-	if dedaub.MD5 == "" || len(dedaub.MD5) != 32 {
-		c.JSON(http.StatusOK, model.Message{Code: http.StatusBadRequest, Msg: fmt.Sprintf("chain %s address %s's dedaub is not post or invalid", chain, address)})
-		return
-	}
-	data, err := ac.getSource(chain, address, dedaub.MD5)
-	if err != nil {
-		c.JSON(http.StatusOK, model.Message{Code: http.StatusInternalServerError, Msg: err.Error()})
-	}
-	c.Data(http.StatusOK, "text/plain", data)
-}
-
-func (ac *AddressController) getSource(chain, address, md5 string) ([]byte, error) {
-	var (
-		data []byte
-		err  error
-	)
-	fileName := fmt.Sprintf("%s/%s/%s-%s.source", config.Conf.HTTPServer.DeDaubCodePath, chain, address, md5)
-	_, err = os.Stat(fileName)
-	if err != nil {
-		if !os.IsNotExist(err) {
-			return nil, fmt.Errorf("check file %s status is err %v", fileName, err)
-		}
-		dr := model.DeDaubResponse{}
-		if err = dr.GetSource(md5); err != nil {
-			return nil, fmt.Errorf("get chain %s address %s's dedaub source is err %v", chain, address, err)
-		}
-		data = []byte(dr.Source)
-		if err = os.WriteFile(fileName, []byte(dr.Source), 0644); err != nil {
-			return nil, fmt.Errorf("write source to file %s is err %v", fileName, err)
-		}
-		return data, nil
-	}
-	data, err = os.ReadFile(fileName)
-	if err != nil {
-		return nil, fmt.Errorf("read source file %s is err %v", fileName, err)
-	}
-	return data, nil
 }

@@ -30,7 +30,6 @@ type HTTPServerConfig struct {
 	APIKeyForCMC   string                     `mapstructure:"apikey_for_cmc" yaml:"apikey_for_cmc"`
 	ClientMaxConns int                        `mapstructure:"client_max_conns" yaml:"client_max_conns"`
 	MultiEvmClient map[string]EvmClientConfig `mapstructure:"multi_evm_clients" yaml:"multi_evm_clients"`
-	DeDaubCodePath string                     `mapstructure:"dedaub_code_path" yaml:"dedaub_code_path"`
 	LogPath        string                     `mapstructure:"log_path" yaml:"log_path"`
 }
 
