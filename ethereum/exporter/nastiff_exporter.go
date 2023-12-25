@@ -38,7 +38,7 @@ func NewNastiffTransferExporter(chain, openserver string, interval int) Exporter
 		OpenAPIServer: openserver,
 		LinkURLs: map[string]string{
 			"Scan_Contract": fmt.Sprintf("%s/address/%%s", utils.GetScanURL(chain)),
-			"Dedaub":        fmt.Sprintf("https://library.dedaub.com/%s/address/%%s/decompiled", chain),
+			"Dedaub":        "https://library.dedaub.com/decompile?md5=%s",
 		},
 		OpenSourcePolicy: model.OpenSourcePolicy{Interval: interval},
 	}
@@ -167,12 +167,25 @@ func (nte *NastiffTransactionExporter) ComposeMessage(tx model.NastiffTransactio
 
 func (nte *NastiffTransactionExporter) ComposeSlackAction(tx model.NastiffTransaction) []slack.AttachmentAction {
 	actions := []slack.AttachmentAction{}
+	var actionURL = ""
 	for key, url := range nte.LinkURLs {
+		if key == "Dedaub" {
+			var dedaubMD5String model.DeDaubResponseString
+			err := dedaubMD5String.GetCodeMD5(tx.ByteCode)
+			if err != nil {
+				logrus.Errorf("get md5 for contract %s is err:", err)
+				continue
+			}
+			logrus.Info(dedaubMD5String)
+			actionURL = fmt.Sprintf(url, dedaubMD5String)
+		} else {
+			actionURL = fmt.Sprintf(url, tx.ContractAddress)
+		}
 		actions = append(actions, slack.AttachmentAction{
 			Name: key,
 			Text: key,
 			Type: "button",
-			URL:  fmt.Sprintf(url, tx.ContractAddress),
+			URL:  actionURL,
 		})
 	}
 	return actions

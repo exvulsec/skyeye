@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"strings"
 
 	"github.com/ethereum/go-ethereum/common/hexutil"
 
@@ -35,33 +36,14 @@ type DeDaub struct {
 }
 
 func (drs *DeDaubResponseString) GetCodeMD5(bytecode []byte) error {
-	headers := map[string]string{
-		"authority":          "api.dedaub.com",
-		"accept":             "*/*",
-		"accept-language":    "zh,zh-CN;q=0.9",
-		"content-type":       "application/json",
-		"origin":             "https://library.dedaub.com",
-		"referer":            "https://library.dedaub.com/",
-		"sec-ch-ua":          `"Chromium";v="112", "Google Chrome";v="112", "Not:A-Brand";v="99"`,
-		"sec-ch-ua-mobile":   "?0",
-		"sec-ch-ua-platform": "macOS",
-		"sec-fetch-dest":     "empty",
-		"sec-fetch-mode":     "cors",
-		"sec-fetch-site":     "same-site",
-		"user-agent":         "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/112.0.0.0 Safari/537.36",
-	}
-
 	body, err := json.Marshal(DeDaubRequest{HexByteCode: hexutil.Encode(bytecode)})
 	if err != nil {
 		return fmt.Errorf("marhsall json from byte code is err: %v", err)
 	}
 
-	req, err := http.NewRequest(http.MethodPost, "https://api.dedaub.com/api/on_demand/", bytes.NewBuffer(body))
+	req, err := http.NewRequest(http.MethodPost, "https://api.dedaub.com/api/on_demand", bytes.NewBuffer(body))
 	if err != nil {
 		return fmt.Errorf("new request for get meta dock labels is err: %v", err)
-	}
-	for key, value := range headers {
-		req.Header.Add(key, value)
 	}
 
 	resp, err := client.HTTPClient().Do(req)
@@ -83,9 +65,8 @@ func (drs *DeDaubResponseString) GetCodeMD5(bytecode []byte) error {
 		return fmt.Errorf("read data from resp.Body is err: %v", err)
 	}
 	defer resp.Body.Close()
-
-	dataString := DeDaubResponseString(data)
-	*drs = dataString
+	dataString := strings.Trim(string(data), "\"")
+	*drs = DeDaubResponseString(dataString)
 	return nil
 }
 
