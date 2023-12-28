@@ -40,7 +40,7 @@ func NewTransactionExecutor(blockExecutor BlockExecutor,
 		workers:       workers,
 		batchSize:     batchSize,
 		isNastiff:     isNastiff,
-		exporters:     exporter.NewTransactionExporters(chain, openapi, isNastiff),
+		exporters:     exporter.NewTransactionExporters(chain, openapi, isNastiff, batchSize),
 	}
 }
 
@@ -117,19 +117,9 @@ func (te *transactionExecutor) ExtractByBlock(block types.Block) any {
 }
 
 func (te *transactionExecutor) Enrich() {
-	startTimestamp := time.Now()
-	if te.isNastiff {
-		te.filterContractCreation()
-		txs := te.items.(model.Transactions)
-		if len(txs) > 0 {
-			txs.EnrichReceipts(te.batchSize)
-		}
-		logrus.Infof("enrich %d txs from receipt cost: %.2fs", len(txs), time.Since(startTimestamp).Seconds())
-	} else {
-		if te.logExecutor != nil {
-			lge, _ := te.logExecutor.(*logExecutor)
-			lge.filterLogsByTopics(te.blockNumber, te.blockNumber)
-		}
+	if te.logExecutor != nil {
+		lge, _ := te.logExecutor.(*logExecutor)
+		lge.filterLogsByTopics(te.blockNumber, te.blockNumber)
 	}
 }
 
@@ -141,14 +131,4 @@ func (te *transactionExecutor) Export() {
 		}
 	}
 	utils.WriteBlockNumberToFile(config.Conf.ETL.PreviousFile, te.blockNumber)
-}
-
-func (te *transactionExecutor) filterContractCreation() {
-	txs := model.Transactions{}
-	for _, item := range te.items.(model.Transactions) {
-		if item.ToAddress == nil {
-			txs = append(txs, item)
-		}
-	}
-	te.items = txs
 }

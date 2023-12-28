@@ -15,16 +15,6 @@ type TransactionPostgresqlExporter struct {
 	Chain string
 }
 
-func NewTransactionExporters(chain, openAPIServer string, isNastiff bool) []Exporter {
-	exporters := []Exporter{}
-	if !isNastiff {
-		exporters = append(exporters, NewTransactionPostgresqlExporter(chain))
-	} else {
-		exporters = append(exporters, NewNastiffTransferExporter(chain, openAPIServer, config.Conf.ETL.ScanInterval))
-	}
-	return exporters
-}
-
 func NewTransactionPostgresqlExporter(chain string) Exporter {
 	return &TransactionPostgresqlExporter{Chain: chain}
 }
