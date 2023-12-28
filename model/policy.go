@@ -221,7 +221,6 @@ func GetPushTypeArgs(byteCode []byte) map[string][]string {
 				if opCodeArg != utils.FFFFAddress {
 					args[utils.PUSH20] = append(args[utils.PUSH20], opCodeArg)
 				}
-
 			}
 			l2 = l1
 			l1 = it.Op()

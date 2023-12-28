@@ -10,9 +10,10 @@ import (
 	"github.com/sirupsen/logrus"
 
 	"go-etl/config"
+	"go-etl/datastore"
 )
 
-func ReadBlockNumberFromFile(filePath string) int64 {
+func GetBlockNumberFromFile(filePath string) uint64 {
 	checkFileIfNotExist(filePath)
 	bytes, err := os.ReadFile(filePath)
 	if err != nil {
@@ -22,7 +23,17 @@ func ReadBlockNumberFromFile(filePath string) int64 {
 	if err != nil {
 		logrus.Fatalf("failed to convert int the last block number from file %s is err: %v", filePath, err)
 	}
-	return lastBlockNumber
+	return uint64(lastBlockNumber)
+}
+
+func GetBlockNumberFromDB(chain string) uint64 {
+	var blockNumber uint64
+	tableName := ComposeTableName(chain, datastore.TableTransactions)
+	err := datastore.DB().Table(tableName).Select("max(blknum)").Row().Scan(&blockNumber)
+	if err != nil {
+		logrus.Errorf("failed to convert int the last block number from db is err: %v", err)
+	}
+	return blockNumber
 }
 
 func WriteBlockNumberToFile(filePath string, blockNumber int64) {

@@ -28,14 +28,16 @@ type NastiffTransactionExporter struct {
 	Chain            string
 	OpenAPIServer    string
 	Interval         int
+	BatchSize        int
 	LinkURLs         map[string]string
 	OpenSourcePolicy model.OpenSourcePolicy
 }
 
-func NewNastiffTransferExporter(chain, openserver string, interval int) Exporter {
+func NewNastiffTransferExporter(chain, openserver string, interval, batchSize int) Exporter {
 	return &NastiffTransactionExporter{
 		Chain:         chain,
 		OpenAPIServer: openserver,
+		BatchSize:     batchSize,
 		LinkURLs: map[string]string{
 			"Scan_Contract": fmt.Sprintf("%s/address/%%s", utils.GetScanURL(chain)),
 			"Dedaub":        "https://library.dedaub.com/decompile?md5=%s",
@@ -44,48 +46,62 @@ func NewNastiffTransferExporter(chain, openserver string, interval int) Exporter
 	}
 }
 
-func (nte *NastiffTransactionExporter) ExportItems(items any) {
+func (nte *NastiffTransactionExporter) filterContractCreation(items any) model.Transactions {
+	txs := model.Transactions{}
 	for _, item := range items.(model.Transactions) {
+		if item.ToAddress == nil {
+			txs = append(txs, item)
+		}
+	}
+	return txs
+}
+
+func (nte *NastiffTransactionExporter) ExportItems(items any) {
+	filterTXs := nte.filterContractCreation(items)
+	if len(filterTXs) > 0 {
+		filterTXs.EnrichReceipts(nte.BatchSize)
+	}
+	for _, item := range filterTXs {
 		if item.TxStatus != 0 {
 			if item.ToAddress == nil && item.ContractAddress != "" {
-				nt := model.NastiffTransaction{}
-				nt.ConvertFromTransaction(item)
-				nt.Chain = nte.Chain
-				code, err := client.EvmClient().CodeAt(context.Background(), common.HexToAddress(nt.ContractAddress), nil)
-				if err != nil {
-					logrus.Errorf("get contract %s's bytecode is err %v ", nt.ContractAddress, err)
-					continue
-				}
-				nt.ByteCode = code
-				go nte.exportItem(nt)
+				go nte.exportItem(item)
 			}
 		}
 	}
 }
 
-func (nte *NastiffTransactionExporter) exportItem(tx model.NastiffTransaction) {
-	isFilter := nte.CalcContractByPolicies(&tx)
+func (nte *NastiffTransactionExporter) exportItem(tx model.Transaction) {
+	nastiffTX := model.NastiffTransaction{}
+	nastiffTX.ConvertFromTransaction(tx)
+	nastiffTX.Chain = nte.Chain
+	code, err := client.EvmClient().CodeAt(context.Background(), common.HexToAddress(nastiffTX.ContractAddress), nil)
+	if err != nil {
+		logrus.Errorf("get contract %s's bytecode is err %v ", nastiffTX.ContractAddress, err)
+		return
+	}
+	nastiffTX.ByteCode = code
+	isFilter := nte.CalcContractByPolicies(&nastiffTX)
 	if !isFilter {
-		logrus.Infof("start to insert tx %s's contract %s to redis stream", tx.TxHash, tx.ContractAddress)
-		if err := tx.ComposeNastiffValues(); err != nil {
-			logrus.Errorf("compose nastiff value by txhash %s's contract %s is err %v", tx.TxHash, tx.ContractAddress, err)
+		logrus.Infof("start to insert tx %s's contract %s to redis stream", nastiffTX.TxHash, nastiffTX.ContractAddress)
+		if err = nastiffTX.ComposeNastiffValues(); err != nil {
+			logrus.Errorf("compose nastiff value by txhash %s's contract %s is err %v", nastiffTX.TxHash, nastiffTX.ContractAddress, err)
 			return
 		}
-		if err := nte.exportToRedis(tx); err != nil {
-			logrus.Errorf("append txhash %s's contract %s to redis message queue is err %v", tx.TxHash, tx.ContractAddress, err)
+		if err = nte.exportToRedis(nastiffTX); err != nil {
+			logrus.Errorf("append txhash %s's contract %s to redis message queue is err %v", nastiffTX.TxHash, nastiffTX.ContractAddress, err)
 		}
-		if err := nte.SendMessageToSlack(tx); err != nil {
-			logrus.Errorf("send txhash %s's contract %s message to slack is err %v", tx.TxHash, tx.ContractAddress, err)
+		if err = nte.SendMessageToSlack(nastiffTX); err != nil {
+			logrus.Errorf("send txhash %s's contract %s message to slack is err %v", nastiffTX.TxHash, nastiffTX.ContractAddress, err)
 		}
-		if tx.Score >= config.Conf.ETL.DangerScoreAlertThreshold {
-			if err := nte.MonitorContractAddress(tx); err != nil {
+		if nastiffTX.Score >= config.Conf.ETL.DangerScoreAlertThreshold {
+			if err = nte.MonitorContractAddress(nastiffTX); err != nil {
 				logrus.Error(err)
 			}
 		}
 	}
-	logrus.Infof("start to insert tx %s's contract %s to db", tx.TxHash, tx.ContractAddress)
-	if err := tx.Insert(); err != nil {
-		logrus.Errorf("insert txhash %s's contract %s to db is err %v", tx.TxHash, tx.ContractAddress, err)
+	logrus.Infof("start to insert tx %s's contract %s to db", nastiffTX.TxHash, nastiffTX.ContractAddress)
+	if err = nastiffTX.Insert(); err != nil {
+		logrus.Errorf("insert txhash %s's contract %s to db is err %v", nastiffTX.TxHash, nastiffTX.ContractAddress, err)
 		return
 	}
 }

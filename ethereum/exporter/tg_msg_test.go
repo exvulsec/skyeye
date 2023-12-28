@@ -14,7 +14,7 @@ import (
 
 func TestNastiffTransactionExporter_SendToTelegram(t *testing.T) {
 	config.SetupConfig("../../config/config.dev.yaml")
-	e := NewNastiffTransferExporter("ethereum", "http://47.243.70.228:8088", 0)
+	e := NewNastiffTransferExporter("ethereum", "http://localhost:8088", 0, 5)
 	addrLabelString := "Binance_0xe9e7,JetswapFactory,JetswapRouter,PancakeSwap: Router v2,StrategyWingsLP,StrategyWingsLP, 0x{2}"
 	addrLabels := strings.Split(addrLabelString, ",")
 	funcString := "accumulatedRewardPerShare,addMinterShare,claimReward,collection,owner,pendingReward,renounceOwnership"
