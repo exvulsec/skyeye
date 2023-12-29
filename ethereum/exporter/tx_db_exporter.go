@@ -5,10 +5,7 @@ import (
 
 	"github.com/sirupsen/logrus"
 
-	"go-etl/config"
-	"go-etl/datastore"
 	"go-etl/model"
-	"go-etl/utils"
 )
 
 type TransactionPostgresqlExporter struct {
@@ -22,9 +19,10 @@ func NewTransactionPostgresqlExporter(chain string) Exporter {
 func (tpe *TransactionPostgresqlExporter) ExportItems(items any) {
 	startTimestamp := time.Now()
 	txs := items.(model.Transactions)
-	txs.CreateBatchToDB(utils.ComposeTableName(
-		tpe.Chain, datastore.TableTransactions),
-		config.Conf.Postgresql.MaxOpenConns,
-	)
-	logrus.Infof("insert %d txs into database cost: %.2fs", len(txs), time.Since(startTimestamp).Seconds())
+
+	if err := txs.CopyToDB(tpe.Chain); err != nil {
+		logrus.Errorf("copy %d to db '%s.txs' is err %v", len(txs), tpe.Chain, err)
+		return
+	}
+	logrus.Infof("copy %d txs into database cost: %.2fs", len(txs), time.Since(startTimestamp).Seconds())
 }

@@ -46,22 +46,8 @@ func NewNastiffTransferExporter(chain, openserver string, interval, batchSize in
 	}
 }
 
-func (nte *NastiffTransactionExporter) filterContractCreation(items any) model.Transactions {
-	txs := model.Transactions{}
-	for _, item := range items.(model.Transactions) {
-		if item.ToAddress == nil {
-			txs = append(txs, item)
-		}
-	}
-	return txs
-}
-
 func (nte *NastiffTransactionExporter) ExportItems(items any) {
-	filterTXs := nte.filterContractCreation(items)
-	if len(filterTXs) > 0 {
-		filterTXs.EnrichReceipts(nte.BatchSize)
-	}
-	for _, item := range filterTXs {
+	for _, item := range items.(model.Transactions) {
 		if item.TxStatus != 0 {
 			if item.ToAddress == nil && item.ContractAddress != "" {
 				go nte.exportItem(item)
@@ -80,8 +66,8 @@ func (nte *NastiffTransactionExporter) exportItem(tx model.Transaction) {
 		return
 	}
 	nastiffTX.ByteCode = code
-	isFilter := nte.CalcContractByPolicies(&nastiffTX)
-	if !isFilter {
+	nte.CalcContractByPolicies(&nastiffTX)
+	if nastiffTX.Score > config.Conf.ETL.ScoreAlertThreshold {
 		logrus.Infof("start to insert tx %s's contract %s to redis stream", nastiffTX.TxHash, nastiffTX.ContractAddress)
 		if err = nastiffTX.ComposeNastiffValues(); err != nil {
 			logrus.Errorf("compose nastiff value by txhash %s's contract %s is err %v", nastiffTX.TxHash, nastiffTX.ContractAddress, err)
@@ -106,7 +92,7 @@ func (nte *NastiffTransactionExporter) exportItem(tx model.Transaction) {
 	}
 }
 
-func (nte *NastiffTransactionExporter) CalcContractByPolicies(tx *model.NastiffTransaction) bool {
+func (nte *NastiffTransactionExporter) CalcContractByPolicies(tx *model.NastiffTransaction) {
 	policies := []model.PolicyCalc{
 		&model.NoncePolicyCalc{},
 		&model.ByteCodePolicyCalc{},
@@ -126,7 +112,6 @@ func (nte *NastiffTransactionExporter) CalcContractByPolicies(tx *model.NastiffT
 	}
 	tx.SplitScores = strings.Join(splitScores, ",")
 	tx.Score = totalScore
-	return tx.Score < config.Conf.ETL.ScoreAlertThreshold
 }
 
 func (nte *NastiffTransactionExporter) exportToRedis(tx model.NastiffTransaction) error {

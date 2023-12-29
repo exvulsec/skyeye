@@ -116,7 +116,23 @@ func (te *transactionExecutor) ExtractByBlock(block types.Block) any {
 	return txs
 }
 
+func (te *transactionExecutor) enrichContractCreation() {
+	txs := model.Transactions{}
+	enrichTXs := model.Transactions{}
+	for _, item := range te.items.(model.Transactions) {
+		if item.ToAddress == nil {
+			enrichTXs = append(enrichTXs, item)
+		} else {
+			txs = append(txs, item)
+		}
+	}
+	enrichTXs.EnrichReceipts(te.batchSize)
+	txs = append(txs, enrichTXs...)
+	te.items = txs
+}
+
 func (te *transactionExecutor) Enrich() {
+	te.enrichContractCreation()
 	if te.logExecutor != nil {
 		lge, _ := te.logExecutor.(*logExecutor)
 		lge.filterLogsByTopics(te.blockNumber, te.blockNumber)

@@ -26,6 +26,7 @@ type NastiffTransaction struct {
 	ByteCode           []byte            `json:"-" gorm:"-"`
 	Push4Args          []string          `json:"-" gorm:"-"`
 	Push20Args         []string          `json:"-" gorm:"-"`
+	Push32Args         []string          `json:"-" gorm:"-"`
 	Fund               string            `json:"-" gorm:"-"`
 }
 
