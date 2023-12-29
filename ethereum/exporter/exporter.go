@@ -6,10 +6,10 @@ type Exporter interface {
 	ExportItems(items any)
 }
 
-func NewTransactionExporters(chain, openAPIServer string, isNastiff bool, batchSzie int) []Exporter {
+func NewTransactionExporters(chain, openAPIServer string, isNastiff bool, batchSize int) []Exporter {
 	exporters := []Exporter{NewTransactionPostgresqlExporter(chain)}
 	if isNastiff {
-		exporters = append(exporters, NewNastiffTransferExporter(chain, openAPIServer, config.Conf.ETL.ScanInterval, batchSzie))
+		exporters = append(exporters, NewNastiffTransferExporter(chain, openAPIServer, config.Conf.ETL.ScanInterval, batchSize))
 	}
 	return exporters
 }

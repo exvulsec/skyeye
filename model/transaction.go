@@ -1,6 +1,7 @@
 package model
 
 import (
+	"context"
 	"encoding/hex"
 	"fmt"
 	"strings"
@@ -8,6 +9,7 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/rpc"
+	"github.com/jackc/pgx/v5"
 	"github.com/shopspring/decimal"
 	"github.com/sirupsen/logrus"
 
@@ -95,8 +97,32 @@ func (tx *Transaction) enrichReceipt(receipt types.Receipt) {
 	tx.TxStatus = int64(receipt.Status)
 }
 
-func (txs *Transactions) CreateBatchToDB(tableName string, worker int) {
-	result := datastore.DB().Table(tableName).CreateInBatches(txs, worker)
+func (txs *Transactions) CopyToDB(chain string) error {
+	columns := []string{"block_timestamp", "blknum", "txhash", "txpos", "from_address", "to_address", "tx_type", "nonce", "value", "input", "contract_address", "tx_status"}
+	_, err := datastore.PGX().CopyFrom(context.Background(),
+		pgx.Identifier{chain, datastore.TableTransactions},
+		columns,
+		pgx.CopyFromSlice(len(*txs), func(i int) ([]any, error) {
+			return []any{(*txs)[i].BlockTimestamp,
+				(*txs)[i].BlockNumber,
+				(*txs)[i].TxHash,
+				(*txs)[i].TxPos,
+				(*txs)[i].FromAddress,
+				(*txs)[i].ToAddress,
+				(*txs)[i].TxType,
+				(*txs)[i].Nonce,
+				(*txs)[i].Value,
+				(*txs)[i].Input,
+				(*txs)[i].ContractAddress,
+				(*txs)[i].TxStatus,
+			}, nil
+		}),
+	)
+	return err
+}
+
+func (txs *Transactions) CreateBatchToDB(tableName string, batchSize int) {
+	result := datastore.DB().Table(tableName).CreateInBatches(txs, batchSize)
 	if result.Error != nil {
 		logrus.Fatalf("insert tx into db is err %v", result.Error)
 	}
