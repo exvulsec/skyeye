@@ -14,7 +14,7 @@ import (
 
 func TestNastiffTransactionExporter_SendToTelegram(t *testing.T) {
 	config.SetupConfig("../../config/config.dev.yaml")
-	e := NewNastiffTransferExporter("ethereum", "http://localhost:8088", 0, 5)
+	e := NewSkyEyeExporter("ethereum", "http://localhost:8088", 0, 5)
 	addrLabelString := "Binance_0xe9e7,JetswapFactory,JetswapRouter,PancakeSwap: Router v2,StrategyWingsLP,StrategyWingsLP, 0x{2}"
 	addrLabels := strings.Split(addrLabelString, ",")
 	funcString := "accumulatedRewardPerShare,addMinterShare,claimReward,collection,owner,pendingReward,renounceOwnership"
@@ -23,7 +23,7 @@ func TestNastiffTransactionExporter_SendToTelegram(t *testing.T) {
 	if err != nil {
 		logrus.Fatal(err)
 	}
-	tx := model.NastiffTransaction{
+	tx := model.SkyEyeTransaction{
 		Chain:           "ethereum",
 		BlockNumber:     29065040,
 		BlockTimestamp:  1686658180,
@@ -37,8 +37,8 @@ func TestNastiffTransactionExporter_SendToTelegram(t *testing.T) {
 		SplitScores:     "0,12,20,50,2,0",
 		ByteCode:        data,
 	}
-	nte := e.(*NastiffTransactionExporter)
-	if err := nte.SendMessageToSlack(tx); err != nil {
+	nte := e.(*SkyEyeExporter)
+	if err = nte.SendMessageToSlack(tx); err != nil {
 		logrus.Fatal(err)
 	}
 }
