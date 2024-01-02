@@ -160,6 +160,7 @@ func (nte *NastiffTransactionExporter) ComposeMessage(tx model.NastiffTransactio
 	text += fmt.Sprintf("*Score:* `%d`\n", tx.Score)
 	text += fmt.Sprintf("*Funcs:* `%s`\n", strings.Join(tx.Push4Args, ","))
 	text += fmt.Sprintf("*Address Labels:* `%s`\n", strings.Join(tx.Push20Args, ","))
+	text += fmt.Sprintf("*Emit Logs:* `%s`\n", strings.Join(tx.PushStringLogs, ","))
 	text += fmt.Sprintf("*CodeSize:* `%d`\n", len(tx.ByteCode))
 	text += fmt.Sprintf("*Split Scores:* `%s`\n", tx.SplitScores)
 	return text

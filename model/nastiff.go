@@ -72,7 +72,6 @@ func (nt *NastiffTransaction) ComposeNastiffValues() error {
 		"Fund":        nt.Fund,
 		"Score":       fmt.Sprintf("%d", nt.Score),
 		"SplitScores": nt.SplitScores,
-		"Emitlog":     strings.Join(nt.PushStringLogs, ","),
 	}
 
 	nt.NastiffValuesBytes, err = json.Marshal(values)
