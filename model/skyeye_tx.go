@@ -1,6 +1,7 @@
 package model
 
 import (
+	"encoding/json"
 	"fmt"
 	"strings"
 	"time"
@@ -20,6 +21,7 @@ type SkyEyeTransaction struct {
 	Nonce           uint64   `json:"nonce" gorm:"column:nonce"`
 	Score           int      `json:"score" gorm:"column:score"`
 	SplitScores     string   `json:"split_scores" gorm:"column:split_scores"`
+	Values          []byte   `json:"-" gorm:"column:nastiff_values"`
 	ByteCode        []byte   `json:"-" gorm:"-"`
 	Push4Args       []string `json:"-" gorm:"-"`
 	Push20Args      []string `json:"-" gorm:"-"`
@@ -73,6 +75,13 @@ func (st *SkyEyeTransaction) ComposeSkyEyeTXValues() map[string]string {
 }
 
 func (st *SkyEyeTransaction) Insert() error {
+	var err error
+	if len(st.Values) == 0 {
+		st.Values, err = json.Marshal(st.ComposeSkyEyeTXValues())
+		if err != nil {
+			return fmt.Errorf("marhsal nastiffValues is err %v", err)
+		}
+	}
 	tableName := utils.ComposeTableName(datastore.SchemaPublic, datastore.TableNastiffTransaction)
 	return datastore.DB().Table(tableName).Create(st).Error
 }
