@@ -172,6 +172,7 @@ func (se *SkyEyeExporter) CalcContractByPolicies(tx *model.SkyEyeTransaction) {
 		&model.Push4PolicyCalc{
 			FlashLoanFuncNames: model.LoadFlashLoanFuncNames(),
 		},
+		&model.OpenSourcePolicyCalc{},
 		&model.Push20PolicyCalc{},
 		&model.FundPolicyCalc{IsNastiff: true, OpenAPIServer: se.OpenAPIServer},
 	}
