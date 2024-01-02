@@ -25,12 +25,11 @@ const (
 )
 
 type NastiffTransactionExporter struct {
-	Chain            string
-	OpenAPIServer    string
-	Interval         int
-	BatchSize        int
-	LinkURLs         map[string]string
-	OpenSourcePolicy model.OpenSourcePolicy
+	Chain         string
+	OpenAPIServer string
+	Interval      int
+	BatchSize     int
+	LinkURLs      map[string]string
 }
 
 func NewNastiffTransferExporter(chain, openserver string, interval, batchSize int) Exporter {
@@ -42,7 +41,6 @@ func NewNastiffTransferExporter(chain, openserver string, interval, batchSize in
 			"Scan_Contract": fmt.Sprintf("%s/address/%%s", utils.GetScanURL(chain)),
 			"Dedaub":        "https://library.dedaub.com/decompile?md5=%s",
 		},
-		OpenSourcePolicy: model.OpenSourcePolicy{Interval: interval},
 	}
 }
 
@@ -100,6 +98,7 @@ func (nte *NastiffTransactionExporter) CalcContractByPolicies(tx *model.NastiffT
 		&model.Push4PolicyCalc{
 			FlashLoanFuncNames: model.LoadFlashLoanFuncNames(),
 		},
+		&model.OpenSourcePolicyCalc{},
 		&model.Push20PolicyCalc{},
 		&model.FundPolicyCalc{IsNastiff: true, OpenAPIServer: nte.OpenAPIServer},
 	}

@@ -83,21 +83,19 @@ func (p20pc *Push20PolicyCalc) Calc(tx *NastiffTransaction) int {
 	return 2
 }
 
-type OpenSourcePolicy struct {
-	Interval int
+type OpenSourcePolicyCalc struct {
 }
 
-func (opc *OpenSourcePolicy) IsOpenSource(tx NastiffTransaction) bool {
-	if opc.Interval != 0 {
-		time.Sleep(time.Duration(opc.Interval) * time.Minute)
-	}
-
-	contract, err := GetContractCode(tx.Chain, tx.ContractAddress)
+func (opc *OpenSourcePolicyCalc) Calc(tx *NastiffTransaction) int {
+	contract, err := GetContractCodeFromScan(tx.Chain, tx.ContractAddress)
 	if err != nil {
-		logrus.Errorf("get contract %s code is err: %v", tx.ContractAddress, err)
-		return false
+		logrus.Errorf("getting code from the %s scan for the contract %s is err: %v", tx.Chain, tx.ContractAddress, err)
+		return 0
 	}
-	return contract.Result[0].SourceCode != ""
+	if contract.Result[0].SourceCode != "" {
+		return 0
+	}
+	return 25
 }
 
 type FundPolicyCalc struct {
@@ -166,7 +164,7 @@ func GetFundAddress(chain, contractAddress, openApiServer string) (ScanTXRespons
 	return message.Data, nil
 }
 
-func GetContractCode(chain, contractAddress string) (ScanContractResponse, error) {
+func GetContractCodeFromScan(chain, contractAddress string) (ScanContractResponse, error) {
 	rand.Seed(time.Now().UnixNano())
 
 	scanAPI := utils.GetScanAPI(chain)
