@@ -24,12 +24,12 @@ import (
 )
 
 type PolicyCalc interface {
-	Calc(transaction *NastiffTransaction) int
+	Calc(transaction *SkyEyeTransaction) int
 }
 
 type NoncePolicyCalc struct{}
 
-func (npc *NoncePolicyCalc) Calc(tx *NastiffTransaction) int {
+func (npc *NoncePolicyCalc) Calc(tx *SkyEyeTransaction) int {
 	if tx.Nonce >= 50 {
 		return 0
 	}
@@ -41,7 +41,7 @@ func (npc *NoncePolicyCalc) Calc(tx *NastiffTransaction) int {
 
 type ByteCodePolicyCalc struct{}
 
-func (bpc *ByteCodePolicyCalc) Calc(tx *NastiffTransaction) int {
+func (bpc *ByteCodePolicyCalc) Calc(tx *SkyEyeTransaction) int {
 	if len(tx.ByteCode) == 0 || len(tx.ByteCode[2:]) < 500 {
 		return 0
 	}
@@ -50,7 +50,7 @@ func (bpc *ByteCodePolicyCalc) Calc(tx *NastiffTransaction) int {
 
 type ContractTypePolicyCalc struct{}
 
-func (cpc *ContractTypePolicyCalc) Calc(tx *NastiffTransaction) int {
+func (cpc *ContractTypePolicyCalc) Calc(tx *SkyEyeTransaction) int {
 	opCodeArgs := GetPushTypeArgs(tx.ByteCode)
 	push4Codes := opCodeArgs[utils.PUSH4]
 	push20Codes := opCodeArgs[utils.PUSH20]
@@ -70,7 +70,7 @@ type Push4PolicyCalc struct {
 	FlashLoanFuncNames []string
 }
 
-func (p4pc *Push4PolicyCalc) Calc(tx *NastiffTransaction) int {
+func (p4pc *Push4PolicyCalc) Calc(tx *SkyEyeTransaction) int {
 	if tx.hasFlashLoan(p4pc.FlashLoanFuncNames) {
 		return 50
 	}
@@ -79,17 +79,16 @@ func (p4pc *Push4PolicyCalc) Calc(tx *NastiffTransaction) int {
 
 type Push20PolicyCalc struct{}
 
-func (p20pc *Push20PolicyCalc) Calc(tx *NastiffTransaction) int {
+func (p20pc *Push20PolicyCalc) Calc(tx *SkyEyeTransaction) int {
 	if len(tx.Push20Args) == 0 {
 		return 0
 	}
 	return 2
 }
 
-type OpenSourcePolicyCalc struct {
-}
+type OpenSourcePolicyCalc struct{}
 
-func (opc *OpenSourcePolicyCalc) Calc(tx *NastiffTransaction) int {
+func (opc *OpenSourcePolicyCalc) Calc(tx *SkyEyeTransaction) int {
 	contract, err := GetContractCodeFromScan(tx.Chain, tx.ContractAddress)
 	if err != nil {
 		logrus.Errorf("getting code from the %s scan for the contract %s is err: %v", tx.Chain, tx.ContractAddress, err)
@@ -106,7 +105,7 @@ type FundPolicyCalc struct {
 	OpenAPIServer string
 }
 
-func (fpc *FundPolicyCalc) Calc(tx *NastiffTransaction) int {
+func (fpc *FundPolicyCalc) Calc(tx *SkyEyeTransaction) int {
 	if fpc.IsNastiff {
 		var fund string
 		scanTxResp, err := GetFundAddress(tx.Chain, tx.FromAddress, fpc.OpenAPIServer)
@@ -168,12 +167,12 @@ func GetFundAddress(chain, contractAddress, openApiServer string) (ScanTXRespons
 }
 
 func GetContractCodeFromScan(chain, contractAddress string) (ScanContractResponse, error) {
-	rand.Seed(time.Now().UnixNano())
+	r := rand.New(rand.NewSource(time.Now().UnixNano()))
 
 	scanAPI := utils.GetScanAPI(chain)
 	apiKeys := config.Conf.ScanInfos[chain].APIKeys
 
-	scanAPIKey := apiKeys[rand.Intn(len(apiKeys))]
+	scanAPIKey := apiKeys[r.Intn(len(apiKeys))]
 	contract := ScanContractResponse{}
 	url := fmt.Sprintf("%s?module=contract&action=getsourcecode&address=%s&apikey=%s", scanAPI, contractAddress, scanAPIKey)
 	resp, err := client.HTTPClient().Get(url)

@@ -10,10 +10,21 @@ import (
 
 type TransactionPostgresqlExporter struct {
 	Chain string
+	items chan any
 }
 
 func NewTransactionPostgresqlExporter(chain string) Exporter {
-	return &TransactionPostgresqlExporter{Chain: chain}
+	return &TransactionPostgresqlExporter{Chain: chain, items: make(chan any, 10)}
+}
+
+func (tpe *TransactionPostgresqlExporter) GetItemsCh() chan any {
+	return tpe.items
+}
+
+func (tpe *TransactionPostgresqlExporter) Run() {
+	for txs := range tpe.items {
+		tpe.ExportItems(txs)
+	}
 }
 
 func (tpe *TransactionPostgresqlExporter) ExportItems(items any) {

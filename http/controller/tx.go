@@ -97,7 +97,7 @@ func (tc *TXController) Reviewed(c *gin.Context) {
 		logrus.Fatalf("get from address is err: %v", err)
 	}
 
-	nt := model.NastiffTransaction{
+	nt := model.SkyEyeTransaction{
 		Chain:           chain,
 		BlockNumber:     block.Number().Int64(),
 		BlockTimestamp:  int64(block.Time()),
@@ -112,7 +112,7 @@ func (tc *TXController) Reviewed(c *gin.Context) {
 		&model.NoncePolicyCalc{},
 		&model.ByteCodePolicyCalc{},
 		&model.ContractTypePolicyCalc{},
-		//&model.OpenSourcePolicyCalc{Interval: config.Conf.ETL.ScanInterval},
+		&model.OpenSourcePolicyCalc{},
 		&model.Push4PolicyCalc{FlashLoanFuncNames: model.LoadFlashLoanFuncNames()},
 		&model.Push20PolicyCalc{},
 		&model.FundPolicyCalc{IsNastiff: searchFund, OpenAPIServer: "http://localhost:8088"},
@@ -130,13 +130,10 @@ func (tc *TXController) Reviewed(c *gin.Context) {
 	}
 	nt.Score = totalScore
 	nt.SplitScores = strings.Join(splitScores, ",")
-	if err = nt.ComposeNastiffValues(); err != nil {
-		c.JSON(http.StatusOK, model.Message{Code: http.StatusInternalServerError, Msg: fmt.Sprintf("get contract %s's nastiff values is err %v ", receipt.ContractAddress.String(), err)})
-		return
-	}
+
 	c.JSON(http.StatusOK, model.Message{
 		Code: http.StatusOK,
 		Msg:  "",
-		Data: nt.NastiffValues,
+		Data: nt.ComposeSkyEyeTXValues(),
 	})
 }

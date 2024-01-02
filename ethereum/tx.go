@@ -24,9 +24,9 @@ type transactionExecutor struct {
 	blockNumber   int64
 	workers       int
 	batchSize     int
-	items         any
-	isNastiff     bool
-	exporters     []exporter.Exporter
+	//items         any
+	isNastiff bool
+	exporters []exporter.Exporter
 }
 
 func NewTransactionExecutor(blockExecutor BlockExecutor,
@@ -49,31 +49,42 @@ func (te *transactionExecutor) Run() {
 	if te.logExecutor != nil {
 		go te.logExecutor.Run()
 	}
+	exporter.StartExporters(te.exporters)
+	te.ExtractTransaction()
+}
 
-	for blockNumber := range te.blockExecutor.blocks {
-		timeoutContext, _ := context.WithTimeout(context.Background(), 5*time.Second)
-		block, err := client.EvmClient().BlockByNumber(timeoutContext, big.NewInt(int64(blockNumber)))
-		if err != nil {
-			if strings.Contains(err.Error(), "not found") || strings.Contains(err.Error(), "context deadline exceeded") {
-				for i := 0; i < 10; i++ {
-					time.Sleep(1 * time.Second)
-					retryContextTimeout, _ := context.WithTimeout(context.Background(), 5*time.Second)
-					logrus.Infof("retry %d to get block: %d info", i+1, blockNumber)
-					block, err = client.EvmClient().BlockByNumber(retryContextTimeout, big.NewInt(int64(blockNumber)))
-					if err != nil && (!strings.Contains(err.Error(), "not found") && !strings.Contains(err.Error(), "context deadline exceeded")) {
-						logrus.Errorf("get block %d info is err: %v, drop it ", blockNumber, err)
-						continue
-					}
-					if block != nil {
-						break
-					}
+func (te *transactionExecutor) GetBlockInfoByBlockNumber(blockNumber uint64) *types.Block {
+	timeoutContext, _ := context.WithTimeout(context.Background(), 5*time.Second)
+	block, err := client.EvmClient().BlockByNumber(timeoutContext, big.NewInt(int64(blockNumber)))
+	if err != nil {
+		if strings.Contains(err.Error(), "not found") || strings.Contains(err.Error(), "context deadline exceeded") {
+			for i := 0; i < 10; i++ {
+				time.Sleep(1 * time.Second)
+				retryContextTimeout, _ := context.WithTimeout(context.Background(), 5*time.Second)
+				logrus.Infof("retry %d to get block: %d info", i+1, blockNumber)
+				block, err = client.EvmClient().BlockByNumber(retryContextTimeout, big.NewInt(int64(blockNumber)))
+				if err != nil && (!strings.Contains(err.Error(), "not found") && !strings.Contains(err.Error(), "context deadline exceeded")) {
+					logrus.Errorf("get block %d info is err: %v, drop it ", blockNumber, err)
+					continue
+				}
+				if block != nil {
+					break
 				}
 			}
 		}
+	}
+	return block
+}
+
+func (te *transactionExecutor) ExtractTransaction() {
+	for blockNumber := range te.blockExecutor.blocks {
+		block := te.GetBlockInfoByBlockNumber(blockNumber)
 		if block != nil {
 			logrus.Infof("start to extract transaction infos from the block: %d infos", blockNumber)
 			te.blockNumber = block.Number().Int64()
-			te.items = te.ExtractByBlock(*block)
+			transactions := te.ExtractByBlock(*block)
+			enrichTxs := te.enrichContractCreation(transactions)
+			exporter.WriteDataToExporters(te.exporters, enrichTxs)
 			te.Enrich()
 			te.Export()
 		} else {
@@ -82,7 +93,7 @@ func (te *transactionExecutor) Run() {
 	}
 }
 
-func (te *transactionExecutor) ExtractByBlock(block types.Block) any {
+func (te *transactionExecutor) ExtractByBlock(block types.Block) model.Transactions {
 	startTimestamp := time.Now()
 	txs := model.Transactions{}
 	rwMutex := sync.RWMutex{}
@@ -116,10 +127,10 @@ func (te *transactionExecutor) ExtractByBlock(block types.Block) any {
 	return txs
 }
 
-func (te *transactionExecutor) enrichContractCreation() {
+func (te *transactionExecutor) enrichContractCreation(items model.Transactions) model.Transactions {
 	txs := model.Transactions{}
 	enrichTXs := model.Transactions{}
-	for _, item := range te.items.(model.Transactions) {
+	for _, item := range items {
 		if item.ToAddress == nil {
 			enrichTXs = append(enrichTXs, item)
 		} else {
@@ -128,11 +139,11 @@ func (te *transactionExecutor) enrichContractCreation() {
 	}
 	enrichTXs.EnrichReceipts(te.batchSize)
 	txs = append(txs, enrichTXs...)
-	te.items = txs
+	return txs
 }
 
 func (te *transactionExecutor) Enrich() {
-	te.enrichContractCreation()
+
 	if te.logExecutor != nil {
 		lge, _ := te.logExecutor.(*logExecutor)
 		lge.filterLogsByTopics(te.blockNumber, te.blockNumber)
@@ -140,11 +151,5 @@ func (te *transactionExecutor) Enrich() {
 }
 
 func (te *transactionExecutor) Export() {
-	txs := te.items.(model.Transactions)
-	if len(txs) > 0 {
-		for _, e := range te.exporters {
-			e.ExportItems(txs)
-		}
-	}
 	utils.WriteBlockNumberToFile(config.Conf.ETL.PreviousFile, te.blockNumber)
 }
