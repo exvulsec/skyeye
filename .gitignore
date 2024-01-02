@@ -27,3 +27,4 @@ config/config*.yaml
 *previous*
 
 *.log
+go-etl

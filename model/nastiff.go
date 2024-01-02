@@ -27,6 +27,7 @@ type NastiffTransaction struct {
 	Push4Args          []string          `json:"-" gorm:"-"`
 	Push20Args         []string          `json:"-" gorm:"-"`
 	Push32Args         []string          `json:"-" gorm:"-"`
+	PushStringLogs     []string          `json:"-" gorm:"-"`
 	Fund               string            `json:"-" gorm:"-"`
 }
 
@@ -71,6 +72,7 @@ func (nt *NastiffTransaction) ComposeNastiffValues() error {
 		"Fund":        nt.Fund,
 		"Score":       fmt.Sprintf("%d", nt.Score),
 		"SplitScores": nt.SplitScores,
+		"Emitlog":     strings.Join(nt.PushStringLogs, ","),
 	}
 
 	nt.NastiffValuesBytes, err = json.Marshal(values)

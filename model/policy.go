@@ -2,6 +2,7 @@ package model
 
 import (
 	"bufio"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -53,8 +54,10 @@ func (cpc *ContractTypePolicyCalc) Calc(tx *NastiffTransaction) int {
 	opCodeArgs := GetPushTypeArgs(tx.ByteCode)
 	push4Codes := opCodeArgs[utils.PUSH4]
 	push20Codes := opCodeArgs[utils.PUSH20]
+	push14data := opCodeArgs[utils.PUSH14]
 	tx.Push4Args = GetPush4Args(push4Codes)
 	tx.Push20Args = GetPush20Args(tx.Chain, push20Codes)
+	tx.PushStringLogs = push14data
 
 	if utils.IsErc20Or721(utils.Erc20Signatures, push4Codes, utils.Erc20SignatureThreshold) ||
 		utils.IsErc20Or721(utils.Erc721Signatures, push4Codes, utils.Erc721SignatureThreshold) {
@@ -194,9 +197,21 @@ func GetContractCodeFromScan(chain, contractAddress string) (ScanContractRespons
 	return contract, nil
 }
 
+func HexToASCII(hexStr string) (string, error) {
+	bytes, err := hex.DecodeString(hexStr)
+	if err != nil {
+		return "", err
+	}
+	return string(bytes), nil
+}
+
+func IsPrintableASCII(r rune) bool {
+	return r >= 32 && r <= 126
+}
+
 func GetPushTypeArgs(byteCode []byte) map[string][]string {
 	args := map[string][]string{}
-	if len(byteCode) != 0 {
+	if len(byteCode) > 2 {
 		byteCode = byteCode[2:]
 		it := asm.NewInstructionIterator(byteCode)
 		l1 := vm.INVALID
@@ -219,7 +234,20 @@ func GetPushTypeArgs(byteCode []byte) map[string][]string {
 				if opCodeArg != utils.FFFFAddress {
 					args[utils.PUSH20] = append(args[utils.PUSH20], opCodeArg)
 				}
+			} else if it.Op() == vm.PUSH14 {
+				arg = it.Arg()
+				var isASCII = true
+				for _, char := range arg {
+					if !IsPrintableASCII(rune(char)) {
+						isASCII = false
+						break
+					}
+				}
+				if isASCII {
+					args[utils.PUSH14] = append(args[utils.PUSH14], string(arg))
+				}
 			}
+
 			l2 = l1
 			l1 = it.Op()
 
@@ -227,8 +255,9 @@ func GetPushTypeArgs(byteCode []byte) map[string][]string {
 		return args
 	}
 	return map[string][]string{
-		utils.PUSH20: []string{},
-		utils.PUSH4:  []string{},
+		utils.PUSH20: {},
+		utils.PUSH4:  {},
+		utils.PUSH14: {},
 	}
 }
 
