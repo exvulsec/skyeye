@@ -131,6 +131,15 @@ func (se *SkyEyeExporter) processSkyTX(skyTX model.SkyEyeTransaction) {
 		logrus.Errorf("insert txhash %s's contract %s to db is err %v", skyTX.TxHash, skyTX.ContractAddress, err)
 		return
 	}
+	se.removeKeyFromRedis(skyTX.ContractAddress)
+}
+
+func (se *SkyEyeExporter) removeKeyFromRedis(contractAddress string) {
+	var redisHashName = fmt.Sprintf(OpenSourceRedisName, se.Chain)
+	if _, err := datastore.Redis().HDel(context.Background(), redisHashName, contractAddress).Result(); err != nil {
+		logrus.Errorf("delete field %s in key %s is err %v", contractAddress, redisHashName, err)
+		return
+	}
 }
 
 func (se *SkyEyeExporter) scanKeysFromRedis() {
