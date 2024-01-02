@@ -2,6 +2,7 @@ package model
 
 import (
 	"context"
+	"fmt"
 	"testing"
 
 	"github.com/ethereum/go-ethereum/common"
@@ -50,4 +51,27 @@ func TestIsErc20Or721(t *testing.T) {
 	}
 	args := GetPush4Args(opCodeArgs[utils.PUSH4])
 	assert.Equal(t, utils.IsErc20Or721(utils.Erc20Signatures, args, 5), false)
+}
+
+func TestGetPushTypeArgs(t *testing.T) {
+	type args struct {
+		byteCode []byte
+	}
+	tests := []struct {
+		name string
+		args args
+		want map[string][]string
+	}{
+		{
+			name: "test case 1",
+			args: args{byteCode: []byte{0x00, 0x00, 0x6d, 0x64, 0x64, 0x6e, 0x6f, 0x6d, 0x20, 0x3c, 0x3d, 0x20, 0x70, 0x72, 0x6f, 0x64, 0x31}},
+			want: map[string][]string{"key": {"value"}},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			ss := GetPushTypeArgs(tt.args.byteCode)
+			fmt.Println("ASCII:", ss[utils.PUSH14])
+		})
+	}
 }
