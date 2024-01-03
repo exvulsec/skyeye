@@ -82,7 +82,7 @@ func (txs *Transactions) EnrichReceipts() {
 					if err != nil && strings.Contains(err.Error(), "not found") {
 						continue
 					} else {
-						break
+						logrus.Errorf("get receipt for %s is err %v", (*txs)[index].TxHash, err)
 					}
 				}
 			}
