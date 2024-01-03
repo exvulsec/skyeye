@@ -137,7 +137,7 @@ func (te *transactionExecutor) enrichContractCreation(items model.Transactions) 
 			txs = append(txs, item)
 		}
 	}
-	enrichTXs.EnrichReceipts(te.batchSize)
+	enrichTXs.EnrichReceipts()
 	txs = append(txs, enrichTXs...)
 	return txs
 }

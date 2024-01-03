@@ -8,7 +8,6 @@ import (
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
-	"github.com/ethereum/go-ethereum/rpc"
 	"github.com/jackc/pgx/v5"
 	"github.com/shopspring/decimal"
 	"github.com/sirupsen/logrus"
@@ -67,18 +66,27 @@ func (tx *Transaction) ConvertFromBlock(transaction *types.Transaction) {
 	tx.GasLimit = int64(transaction.Gas())
 }
 
-func (txs *Transactions) EnrichReceipts(batchSize int) {
-	calls := []rpc.BatchElem{}
+func (txs *Transactions) EnrichReceipts() {
 	for index := range *txs {
-		calls = append(calls, rpc.BatchElem{
-			Method: utils.RPCNameEthGetTransactionReceipt,
-			Args:   []any{common.HexToHash((*txs)[index].TxHash)},
-			Result: &types.Receipt{},
-		})
-	}
-	client.RPCClient().MultiCall(calls, batchSize)
-	for index := range *txs {
-		receipt, _ := calls[index].Result.(*types.Receipt)
+		receipt, err := client.EvmClient().TransactionReceipt(context.Background(), common.HexToHash((*txs)[index].TxHash))
+		if err != nil {
+			if !strings.Contains(err.Error(), "not found") {
+				logrus.Errorf("get receipt for %s is err %v", (*txs)[index].TxHash, err)
+				continue
+			} else {
+				for i := 0; i < 3; i++ {
+					receipt, err = client.EvmClient().TransactionReceipt(context.Background(), common.HexToHash((*txs)[index].TxHash))
+					if err == nil {
+						break
+					}
+					if err != nil && strings.Contains(err.Error(), "not found") {
+						continue
+					} else {
+						break
+					}
+				}
+			}
+		}
 		(*txs)[index].enrichReceipt(*receipt)
 	}
 }
