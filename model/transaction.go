@@ -5,6 +5,7 @@ import (
 	"encoding/hex"
 	"fmt"
 	"strings"
+	"time"
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
@@ -66,26 +67,35 @@ func (tx *Transaction) ConvertFromBlock(transaction *types.Transaction) {
 	tx.GasLimit = int64(transaction.Gas())
 }
 
+func retryToGetReceipt(txHash common.Hash) *types.Receipt {
+	var (
+		receipt *types.Receipt
+		err     error
+	)
+	for i := 0; i < 3; i++ {
+		time.Sleep(1 * time.Second)
+		logrus.Infof("retry to get receipt %d for tx %s", i+1, txHash)
+		receipt, err = client.EvmClient().TransactionReceipt(context.Background(), txHash)
+		if err != nil {
+			logrus.Errorf("get receipt for tx %s is err %v", txHash, err)
+			continue
+		}
+		if receipt != nil {
+			break
+		}
+	}
+	return receipt
+}
+
 func (txs *Transactions) EnrichReceipts() {
 	for index := range *txs {
-		receipt, err := client.EvmClient().TransactionReceipt(context.Background(), common.HexToHash((*txs)[index].TxHash))
+		txHash := common.HexToHash((*txs)[index].TxHash)
+		receipt, err := client.EvmClient().TransactionReceipt(context.Background(), txHash)
 		if err != nil {
-			if !strings.Contains(err.Error(), "not found") {
-				logrus.Errorf("get receipt for %s is err %v", (*txs)[index].TxHash, err)
-				continue
-			} else {
-				for i := 0; i < 3; i++ {
-					receipt, err = client.EvmClient().TransactionReceipt(context.Background(), common.HexToHash((*txs)[index].TxHash))
-					if err == nil {
-						break
-					}
-					if err != nil && strings.Contains(err.Error(), "not found") {
-						continue
-					} else {
-						logrus.Errorf("get receipt for %s is err %v", (*txs)[index].TxHash, err)
-					}
-				}
-			}
+			logrus.Errorf("get receipt for tx %s is err %v", txHash, err)
+		}
+		if receipt == nil {
+			receipt = retryToGetReceipt(txHash)
 		}
 		(*txs)[index].enrichReceipt(*receipt)
 	}
