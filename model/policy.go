@@ -54,10 +54,10 @@ func (cpc *ContractTypePolicyCalc) Calc(tx *SkyEyeTransaction) int {
 	opCodeArgs := GetPushTypeArgs(tx.ByteCode)
 	push4Codes := opCodeArgs[utils.PUSH4]
 	push20Codes := opCodeArgs[utils.PUSH20]
-	push14data := opCodeArgs[utils.PUSH14]
+	stringLogs := opCodeArgs[utils.LOGS]
 	tx.Push4Args = GetPush4Args(push4Codes)
 	tx.Push20Args = GetPush20Args(tx.Chain, push20Codes)
-	tx.PushStringLogs = push14data
+	tx.PushStringLogs = stringLogs
 
 	if utils.IsErc20Or721(utils.Erc20Signatures, push4Codes, utils.Erc20SignatureThreshold) ||
 		utils.IsErc20Or721(utils.Erc721Signatures, push4Codes, utils.Erc721SignatureThreshold) {
@@ -83,6 +83,9 @@ func (p20pc *Push20PolicyCalc) Calc(tx *SkyEyeTransaction) int {
 	if len(tx.Push20Args) == 0 {
 		return 0
 	}
+	if tx.hasRiskAddress([]string{"PancakeSwap: Router v2"}) {
+		return 20
+	}
 	return 2
 }
 
@@ -97,7 +100,7 @@ func (opc *OpenSourcePolicyCalc) Calc(tx *SkyEyeTransaction) int {
 	if contract.Result[0].SourceCode != "" {
 		return 0
 	}
-	return 25
+	return 15
 }
 
 type FundPolicyCalc struct {
@@ -233,7 +236,9 @@ func GetPushTypeArgs(byteCode []byte) map[string][]string {
 				if opCodeArg != utils.FFFFAddress {
 					args[utils.PUSH20] = append(args[utils.PUSH20], opCodeArg)
 				}
-			} else if it.Op() == vm.PUSH14 {
+			} else if it.Op() == vm.PUSH10 || it.Op() == vm.PUSH14 ||
+				it.Op() == vm.PUSH15 || it.Op() == vm.PUSH16 ||
+				it.Op() == vm.PUSH18 && it.Op() == vm.PUSH32 {
 				arg = it.Arg()
 				var isASCII = true
 				for _, char := range arg {
@@ -243,7 +248,7 @@ func GetPushTypeArgs(byteCode []byte) map[string][]string {
 					}
 				}
 				if isASCII {
-					args[utils.PUSH14] = append(args[utils.PUSH14], string(arg))
+					args[utils.LOGS] = append(args[utils.LOGS], string(arg))
 				}
 			}
 
@@ -256,7 +261,7 @@ func GetPushTypeArgs(byteCode []byte) map[string][]string {
 	return map[string][]string{
 		utils.PUSH20: {},
 		utils.PUSH4:  {},
-		utils.PUSH14: {},
+		utils.LOGS:   {},
 	}
 }
 

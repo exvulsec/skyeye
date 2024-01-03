@@ -51,6 +51,17 @@ func (st *SkyEyeTransaction) hasFlashLoan(flashLoanFuncNames []string) bool {
 	return false
 }
 
+func (st *SkyEyeTransaction) hasRiskAddress(addrs []string) bool {
+	for _, push20 := range st.Push20Args {
+		for _, addr := range addrs {
+			if push20 == addr {
+				return true
+			}
+		}
+	}
+	return false
+}
+
 func (st *SkyEyeTransaction) ComposeSkyEyeTXValues() map[string]string {
 	codeSize := 0
 	if len(st.ByteCode) != 0 {
