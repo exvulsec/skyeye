@@ -84,7 +84,7 @@ func (p20pc *Push20PolicyCalc) Calc(tx *SkyEyeTransaction) int {
 		return 0
 	}
 	if tx.hasRiskAddress([]string{"PancakeSwap: Router v2"}) {
-		return 20
+		return 10
 	}
 	return 2
 }
