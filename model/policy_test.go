@@ -71,7 +71,7 @@ func TestGetPushTypeArgs(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			ss := GetPushTypeArgs(tt.args.byteCode)
-			fmt.Println("ASCII:", ss[utils.PUSH14])
+			fmt.Println("ASCII:", ss[utils.LOGS])
 		})
 	}
 }

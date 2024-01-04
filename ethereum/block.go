@@ -53,9 +53,8 @@ func (be *BlockExecutor) getPreviousBlocks() {
 	logrus.Infof("previous block number is %d", previousBlockNumber)
 
 	be.latestBlockNumber, err = client.EvmClient().BlockNumber(context.Background())
-
 	if err != nil {
-		logrus.Fatal("failed to get the latest Block number", err)
+		logrus.Fatalf("failed to get the latest Block number %v", err)
 		return
 	}
 
