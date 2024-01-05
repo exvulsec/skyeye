@@ -58,7 +58,7 @@ func (te *transactionExecutor) GetBlockInfoByBlockNumber(blockNumber uint64) *ty
 	block, err := client.EvmClient().BlockByNumber(timeoutContext, big.NewInt(int64(blockNumber)))
 	if err != nil {
 		if strings.Contains(err.Error(), "not found") || strings.Contains(err.Error(), "context deadline exceeded") {
-			for i := 0; i < 3; i++ {
+			for i := 0; i < 10; i++ {
 				time.Sleep(1 * time.Second)
 				retryContextTimeout, _ := context.WithTimeout(context.Background(), 5*time.Second)
 				logrus.Infof("retry %d to get block: %d info", i+1, blockNumber)

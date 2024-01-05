@@ -72,7 +72,7 @@ func retryToGetReceipt(txHash common.Hash) *types.Receipt {
 		receipt *types.Receipt
 		err     error
 	)
-	for i := 0; i < 3; i++ {
+	for i := 0; i < 10; i++ {
 		time.Sleep(1 * time.Second)
 		logrus.Infof("retry to get receipt %d for tx %s", i+1, txHash)
 		receipt, err = client.EvmClient().TransactionReceipt(context.Background(), txHash)
