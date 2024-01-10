@@ -9,10 +9,10 @@ type Exporter interface {
 	GetItemsCh() chan any
 }
 
-func NewTransactionExporters(chain, openAPIServer string, isNastiff bool, batchSize int) []Exporter {
-	exporters := []Exporter{NewTransactionPostgresqlExporter(chain)}
+func NewTransactionExporters(chain, openAPIServer string, isNastiff bool, workers int) []Exporter {
+	exporters := []Exporter{NewTransactionPostgresqlExporter(chain, workers)}
 	if isNastiff {
-		exporters = append(exporters, NewSkyEyeExporter(chain, openAPIServer, config.Conf.ETL.ScanInterval, batchSize))
+		exporters = append(exporters, NewSkyEyeExporter(chain, openAPIServer, config.Conf.ETL.ScanInterval, workers))
 	}
 	return exporters
 }

@@ -9,12 +9,13 @@ import (
 )
 
 type TransactionPostgresqlExporter struct {
-	Chain string
-	items chan any
+	chain   string
+	workers int
+	items   chan any
 }
 
-func NewTransactionPostgresqlExporter(chain string) Exporter {
-	return &TransactionPostgresqlExporter{Chain: chain, items: make(chan any, 10)}
+func NewTransactionPostgresqlExporter(chain string, workers int) Exporter {
+	return &TransactionPostgresqlExporter{chain: chain, items: make(chan any, 10), workers: workers}
 }
 
 func (tpe *TransactionPostgresqlExporter) GetItemsCh() chan any {
@@ -22,17 +23,23 @@ func (tpe *TransactionPostgresqlExporter) GetItemsCh() chan any {
 }
 
 func (tpe *TransactionPostgresqlExporter) Run() {
-	for txs := range tpe.items {
-		tpe.ExportItems(txs)
+	for i := 0; i < tpe.workers; i++ {
+		go tpe.ExportItems()
 	}
 }
 
-func (tpe *TransactionPostgresqlExporter) ExportItems(items any) {
+func (tpe *TransactionPostgresqlExporter) ExportItems() {
+	for txs := range tpe.items {
+		tpe.exportItemsToDB(txs)
+	}
+}
+
+func (tpe *TransactionPostgresqlExporter) exportItemsToDB(items any) {
 	startTimestamp := time.Now()
 	txs := items.(model.Transactions)
 
-	if err := txs.CopyToDB(tpe.Chain); err != nil {
-		logrus.Errorf("copy %d to db '%s.txs' is err %v", len(txs), tpe.Chain, err)
+	if err := txs.CopyToDB(tpe.chain); err != nil {
+		logrus.Errorf("copy %d to db '%s.txs' is err %v", len(txs), tpe.chain, err)
 		return
 	}
 	logrus.Infof("copy %d txs into database cost: %.2fs", len(txs), time.Since(startTimestamp).Seconds())

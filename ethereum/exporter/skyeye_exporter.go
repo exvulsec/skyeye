@@ -26,21 +26,21 @@ const (
 
 type SkyEyeExporter struct {
 	items         chan any
-	Chain         string
-	OpenAPIServer string
-	Interval      int
-	BatchSize     int
-	LinkURLs      map[string]string
+	chain         string
+	openAPIServer string
+	interval      int
+	workers       int
+	linkURLs      map[string]string
 }
 
-func NewSkyEyeExporter(chain, openserver string, interval, batchSize int) Exporter {
+func NewSkyEyeExporter(chain, openserver string, interval, workers int) Exporter {
 	return &SkyEyeExporter{
-		Chain:         chain,
+		chain:         chain,
 		items:         make(chan any, 10),
-		OpenAPIServer: openserver,
-		BatchSize:     batchSize,
-		Interval:      interval,
-		LinkURLs: map[string]string{
+		openAPIServer: openserver,
+		workers:       workers,
+		interval:      interval,
+		linkURLs: map[string]string{
 			"Scan_Contract": fmt.Sprintf("%s/address/%%s", utils.GetScanURL(chain)),
 			"Dedaub":        "https://library.dedaub.com/decompile?md5=%s",
 		},
@@ -53,10 +53,12 @@ func (se *SkyEyeExporter) GetItemsCh() chan any {
 
 func (se *SkyEyeExporter) Run() {
 	go se.watchContractKeysFromRedis()
-	go se.exportItems()
+	for i := 0; i < se.workers; i++ {
+		go se.ExportItems()
+	}
 }
 
-func (se *SkyEyeExporter) exportItems() {
+func (se *SkyEyeExporter) ExportItems() {
 	for item := range se.items {
 		txs, ok := item.(model.Transactions)
 		if !ok {
@@ -75,14 +77,14 @@ func (se *SkyEyeExporter) exportItems() {
 func (se *SkyEyeExporter) exportItem(tx model.Transaction) {
 	skyTx := model.SkyEyeTransaction{}
 	skyTx.ConvertFromTransaction(tx)
-	skyTx.Chain = se.Chain
+	skyTx.Chain = se.chain
 	if err := se.exportToRedis(skyTx); err != nil {
 		logrus.Errorf("append txhash %s's contract %s to redis message queue is err %v", skyTx.TxHash, skyTx.ContractAddress, err)
 	}
 }
 
 func (se *SkyEyeExporter) processKey(contractAddress string) {
-	var redisHashName = fmt.Sprintf(OpenSourceRedisName, se.Chain)
+	var redisHashName = fmt.Sprintf(OpenSourceRedisName, se.chain)
 	var skyTX model.SkyEyeTransaction
 	value, err := datastore.Redis().HGet(context.Background(), redisHashName, contractAddress).Result()
 	if err != nil {
@@ -102,7 +104,7 @@ func (se *SkyEyeExporter) processKey(contractAddress string) {
 	}
 
 	timeDifference := time.Since(timestampTime)
-	if timeDifference < time.Minute*time.Duration(se.Interval) {
+	if timeDifference < time.Minute*time.Duration(se.interval) {
 		return
 	}
 	se.processSkyTX(skyTX)
@@ -135,7 +137,7 @@ func (se *SkyEyeExporter) processSkyTX(skyTX model.SkyEyeTransaction) {
 }
 
 func (se *SkyEyeExporter) removeKeyFromRedis(contractAddress string) {
-	var redisHashName = fmt.Sprintf(OpenSourceRedisName, se.Chain)
+	var redisHashName = fmt.Sprintf(OpenSourceRedisName, se.chain)
 	if _, err := datastore.Redis().HDel(context.Background(), redisHashName, contractAddress).Result(); err != nil {
 		logrus.Errorf("delete field %s in key %s is err %v", contractAddress, redisHashName, err)
 		return
@@ -143,7 +145,7 @@ func (se *SkyEyeExporter) removeKeyFromRedis(contractAddress string) {
 }
 
 func (se *SkyEyeExporter) scanKeysFromRedis() {
-	var redisHashName = fmt.Sprintf(OpenSourceRedisName, se.Chain)
+	var redisHashName = fmt.Sprintf(OpenSourceRedisName, se.chain)
 	keys, err := datastore.Redis().HKeys(context.Background(), redisHashName).Result()
 	if err != nil {
 		logrus.Errorf("error scanning keys: %v", err)
@@ -157,10 +159,7 @@ func (se *SkyEyeExporter) scanKeysFromRedis() {
 func (se *SkyEyeExporter) watchContractKeysFromRedis() {
 	for {
 		se.scanKeysFromRedis()
-		select {
-		case <-time.After(1 * time.Minute):
-
-		}
+		time.Sleep(1 * time.Minute)
 	}
 }
 
@@ -174,7 +173,7 @@ func (se *SkyEyeExporter) CalcContractByPolicies(tx *model.SkyEyeTransaction) {
 		},
 		&model.OpenSourcePolicyCalc{},
 		&model.Push20PolicyCalc{},
-		&model.FundPolicyCalc{IsNastiff: true, OpenAPIServer: se.OpenAPIServer},
+		&model.FundPolicyCalc{IsNastiff: true, OpenAPIServer: se.openAPIServer},
 	}
 	splitScores := []string{}
 	totalScore := 0
@@ -188,7 +187,7 @@ func (se *SkyEyeExporter) CalcContractByPolicies(tx *model.SkyEyeTransaction) {
 }
 
 func (se *SkyEyeExporter) exportToRedis(tx model.SkyEyeTransaction) error {
-	var redisName = fmt.Sprintf(OpenSourceRedisName, se.Chain)
+	var redisName = fmt.Sprintf(OpenSourceRedisName, se.chain)
 	txBytes, err := json.Marshal(tx)
 	if err != nil {
 		return fmt.Errorf("marhsal the sky eye tx is err %v", err)
@@ -243,8 +242,8 @@ func (se *SkyEyeExporter) ComposeMessage(tx model.SkyEyeTransaction) string {
 
 func (se *SkyEyeExporter) ComposeSlackAction(tx model.SkyEyeTransaction) []slack.AttachmentAction {
 	actions := []slack.AttachmentAction{}
-	var actionURL = ""
-	for key, url := range se.LinkURLs {
+	var actionURL string
+	for key, url := range se.linkURLs {
 		if key == "Dedaub" {
 			var dedaubMD5String model.DeDaubResponseString
 			err := dedaubMD5String.GetCodeMD5(tx.ByteCode)
@@ -268,13 +267,13 @@ func (se *SkyEyeExporter) ComposeSlackAction(tx model.SkyEyeTransaction) []slack
 }
 
 func (se *SkyEyeExporter) SendMessageToSlack(tx model.SkyEyeTransaction) error {
-	summary := fmt.Sprintf("⚠️Detected a suspected risk transaction on *%s*⚠️\n", strings.ToUpper(se.Chain))
+	summary := fmt.Sprintf("⚠️Detected a suspected risk transaction on *%s*⚠️\n", strings.ToUpper(se.chain))
 	attachment := slack.Attachment{
 		Color:      "warning",
 		AuthorName: "EXVul",
 		Fallback:   summary,
 		Text:       summary + se.ComposeMessage(tx),
-		Footer:     fmt.Sprintf("skyeye-on-%s", se.Chain),
+		Footer:     fmt.Sprintf("skyeye-on-%s", se.chain),
 		Ts:         json.Number(strconv.FormatInt(time.Now().Unix(), 10)),
 		Actions:    se.ComposeSlackAction(tx),
 	}
