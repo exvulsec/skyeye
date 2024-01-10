@@ -238,7 +238,8 @@ func GetPushTypeArgs(byteCode []byte) map[string][]string {
 				}
 			} else if it.Op() == vm.PUSH10 || it.Op() == vm.PUSH14 ||
 				it.Op() == vm.PUSH15 || it.Op() == vm.PUSH16 ||
-				it.Op() == vm.PUSH18 && it.Op() == vm.PUSH32 {
+				it.Op() == vm.PUSH18 || it.Op() == vm.PUSH22 ||
+				it.Op() == vm.PUSH32 {
 				arg = it.Arg()
 				var isASCII = true
 				for _, char := range arg {
