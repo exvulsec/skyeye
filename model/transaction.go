@@ -67,37 +67,36 @@ func (tx *Transaction) ConvertFromBlock(transaction *types.Transaction) {
 	tx.GasLimit = int64(transaction.Gas())
 }
 
-func retryToGetReceipt(txHash common.Hash) *types.Receipt {
-	var (
-		receipt *types.Receipt
-		err     error
-	)
-	for i := 0; i < 10; i++ {
-		time.Sleep(1 * time.Second)
-		logrus.Infof("retry to get receipt %d for tx %s", i+1, txHash)
-		receipt, err = client.EvmClient().TransactionReceipt(context.Background(), txHash)
-		if err != nil {
+func getReceiptWithTimeOut(txHash common.Hash) (*types.Receipt, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	return client.EvmClient().TransactionReceipt(ctx, txHash)
+}
+
+func getReceipt(txHash common.Hash) *types.Receipt {
+	for i := 0; i < 6; i++ {
+		receipt, err := getReceiptWithTimeOut(txHash)
+		if err != nil && !utils.IsRetriableError(err) {
 			logrus.Errorf("get receipt for tx %s is err %v", txHash, err)
-			continue
-		}
-		if receipt != nil {
 			break
 		}
+		if receipt != nil {
+			return receipt
+		}
+		time.Sleep(1 * time.Second)
+		logrus.Infof("retry %d times to get tx's receipt %d", i+1, txHash)
 	}
-	return receipt
+	logrus.Infof("get receipt with txhash %s failed, drop it", txHash)
+	return nil
 }
 
 func (txs *Transactions) EnrichReceipts() {
 	for index := range *txs {
 		txHash := common.HexToHash((*txs)[index].TxHash)
-		receipt, err := client.EvmClient().TransactionReceipt(context.Background(), txHash)
-		if err != nil {
-			logrus.Errorf("get receipt for tx %s is err %v", txHash, err)
+		receipt := getReceipt(txHash)
+		if receipt != nil {
+			(*txs)[index].enrichReceipt(*receipt)
 		}
-		if receipt == nil {
-			receipt = retryToGetReceipt(txHash)
-		}
-		(*txs)[index].enrichReceipt(*receipt)
 	}
 }
 

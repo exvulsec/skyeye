@@ -1,6 +1,8 @@
 package utils
 
 import (
+	"context"
+	"errors"
 	"fmt"
 	"net/http"
 	"os"
@@ -78,4 +80,8 @@ func CheckHeaderIsGZip(header http.Header) bool {
 		}
 	}
 	return false
+}
+
+func IsRetriableError(err error) bool {
+	return strings.Contains(err.Error(), "not found") || errors.Is(err, context.DeadlineExceeded)
 }

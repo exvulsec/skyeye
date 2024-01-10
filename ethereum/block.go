@@ -14,19 +14,15 @@ import (
 
 type BlockExecutor struct {
 	chain               string
-	batchSize           int
-	workerSize          int
 	processPreviousDone bool
 	latestBlocks        chan uint64
 	blocks              chan uint64
 	latestBlockNumber   uint64
 }
 
-func NewBlockExecutor(chain string, batchSize, workerSize int) BlockExecutor {
+func NewBlockExecutor(chain string) BlockExecutor {
 	return BlockExecutor{
 		chain:               chain,
-		batchSize:           batchSize,
-		workerSize:          workerSize,
 		processPreviousDone: false,
 		latestBlocks:        make(chan uint64, 10000),
 		blocks:              make(chan uint64, 10000),

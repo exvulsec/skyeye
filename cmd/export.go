@@ -27,17 +27,16 @@ var txCmd = &cobra.Command{
 		config.SetupConfig(configFile)
 		log.InitLog(config.Conf.ETL.LogPath)
 		workers, _ := cmd.Flags().GetInt("workers")
-		batchSize, _ := cmd.Flags().GetInt("batch_size")
 		isNastiff, _ := cmd.Flags().GetBool("is_nastiff")
 		chain, _ := cmd.Flags().GetString("chain")
 		openAPIServer, _ := cmd.Flags().GetString("openapi_server")
 		topicString, _ := cmd.Flags().GetString("topics")
-		blockExecutor := ethereum.NewBlockExecutor(chain, batchSize, workers)
+		blockExecutor := ethereum.NewBlockExecutor(chain)
 		var logExecutor ethereum.Executor
 		if topicString != "" {
 			logExecutor = ethereum.NewLogExecutor(chain, workers, ethereum.ConvertTopicsFromString(topicString))
 		}
-		executor := ethereum.NewTransactionExecutor(blockExecutor, logExecutor, chain, openAPIServer, workers, batchSize, isNastiff)
+		executor := ethereum.NewTransactionExecutor(blockExecutor, logExecutor, chain, openAPIServer, workers, isNastiff)
 		executor.Run()
 	},
 }
@@ -47,7 +46,6 @@ func txCmdInit() {
 	txCmd.Flags().Uint64("tx_nonce", 0, "filter the less than nonce count txs, > 0 is available, default is 0")
 	txCmd.Flags().Bool("is_nastiff", false, "filter nastiff txs")
 	txCmd.Flags().Int("workers", 5, "batch call workers")
-	txCmd.Flags().Int("batch_size", 50, "one batch call workers ")
 	txCmd.Flags().String("chain", "ethereum", "chain name")
 	txCmd.Flags().String("openapi_server", "http://localhost:8088", "open api server")
 	txCmd.Flags().String("topics", "", "filter the specified topics, split by comma")

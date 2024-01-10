@@ -3,7 +3,6 @@ package ethereum
 import (
 	"context"
 	"math/big"
-	"strings"
 	"sync"
 	"time"
 
@@ -23,24 +22,20 @@ type transactionExecutor struct {
 	logExecutor   Executor
 	blockNumber   int64
 	workers       int
-	batchSize     int
-	//items         any
-	isNastiff bool
-	exporters []exporter.Exporter
+	isNastiff     bool
+	exporters     []exporter.Exporter
 }
 
 func NewTransactionExecutor(blockExecutor BlockExecutor,
 	logExecutor Executor,
 	chain, openapi string,
-	workers, batchSize int,
-	isNastiff bool) Executor {
+	workers int, isNastiff bool) Executor {
 	return &transactionExecutor{
 		blockExecutor: blockExecutor,
 		logExecutor:   logExecutor,
 		workers:       workers,
-		batchSize:     batchSize,
 		isNastiff:     isNastiff,
-		exporters:     exporter.NewTransactionExporters(chain, openapi, isNastiff, batchSize),
+		exporters:     exporter.NewTransactionExporters(chain, openapi, isNastiff, workers),
 	}
 }
 
@@ -50,30 +45,34 @@ func (te *transactionExecutor) Run() {
 		go te.logExecutor.Run()
 	}
 	exporter.StartExporters(te.exporters)
-	te.ExtractTransaction()
+	for i := 0; i < te.workers; i++ {
+		go te.ExtractTransaction()
+	}
+	select {}
 }
 
 func (te *transactionExecutor) GetBlockInfoByBlockNumber(blockNumber uint64) *types.Block {
-	timeoutContext, _ := context.WithTimeout(context.Background(), 5*time.Second)
-	block, err := client.EvmClient().BlockByNumber(timeoutContext, big.NewInt(int64(blockNumber)))
-	if err != nil {
-		if strings.Contains(err.Error(), "not found") || strings.Contains(err.Error(), "context deadline exceeded") {
-			for i := 0; i < 10; i++ {
-				time.Sleep(1 * time.Second)
-				retryContextTimeout, _ := context.WithTimeout(context.Background(), 5*time.Second)
-				logrus.Infof("retry %d to get block: %d info", i+1, blockNumber)
-				block, err = client.EvmClient().BlockByNumber(retryContextTimeout, big.NewInt(int64(blockNumber)))
-				if err != nil && (!strings.Contains(err.Error(), "not found") && !strings.Contains(err.Error(), "context deadline exceeded")) {
-					logrus.Errorf("get block %d info is err: %v, drop it ", blockNumber, err)
-					continue
-				}
-				if block != nil {
-					break
-				}
-			}
+	for i := 0; i < 6; i++ {
+		block, err := te.GetBlockInfoWithTimeOut(blockNumber)
+		if err != nil && !utils.IsRetriableError(err) {
+			logrus.Errorf("get block %d is err: %v", blockNumber, err)
+			break
 		}
+		if block != nil {
+			return block
+		}
+		time.Sleep(1 * time.Second)
+		logrus.Infof("retry %d times to get block %d", i+1, blockNumber)
 	}
-	return block
+	logrus.Errorf("get block %d failed, drop it", blockNumber)
+	return nil
+}
+
+func (te *transactionExecutor) GetBlockInfoWithTimeOut(blockNumber uint64) (*types.Block, error) {
+	retryContextTimeout, retryCancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer retryCancel()
+	block, err := client.EvmClient().BlockByNumber(retryContextTimeout, big.NewInt(int64(blockNumber)))
+	return block, err
 }
 
 func (te *transactionExecutor) ExtractTransaction() {
@@ -85,10 +84,6 @@ func (te *transactionExecutor) ExtractTransaction() {
 			transactions := te.ExtractByBlock(*block)
 			enrichTxs := te.enrichContractCreation(transactions)
 			exporter.WriteDataToExporters(te.exporters, enrichTxs)
-			te.Enrich()
-			te.Export()
-		} else {
-			logrus.Errorf("get block %d failed, drop it", blockNumber)
 		}
 	}
 }
