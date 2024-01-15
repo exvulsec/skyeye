@@ -14,7 +14,6 @@ import (
 
 	"go-etl/client"
 	"go-etl/config"
-	"go-etl/datastore"
 	"go-etl/model"
 	"go-etl/utils"
 )
@@ -31,6 +30,7 @@ type SkyEyeExporter struct {
 	interval      int
 	workers       int
 	linkURLs      map[string]string
+	model.OpenSourcePolicyCalc
 }
 
 func NewSkyEyeExporter(chain, openserver string, interval, workers int) Exporter {
@@ -52,7 +52,6 @@ func (se *SkyEyeExporter) GetItemsCh() chan any {
 }
 
 func (se *SkyEyeExporter) Run() {
-	go se.watchContractKeysFromRedis()
 	for i := 0; i < se.workers; i++ {
 		go se.ExportItems()
 	}
@@ -78,36 +77,7 @@ func (se *SkyEyeExporter) exportItem(tx model.Transaction) {
 	skyTx := model.SkyEyeTransaction{}
 	skyTx.ConvertFromTransaction(tx)
 	skyTx.Chain = se.chain
-	if err := se.exportToRedis(skyTx); err != nil {
-		logrus.Errorf("append txhash %s's contract %s to redis message queue is err %v", skyTx.TxHash, skyTx.ContractAddress, err)
-	}
-}
-
-func (se *SkyEyeExporter) processKey(contractAddress string) {
-	var redisHashName = fmt.Sprintf(OpenSourceRedisName, se.chain)
-	var skyTX model.SkyEyeTransaction
-	value, err := datastore.Redis().HGet(context.Background(), redisHashName, contractAddress).Result()
-	if err != nil {
-		logrus.Errorf("error getting timestamp for %s: %v", contractAddress, err)
-		return
-	}
-	err = json.Unmarshal([]byte(value), &skyTX)
-	if err != nil {
-		logrus.Errorf("unmarshall %s to skyeye tx instance is err: %v", value, err)
-		return
-	}
-
-	timestampTime, err := time.Parse(time.RFC3339, time.Unix(skyTX.BlockTimestamp, 0).Format(time.RFC3339))
-	if err != nil {
-		logrus.Errorf("error parsing timestamp for %s: %v", contractAddress, err)
-		return
-	}
-
-	timeDifference := time.Since(timestampTime)
-	if timeDifference < time.Minute*time.Duration(se.interval) {
-		return
-	}
-	se.processSkyTX(skyTX)
+	se.processSkyTX(skyTx)
 }
 
 func (se *SkyEyeExporter) processSkyTX(skyTX model.SkyEyeTransaction) {
@@ -133,34 +103,6 @@ func (se *SkyEyeExporter) processSkyTX(skyTX model.SkyEyeTransaction) {
 		logrus.Errorf("insert txhash %s's contract %s to db is err %v", skyTX.TxHash, skyTX.ContractAddress, err)
 		return
 	}
-	se.removeKeyFromRedis(skyTX.ContractAddress)
-}
-
-func (se *SkyEyeExporter) removeKeyFromRedis(contractAddress string) {
-	var redisHashName = fmt.Sprintf(OpenSourceRedisName, se.chain)
-	if _, err := datastore.Redis().HDel(context.Background(), redisHashName, contractAddress).Result(); err != nil {
-		logrus.Errorf("delete field %s in key %s is err %v", contractAddress, redisHashName, err)
-		return
-	}
-}
-
-func (se *SkyEyeExporter) scanKeysFromRedis() {
-	var redisHashName = fmt.Sprintf(OpenSourceRedisName, se.chain)
-	keys, err := datastore.Redis().HKeys(context.Background(), redisHashName).Result()
-	if err != nil {
-		logrus.Errorf("error scanning keys: %v", err)
-		return
-	}
-	for _, key := range keys {
-		se.processKey(key)
-	}
-}
-
-func (se *SkyEyeExporter) watchContractKeysFromRedis() {
-	for {
-		se.scanKeysFromRedis()
-		time.Sleep(1 * time.Minute)
-	}
 }
 
 func (se *SkyEyeExporter) CalcContractByPolicies(tx *model.SkyEyeTransaction) {
@@ -171,7 +113,6 @@ func (se *SkyEyeExporter) CalcContractByPolicies(tx *model.SkyEyeTransaction) {
 		&model.Push4PolicyCalc{
 			FlashLoanFuncNames: model.LoadFlashLoanFuncNames(),
 		},
-		&model.OpenSourcePolicyCalc{},
 		&model.Push20PolicyCalc{},
 		&model.FundPolicyCalc{IsNastiff: true, OpenAPIServer: se.openAPIServer},
 	}
@@ -184,19 +125,6 @@ func (se *SkyEyeExporter) CalcContractByPolicies(tx *model.SkyEyeTransaction) {
 	}
 	tx.SplitScores = strings.Join(splitScores, ",")
 	tx.Score = totalScore
-}
-
-func (se *SkyEyeExporter) exportToRedis(tx model.SkyEyeTransaction) error {
-	var redisName = fmt.Sprintf(OpenSourceRedisName, se.chain)
-	txBytes, err := json.Marshal(tx)
-	if err != nil {
-		return fmt.Errorf("marhsal the sky eye tx is err %v", err)
-	}
-	_, err = datastore.Redis().HSet(context.Background(), redisName, tx.ContractAddress, string(txBytes)).Result()
-	if err != nil {
-		return fmt.Errorf("set nastiff value to redis %s for key %s is err: %v", redisName, tx.ContractAddress, err)
-	}
-	return nil
 }
 
 func (se *SkyEyeExporter) MonitorContractAddress(tx model.SkyEyeTransaction) error {
