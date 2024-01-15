@@ -86,7 +86,6 @@ func (ac *AddressController) GetFund(c *gin.Context) {
 		scanInfo := config.Conf.ScanInfos[chain]
 		index := r.Intn(len(scanInfo.APIKeys))
 		scanAPIKEY := scanInfo.APIKeys[index]
-		tornado := model.Tornado{}
 		apis := []string{
 			fmt.Sprintf(scanAPI, scanAPIKEY, address, utils.ScanTransactionAction),
 			fmt.Sprintf(scanAPI, scanAPIKEY, address, utils.ScanTraceAction),
@@ -157,23 +156,21 @@ func (ac *AddressController) GetFund(c *gin.Context) {
 			txResp.Nonce = append(txResp.Nonce, nonce)
 		}
 
-		if tornado.Exist(chain, address) ||
+		var addrLabel = model.AddressLabel{Label: utils.ScanGenesisAddress}
+		if address != utils.ScanGenesisAddress && address != "" {
+			if err = addrLabel.GetLabel(chain, address); err != nil {
+				c.JSON(http.StatusOK, model.Message{Code: http.StatusInternalServerError, Msg: fmt.Sprintf("get address %s label is err: %v", address, err)})
+				return
+			}
+		}
+
+		if addrLabel.IsTornadoCashAddress() ||
 			address == "" ||
 			address == utils.ScanGenesisAddress ||
-			nonce >= scanInfo.AddressNonceThreshold ||
 			len(txResp.Nonce) == 5 {
 
 			txResp.Address = address
-			label := utils.ScanGenesisAddress
-			if address != utils.ScanGenesisAddress && address != "" {
-				addrLabel := model.AddressLabel{}
-				if err = addrLabel.GetLabel(chain, address); err != nil {
-					c.JSON(http.StatusOK, model.Message{Code: http.StatusInternalServerError, Msg: fmt.Sprintf("get address %s label is err: %v", address, err)})
-					return
-				}
-				label = addrLabel.Label
-			}
-			txResp.Label = label
+			txResp.Label = addrLabel.Label
 			break
 		}
 	}

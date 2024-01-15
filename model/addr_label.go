@@ -2,6 +2,7 @@ package model
 
 import (
 	"fmt"
+	"strings"
 
 	"go-etl/datastore"
 	"go-etl/utils"
@@ -19,13 +20,6 @@ type AddressLabel struct {
 }
 
 func (al *AddressLabel) GetLabel(chain, address string) error {
-	tornado := Tornado{}
-	if tornado.Exist(chain, address) {
-		al.Chain = chain
-		al.Address = address
-		al.Label = TornadoCash
-		return nil
-	}
 	tableName := utils.ComposeTableName(datastore.SchemaPublic, datastore.TableLabels)
 	err := datastore.DB().Table(tableName).
 		Where("chain = ?", chain).
@@ -43,6 +37,10 @@ func (al *AddressLabel) GetLabel(chain, address string) error {
 	al.Chain = chain
 
 	return nil
+}
+
+func (al *AddressLabel) IsTornadoCashAddress() bool {
+	return strings.HasPrefix(al.Label, TornadoCash)
 }
 
 func (al *AddressLabel) Create() error {
