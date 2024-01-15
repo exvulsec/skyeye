@@ -81,10 +81,10 @@ func (ac *AddressController) GetFund(c *gin.Context) {
 	address := strings.ToLower(c.Param("address"))
 
 	txResp := model.ScanTXResponse{}
-	rand.Seed(time.Now().UnixNano())
+	r := rand.New(rand.NewSource(time.Now().UnixNano()))
 	for {
 		scanInfo := config.Conf.ScanInfos[chain]
-		index := rand.Intn(len(scanInfo.APIKeys))
+		index := r.Intn(len(scanInfo.APIKeys))
 		scanAPIKEY := scanInfo.APIKeys[index]
 		tornado := model.Tornado{}
 		apis := []string{
