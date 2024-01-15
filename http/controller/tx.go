@@ -112,7 +112,6 @@ func (tc *TXController) Reviewed(c *gin.Context) {
 		&model.NoncePolicyCalc{},
 		&model.ByteCodePolicyCalc{},
 		&model.ContractTypePolicyCalc{},
-		&model.OpenSourcePolicyCalc{},
 		&model.Push4PolicyCalc{FlashLoanFuncNames: model.LoadFlashLoanFuncNames()},
 		&model.Push20PolicyCalc{},
 		&model.FundPolicyCalc{IsNastiff: searchFund, OpenAPIServer: "http://localhost:8088"},

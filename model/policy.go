@@ -89,20 +89,6 @@ func (p20pc *Push20PolicyCalc) Calc(tx *SkyEyeTransaction) int {
 	return 2
 }
 
-type OpenSourcePolicyCalc struct{}
-
-func (opc *OpenSourcePolicyCalc) Calc(tx *SkyEyeTransaction) int {
-	contract, err := GetContractCodeFromScan(tx.Chain, tx.ContractAddress)
-	if err != nil {
-		logrus.Errorf("getting code from the %s scan for the contract %s is err: %v", tx.Chain, tx.ContractAddress, err)
-		return 0
-	}
-	if contract.Result[0].SourceCode != "" {
-		return 0
-	}
-	return 15
-}
-
 type FundPolicyCalc struct {
 	IsNastiff     bool
 	OpenAPIServer string

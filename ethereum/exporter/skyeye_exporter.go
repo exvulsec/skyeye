@@ -30,7 +30,6 @@ type SkyEyeExporter struct {
 	interval      int
 	workers       int
 	linkURLs      map[string]string
-	model.OpenSourcePolicyCalc
 }
 
 func NewSkyEyeExporter(chain, openserver string, interval, workers int) Exporter {
