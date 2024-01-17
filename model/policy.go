@@ -2,6 +2,7 @@ package model
 
 import (
 	"bufio"
+	"context"
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
@@ -14,6 +15,7 @@ import (
 	"time"
 
 	mapset "github.com/deckarep/golang-set/v2"
+	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/asm"
 	"github.com/ethereum/go-ethereum/core/vm"
 	"github.com/sirupsen/logrus"
@@ -72,7 +74,7 @@ type Push4PolicyCalc struct {
 
 func (p4pc *Push4PolicyCalc) Calc(tx *SkyEyeTransaction) int {
 	if tx.hasFlashLoan(p4pc.FlashLoanFuncNames) {
-		return 50
+		return 30
 	}
 	return 0
 }
@@ -86,24 +88,23 @@ func (p20pc *Push20PolicyCalc) Calc(tx *SkyEyeTransaction) int {
 	if tx.hasRiskAddress([]string{"PancakeSwap: Router v2"}) {
 		return 10
 	}
-	return 2
+	return 5
 }
 
 type FundPolicyCalc struct {
-	IsNastiff     bool
-	OpenAPIServer string
+	IsNastiff bool
 }
 
 func (fpc *FundPolicyCalc) Calc(tx *SkyEyeTransaction) int {
 	if fpc.IsNastiff {
 		var fund string
-		scanTxResp, err := GetFundAddress(tx.Chain, tx.FromAddress, fpc.OpenAPIServer)
+		scanTxResp, err := fpc.SearchFund(tx.Chain, tx.FromAddress)
 		if err != nil {
 			logrus.Errorf("get contract %s's fund is err: %v", tx.ContractAddress, err)
 		}
 		if scanTxResp.Address != "" {
 			label := scanTxResp.Label
-			if label == "" {
+			if scanTxResp.Address != utils.ScanGenesisAddress {
 				if len(scanTxResp.Nonce) == 5 {
 					label = "UnKnown"
 				} else {
@@ -125,6 +126,100 @@ func (fpc *FundPolicyCalc) Calc(tx *SkyEyeTransaction) int {
 	default:
 		return 0
 	}
+}
+
+func (fpc *FundPolicyCalc) SearchFund(chain, address string) (ScanTXResponse, error) {
+	txResp := ScanTXResponse{}
+	scanAPI := fmt.Sprintf("%s%s", utils.GetScanAPI(chain), utils.APIQuery)
+	r := rand.New(rand.NewSource(time.Now().UnixNano()))
+	for {
+		scanInfo := config.Conf.ScanInfos[chain]
+		index := r.Intn(len(scanInfo.APIKeys))
+		scanAPIKEY := scanInfo.APIKeys[index]
+		apis := []string{
+			fmt.Sprintf(scanAPI, scanAPIKEY, address, utils.ScanTransactionAction),
+			fmt.Sprintf(scanAPI, scanAPIKEY, address, utils.ScanTraceAction),
+		}
+		var (
+			transaction ScanTransaction
+			trace       ScanTransaction
+		)
+
+		for _, api := range apis {
+			resp, err := client.HTTPClient().Get(api)
+			if err != nil {
+				return txResp, fmt.Errorf("get address %s's from scan api is err %v", address, err)
+			}
+			defer resp.Body.Close()
+			base := ScanBaseResponse{}
+			body, err := io.ReadAll(resp.Body)
+			if err != nil {
+				return txResp, fmt.Errorf("read body from resp.Body via %s  is err %v", api, err)
+			}
+			if err = json.Unmarshal(body, &base); err != nil {
+				return txResp, fmt.Errorf("unmarshal json from body to scan base response via %s is err %v", api, err)
+			}
+			if base.Message == "NOTOK" {
+				result := ScanStringResult{}
+				if err = json.Unmarshal(body, &result); err != nil {
+					return txResp, fmt.Errorf("unmarshal json from body to scan string result via %s is err %v", api, err)
+				}
+				return txResp, fmt.Errorf("get address %s from scan via %s is err: %s, message is %s", address, api, err, result.Message)
+			}
+			tx := ScanTransactionResponse{}
+			if err = json.Unmarshal(body, &tx); err != nil {
+				return txResp, fmt.Errorf("unmarshal json from body to scan transaction response via api %s is err %v", api, err)
+			}
+			if len(tx.Result) > 0 {
+				if err = tx.Result[0].ConvertStringToInt(); err != nil {
+					return txResp, fmt.Errorf("convert string to int is err: %v", err)
+				}
+				if strings.Contains(api, utils.ScanTraceAction) {
+					trace = tx.Result[0]
+				} else {
+					transaction = tx.Result[0]
+				}
+			}
+		}
+		if transaction.FromAddress == "" && trace.FromAddress != "" {
+			address = trace.FromAddress
+		} else {
+			address = transaction.FromAddress
+			if transaction.Timestamp > trace.Timestamp && trace.Timestamp > 0 {
+				address = trace.FromAddress
+			}
+		}
+
+		var (
+			nonce uint64
+			err   error
+		)
+
+		if address != "" {
+			nonce, err = client.MultiEvmClient()[chain].PendingNonceAt(context.Background(), common.HexToAddress(address))
+			if err != nil {
+				return txResp, fmt.Errorf("get nonce for address %s is err: %v", address, err)
+			}
+			txResp.Nonce = append(txResp.Nonce, nonce)
+		}
+		var addrLabel = AddressLabel{Label: utils.ScanGenesisAddress}
+		if address != utils.ScanGenesisAddress && address != "" {
+			if err = addrLabel.GetLabel(chain, address); err != nil {
+				return txResp, fmt.Errorf("get address %s label is err: %v", address, err)
+			}
+		}
+
+		if addrLabel.IsTornadoCashAddress() ||
+			address == "" ||
+			address == utils.ScanGenesisAddress ||
+			len(txResp.Nonce) == 5 {
+
+			txResp.Address = address
+			txResp.Label = addrLabel.Label
+			break
+		}
+	}
+	return txResp, nil
 }
 
 func GetFundAddress(chain, contractAddress, openApiServer string) (ScanTXResponse, error) {
