@@ -27,16 +27,37 @@ func (tc *TXController) Routers(routers gin.IRouter) {
 	}
 }
 
+func (tc *TXController) ReviewedCompose(st *model.SkyEyeTransaction, searchFund bool, weights []string) error {
+	policies := []model.PolicyCalc{
+		&model.NoncePolicyCalc{},
+		&model.ByteCodePolicyCalc{},
+		&model.ContractTypePolicyCalc{},
+		&model.Push4PolicyCalc{FlashLoanFuncNames: model.LoadFlashLoanFuncNames()},
+		&model.Push20PolicyCalc{},
+		&model.FundPolicyCalc{IsNastiff: searchFund},
+	}
+	splitScores := []string{}
+	totalScore := 0
+	for index, p := range policies {
+		weight, err := strconv.Atoi(weights[index])
+		if err != nil {
+			return fmt.Errorf("convert weight %s to int is err: %v", weights[index], err)
+		}
+		score := p.Calc(st)
+		splitScores = append(splitScores, fmt.Sprintf("%d", score))
+		totalScore += score * weight
+	}
+	st.Score = totalScore
+	st.SplitScores = strings.Join(splitScores, ",")
+	return nil
+}
+
 func (tc *TXController) Reviewed(c *gin.Context) {
 	scanURL := c.Query("scanurl")
-	var (
-		chain  string
-		txhash string
-	)
-	if scanURL == "" {
-		chain = utils.GetSupportChain(c.Query(utils.ChainKey))
-		txhash = strings.ToLower(c.Query("txhash"))
-	} else {
+	chain := utils.GetSupportChain(c.Query(utils.ChainKey))
+	contractAddress := c.Query("contract_address")
+	txhash := strings.ToLower(c.Query("txhash"))
+	if txhash == "" && contractAddress == "" && scanURL != "" {
 		chain = utils.GetChainFromScanURL(scanURL)
 		txhash = utils.GetTXHashFromScanURL(scanURL)
 		if txhash == "" {
@@ -44,6 +65,11 @@ func (tc *TXController) Reviewed(c *gin.Context) {
 			return
 		}
 	}
+	if txhash == "" && contractAddress == "" {
+		c.JSON(http.StatusOK, model.Message{Code: http.StatusBadRequest, Msg: "required txhash or contract_address as parameter"})
+		return
+	}
+
 	weightStrings := c.Query("weights")
 	var weights = make([]string, 7)
 	if weightStrings != "" {
@@ -55,7 +81,6 @@ func (tc *TXController) Reviewed(c *gin.Context) {
 	}
 
 	searchFund, _ := strconv.ParseBool(c.Query("search_fund"))
-
 	var (
 		ethClient *ethclient.Client
 		ok        bool
@@ -64,24 +89,53 @@ func (tc *TXController) Reviewed(c *gin.Context) {
 		c.JSON(http.StatusOK, model.Message{Code: http.StatusBadRequest, Msg: fmt.Sprintf("not foudn evm client by given chain: %s", chain)})
 		return
 	}
+
+	if contractAddress != "" {
+		code, err := ethClient.CodeAt(context.Background(), common.HexToAddress(contractAddress), nil)
+		if err != nil {
+			c.JSON(http.StatusOK, model.Message{Code: http.StatusInternalServerError, Msg: fmt.Sprintf("get contract %s's bytecode is err %v ", contractAddress, err)})
+			return
+		}
+
+		st := model.SkyEyeTransaction{
+			Chain:           chain,
+			FromAddress:     contractAddress,
+			ContractAddress: contractAddress,
+			ByteCode:        code,
+		}
+		if err = tc.ReviewedCompose(&st, searchFund, weights); err != nil {
+			c.JSON(http.StatusOK, model.Message{
+				Code: http.StatusBadRequest,
+				Msg:  "",
+				Data: st.ComposeSkyEyeTXValues(),
+			})
+			return
+		}
+		c.JSON(http.StatusOK, model.Message{
+			Code: http.StatusOK,
+			Msg:  "",
+			Data: st.ComposeSkyEyeTXValues(),
+		})
+		return
+	}
+
 	tx, _, err := ethClient.TransactionByHash(c, common.HexToHash(txhash))
 	if err != nil {
 		c.JSON(http.StatusOK, model.Message{Code: http.StatusInternalServerError, Msg: fmt.Sprintf("get transcation %s from rpc node is err %v ", txhash, err)})
 		return
 	}
-
 	receipt, err := ethClient.TransactionReceipt(c, common.HexToHash(txhash))
 	if err != nil {
 		c.JSON(http.StatusOK, model.Message{Code: http.StatusInternalServerError, Msg: fmt.Sprintf("get transcation %s's receipt from rpc node is err %v ", txhash, err)})
 		return
 	}
-
 	if tx.To() != nil || receipt.ContractAddress.String() == utils.ZeroAddress {
 		c.JSON(http.StatusOK, model.Message{Code: http.StatusBadRequest, Msg: fmt.Sprintf("transaction %s is not a contract creation", txhash)})
 		return
 	}
+	contractAddress = receipt.ContractAddress.String()
 
-	code, err := ethClient.CodeAt(context.Background(), receipt.ContractAddress, nil)
+	code, err := ethClient.CodeAt(context.Background(), common.HexToAddress(contractAddress), nil)
 	if err != nil {
 		c.JSON(http.StatusOK, model.Message{Code: http.StatusInternalServerError, Msg: fmt.Sprintf("get contract %s's bytecode is err %v ", receipt.ContractAddress.String(), err)})
 		return
@@ -97,7 +151,7 @@ func (tc *TXController) Reviewed(c *gin.Context) {
 		logrus.Fatalf("get from address is err: %v", err)
 	}
 
-	nt := model.SkyEyeTransaction{
+	st := model.SkyEyeTransaction{
 		Chain:           chain,
 		BlockNumber:     block.Number().Int64(),
 		BlockTimestamp:  int64(block.Time()),
@@ -108,31 +162,18 @@ func (tc *TXController) Reviewed(c *gin.Context) {
 		Nonce:           tx.Nonce(),
 		ByteCode:        code,
 	}
-	policies := []model.PolicyCalc{
-		&model.NoncePolicyCalc{},
-		&model.ByteCodePolicyCalc{},
-		&model.ContractTypePolicyCalc{},
-		&model.Push4PolicyCalc{FlashLoanFuncNames: model.LoadFlashLoanFuncNames()},
-		&model.Push20PolicyCalc{},
-		&model.FundPolicyCalc{IsNastiff: searchFund, OpenAPIServer: "http://localhost:8088"},
+	if err = tc.ReviewedCompose(&st, searchFund, weights); err != nil {
+		c.JSON(http.StatusOK, model.Message{
+			Code: http.StatusBadRequest,
+			Msg:  "",
+			Data: st.ComposeSkyEyeTXValues(),
+		})
+		return
 	}
-	splitScores := []string{}
-	totalScore := 0
-	for index, p := range policies {
-		weight, err := strconv.Atoi(weights[index])
-		if err != nil {
-			c.JSON(http.StatusOK, model.Message{Code: http.StatusInternalServerError, Msg: fmt.Sprintf("convert weight %s to int is err: %v", weights[index], err)})
-		}
-		score := p.Calc(&nt)
-		splitScores = append(splitScores, fmt.Sprintf("%d", score))
-		totalScore += score * weight
-	}
-	nt.Score = totalScore
-	nt.SplitScores = strings.Join(splitScores, ",")
 
 	c.JSON(http.StatusOK, model.Message{
 		Code: http.StatusOK,
 		Msg:  "",
-		Data: nt.ComposeSkyEyeTXValues(),
+		Data: st.ComposeSkyEyeTXValues(),
 	})
 }

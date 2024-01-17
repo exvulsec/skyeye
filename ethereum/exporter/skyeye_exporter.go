@@ -113,7 +113,7 @@ func (se *SkyEyeExporter) CalcContractByPolicies(tx *model.SkyEyeTransaction) {
 			FlashLoanFuncNames: model.LoadFlashLoanFuncNames(),
 		},
 		&model.Push20PolicyCalc{},
-		&model.FundPolicyCalc{IsNastiff: true, OpenAPIServer: se.openAPIServer},
+		&model.FundPolicyCalc{IsNastiff: true},
 	}
 	splitScores := []string{}
 	totalScore := 0
