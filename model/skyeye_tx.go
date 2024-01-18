@@ -18,6 +18,7 @@ type SkyEyeTransaction struct {
 	TxPos           int64    `json:"txpos" gorm:"column:txpos"`
 	FromAddress     string   `json:"from_address" gorm:"column:from_address"`
 	ContractAddress string   `json:"contract_address" gorm:"column:contract_address"`
+	MultiContract   []string `json:"multi_contract"`
 	Nonce           uint64   `json:"nonce" gorm:"column:nonce"`
 	Score           int      `json:"score" gorm:"column:score"`
 	SplitScores     string   `json:"split_scores" gorm:"column:split_scores"`
@@ -31,12 +32,16 @@ type SkyEyeTransaction struct {
 }
 
 func (st *SkyEyeTransaction) ConvertFromTransaction(tx Transaction) {
+	multiContracts := strings.Split(tx.ContractAddress, ",")
 	st.BlockTimestamp = tx.BlockTimestamp
 	st.BlockNumber = tx.BlockNumber
 	st.TxHash = tx.TxHash
 	st.TxPos = tx.TxPos
 	st.FromAddress = tx.FromAddress
-	st.ContractAddress = tx.ContractAddress
+	st.ContractAddress = multiContracts[0]
+	if len(multiContracts) > 1 {
+		st.MultiContract = multiContracts[1:]
+	}
 	st.Nonce = tx.Nonce
 }
 

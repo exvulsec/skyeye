@@ -84,7 +84,7 @@ func getReceipt(txHash common.Hash) *types.Receipt {
 			return receipt
 		}
 		time.Sleep(1 * time.Second)
-		logrus.Infof("retry %d times to get tx's receipt %d", i+1, txHash)
+		logrus.Infof("retry %d times to get tx's receipt %s", i+1, txHash)
 	}
 	logrus.Infof("get receipt with txhash %s failed, drop it", txHash)
 	return nil
@@ -106,9 +106,18 @@ func (tx *Transaction) enrichReceipt(receipt types.Receipt) {
 		tx.GasPrice = decimal.NewFromBigInt(receipt.EffectiveGasPrice, 0)
 		tx.GasFee = decimal.NewFromInt(tx.GasUsed).Mul(tx.GasPrice)
 	}
-
+	contractAddress := strings.ToLower(receipt.ContractAddress.String())
 	if tx.ContractAddress != utils.ZeroAddress {
-		tx.ContractAddress = strings.ToLower(receipt.ContractAddress.String())
+		tx.ToAddress = &contractAddress
+		multiContract := []string{contractAddress}
+		txTraces := GetTransactionTrace(tx.TxHash)
+		for index := range txTraces {
+			txTrace := txTraces[index]
+			if txTrace.ContractAddress != "" && len(txTrace.TraceAddress) != 0 {
+				multiContract = append(multiContract, strings.ToLower(txTrace.ContractAddress))
+			}
+		}
+		tx.ContractAddress = strings.Join(multiContract, ",")
 	}
 	tx.TxPos = int64(receipt.TransactionIndex)
 	tx.TxStatus = int64(receipt.Status)
