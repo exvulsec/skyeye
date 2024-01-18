@@ -63,7 +63,7 @@ func (se *SkyEyeExporter) ExportItems() {
 			continue
 		}
 		for _, tx := range txs {
-			if tx.ToAddress == nil && tx.ContractAddress != "" {
+			if tx.ContractAddress != "" {
 				if tx.TxStatus != 0 {
 					go se.exportItem(tx)
 				}
@@ -114,6 +114,7 @@ func (se *SkyEyeExporter) CalcContractByPolicies(tx *model.SkyEyeTransaction) {
 		},
 		&model.Push20PolicyCalc{},
 		&model.FundPolicyCalc{IsNastiff: true},
+		&model.MultiContractCalc{},
 	}
 	splitScores := []string{}
 	totalScore := 0
@@ -160,6 +161,15 @@ func (se *SkyEyeExporter) ComposeMessage(tx model.SkyEyeTransaction) string {
 	text += fmt.Sprintf("*TXhash:* <%s|%s>\n", fmt.Sprintf("%s/tx/%s", scanURL, tx.TxHash), tx.TxHash)
 	text += fmt.Sprintf("*DateTime:* `%s UTC`\n", time.Unix(tx.BlockTimestamp, 0).Format(time.DateTime))
 	text += fmt.Sprintf("*Contract:* <%s|%s>\n", fmt.Sprintf("%s/address/%s", utils.GetScanURL(tx.Chain), tx.ContractAddress), tx.ContractAddress)
+	if len(tx.MultiContract) > 0 {
+		text += "*MultiContract:*"
+		for index := range tx.MultiContract {
+			contract := tx.MultiContract[index]
+			text += fmt.Sprintf(" <%s|%s>", fmt.Sprintf("%s/address/%s", utils.GetScanURL(tx.Chain), contract), contract)
+		}
+		text += "\n"
+	}
+
 	text += fmt.Sprintf("*Fund:* `%s`\n", tx.Fund)
 	text += fmt.Sprintf("*Deployer:* <%s|%s>\n", fmt.Sprintf("%s/address/%s", utils.GetScanURL(tx.Chain), tx.FromAddress), tx.FromAddress)
 	text += fmt.Sprintf("*CodeSize:* `%d`\n", len(tx.ByteCode))
@@ -182,6 +192,20 @@ func (se *SkyEyeExporter) ComposeSlackAction(tx model.SkyEyeTransaction) []slack
 			actionURL = fmt.Sprintf(url, dedaubMD5String)
 		} else {
 			actionURL = fmt.Sprintf(url, tx.ContractAddress)
+			if len(tx.MultiContract) > 0 {
+				for index := range tx.MultiContract {
+					contract := tx.MultiContract[index]
+					multiContractActionURL := fmt.Sprintf(url, contract)
+					newKey := fmt.Sprintf("%s_%d", key, index+1)
+					actions = append(actions, slack.AttachmentAction{
+						Name: newKey,
+						Text: newKey,
+						Type: "button",
+						URL:  multiContractActionURL,
+					})
+				}
+
+			}
 		}
 		actions = append(actions, slack.AttachmentAction{
 			Name: key,
@@ -190,6 +214,7 @@ func (se *SkyEyeExporter) ComposeSlackAction(tx model.SkyEyeTransaction) []slack
 			URL:  actionURL,
 		})
 	}
+
 	return actions
 }
 

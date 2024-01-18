@@ -29,6 +29,13 @@ type PolicyCalc interface {
 	Calc(transaction *SkyEyeTransaction) int
 }
 
+type MultiContractCalc struct {
+}
+
+func (mcc *MultiContractCalc) Calc(tx *SkyEyeTransaction) int {
+	return len(tx.MultiContract) * 100
+}
+
 type NoncePolicyCalc struct{}
 
 func (npc *NoncePolicyCalc) Calc(tx *SkyEyeTransaction) int {
