@@ -18,7 +18,7 @@ type SkyEyeTransaction struct {
 	TxPos           int64    `json:"txpos" gorm:"column:txpos"`
 	FromAddress     string   `json:"from_address" gorm:"column:from_address"`
 	ContractAddress string   `json:"contract_address" gorm:"column:contract_address"`
-	MultiContract   []string `json:"multi_contract"`
+	MultiContract   []string `json:"multi_contract" gorm:"-"`
 	Nonce           uint64   `json:"nonce" gorm:"column:nonce"`
 	Score           int      `json:"score" gorm:"column:score"`
 	SplitScores     string   `json:"split_scores" gorm:"column:split_scores"`
