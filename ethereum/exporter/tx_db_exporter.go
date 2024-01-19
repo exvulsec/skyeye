@@ -42,5 +42,7 @@ func (tpe *TransactionPostgresqlExporter) exportItemsToDB(items any) {
 		logrus.Errorf("copy %d to db '%s.txs' is err %v", len(txs), tpe.chain, err)
 		return
 	}
-	logrus.Infof("copy %d txs into database for block %d cost: %.2fs", len(txs), txs[0].BlockNumber, time.Since(startTimestamp).Seconds())
+	if len(txs) > 0 {
+		logrus.Infof("copy %d txs into database for block %d cost: %.2fs", len(txs), txs[0].BlockNumber, time.Since(startTimestamp).Seconds())
+	}
 }
