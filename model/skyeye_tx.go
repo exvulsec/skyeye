@@ -68,22 +68,35 @@ func (st *SkyEyeTransaction) hasRiskAddress(addrs []string) bool {
 }
 
 func (st *SkyEyeTransaction) ComposeSkyEyeTXValues() map[string]string {
+	values := map[string]string{
+		"Chain":      utils.ConvertChainToDeFiHackLabChain(st.Chain),
+		"Block":      fmt.Sprintf("%d", st.BlockNumber),
+		"TXhash":     st.TxHash,
+		"CreateTime": fmt.Sprintf("%s UTC", time.Unix(st.BlockTimestamp, 0).Format(time.DateTime)),
+		"Contract":   st.ContractAddress,
+		"Deployer":   st.FromAddress,
+		"Fund":       st.Fund,
+	}
+
+	keys := []string{"Func", "AddrLabels", "CodeSize", "Score", "SplitScores", "EmitLogs"}
+	byteCodeValues := st.ComposeSkyEyeTXValuesFromByteCode()
+	for _, key := range keys {
+		value := byteCodeValues[key]
+		values[key] = value
+	}
+	return values
+}
+
+func (st *SkyEyeTransaction) ComposeSkyEyeTXValuesFromByteCode() map[string]string {
 	codeSize := 0
 	if len(st.ByteCode) != 0 {
 		codeSize = len(st.ByteCode[2:])
 	}
 
 	return map[string]string{
-		"Chain":       utils.ConvertChainToDeFiHackLabChain(st.Chain),
-		"Block":       fmt.Sprintf("%d", st.BlockNumber),
-		"TXhash":      st.TxHash,
-		"CreateTime":  fmt.Sprintf("%s UTC", time.Unix(st.BlockTimestamp, 0).Format(time.DateTime)),
-		"Contract":    st.ContractAddress,
-		"Deployer":    st.FromAddress,
 		"Func":        strings.Join(st.Push4Args, ","),
 		"AddrLabels":  strings.Join(st.Push20Args, ","),
 		"CodeSize":    fmt.Sprintf("%d", codeSize),
-		"Fund":        st.Fund,
 		"Score":       fmt.Sprintf("%d", st.Score),
 		"SplitScores": st.SplitScores,
 		"EmitLogs":    strings.Join(st.PushStringLogs, ","),

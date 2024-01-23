@@ -27,6 +27,7 @@ import (
 
 type PolicyCalc interface {
 	Calc(transaction *SkyEyeTransaction) int
+	Name() string
 }
 
 type MultiContractCalc struct {
@@ -34,6 +35,9 @@ type MultiContractCalc struct {
 
 func (mcc *MultiContractCalc) Calc(tx *SkyEyeTransaction) int {
 	return len(tx.MultiContract) * 100
+}
+func (mcc *MultiContractCalc) Name() string {
+	return "MultiContract"
 }
 
 type NoncePolicyCalc struct{}
@@ -47,6 +51,9 @@ func (npc *NoncePolicyCalc) Calc(tx *SkyEyeTransaction) int {
 	}
 	return 10 - int(tx.Nonce)
 }
+func (npc *NoncePolicyCalc) Name() string {
+	return "Nonce"
+}
 
 type ByteCodePolicyCalc struct{}
 
@@ -55,6 +62,10 @@ func (bpc *ByteCodePolicyCalc) Calc(tx *SkyEyeTransaction) int {
 		return 0
 	}
 	return 12
+}
+
+func (bpc *ByteCodePolicyCalc) Name() string {
+	return "ByteCode"
 }
 
 type ContractTypePolicyCalc struct{}
@@ -74,6 +85,9 @@ func (cpc *ContractTypePolicyCalc) Calc(tx *SkyEyeTransaction) int {
 	}
 	return 20
 }
+func (cpc *ContractTypePolicyCalc) Name() string {
+	return "ContractType"
+}
 
 type Push4PolicyCalc struct {
 	FlashLoanFuncNames []string
@@ -84,6 +98,9 @@ func (p4pc *Push4PolicyCalc) Calc(tx *SkyEyeTransaction) int {
 		return 30
 	}
 	return 0
+}
+func (p4pc *Push4PolicyCalc) Name() string {
+	return "Push4"
 }
 
 type Push20PolicyCalc struct{}
@@ -96,6 +113,9 @@ func (p20pc *Push20PolicyCalc) Calc(tx *SkyEyeTransaction) int {
 		return 10
 	}
 	return 5
+}
+func (p20pc *Push20PolicyCalc) Name() string {
+	return "Push20"
 }
 
 type FundPolicyCalc struct {
@@ -133,6 +153,9 @@ func (fpc *FundPolicyCalc) Calc(tx *SkyEyeTransaction) int {
 	default:
 		return 0
 	}
+}
+func (fpc *FundPolicyCalc) Name() string {
+	return "Fund"
 }
 
 func (fpc *FundPolicyCalc) SearchFund(chain, address string) (ScanTXResponse, error) {
