@@ -44,13 +44,16 @@ func (sc *SkyEyeController) GetLatestBlockNumber(c *gin.Context) {
 
 func (sc *SkyEyeController) DecodeByteCode(c *gin.Context) {
 	var request = struct {
+		Chain    string `json:"chain"`
 		ByteCode string `json:"byte_code"`
 	}{}
 	if err := c.ShouldBindJSON(&request); err != nil {
 		c.JSON(http.StatusOK, model.Message{Code: http.StatusBadRequest, Msg: fmt.Sprintf("unmarshal the input bytecode to json is err %v", err)})
 		return
 	}
-	skyTx := model.SkyEyeTransaction{}
+	skyTx := model.SkyEyeTransaction{
+		Chain: utils.GetSupportChain(request.Chain),
+	}
 	skyTx.ByteCode = append([]byte("0x"), common.FromHex(request.ByteCode)...)
 	sc.GetScoreFromByteCode(&skyTx)
 	values := skyTx.ComposeSkyEyeTXValuesFromByteCode()
