@@ -3,12 +3,10 @@ package model
 import (
 	"bufio"
 	"context"
-	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"io"
 	"math/rand"
-	"net/http"
 	"os"
 	"sort"
 	"strings"
@@ -34,8 +32,30 @@ type MultiContractCalc struct {
 }
 
 func (mcc *MultiContractCalc) Calc(tx *SkyEyeTransaction) int {
-	return len(tx.MultiContract) * 100
+	txTraces := GetTransactionTrace(tx.TxHash)
+	contractAddrs := []string{}
+	for _, txTrace := range txTraces {
+		switch txTrace.To {
+		case "":
+			contractAddrs = append(contractAddrs, txTrace.ContractAddress)
+		default:
+			if IsInContractAddrs(contractAddrs, txTrace.To) {
+				return 60
+			}
+		}
+	}
+	return 0
 }
+
+func IsInContractAddrs(contracts []string, toAddr string) bool {
+	for _, contract := range contracts {
+		if contract == toAddr {
+			return true
+		}
+	}
+	return false
+}
+
 func (mcc *MultiContractCalc) Name() string {
 	return "MultiContract"
 }
@@ -148,6 +168,8 @@ func (fpc *FundPolicyCalc) Calc(tx *SkyEyeTransaction) int {
 	switch {
 	case strings.Contains(strings.ToLower(tx.Fund), strings.ToLower(TornadoCash)):
 		return 40
+	case strings.Contains(strings.ToLower(tx.Fund), strings.ToLower(FixedFloat)):
+		return 20
 	case strings.Contains(strings.ToLower(tx.Fund), strings.ToLower(ChangeNow)):
 		return 13
 	default:
@@ -240,6 +262,8 @@ func (fpc *FundPolicyCalc) SearchFund(chain, address string) (ScanTXResponse, er
 		}
 
 		if addrLabel.IsTornadoCashAddress() ||
+			addrLabel.IsFixedFloat() ||
+			addrLabel.IsChangeNow() ||
 			address == "" ||
 			address == utils.ScanGenesisAddress ||
 			len(txResp.Nonce) == 5 {
@@ -251,73 +275,6 @@ func (fpc *FundPolicyCalc) SearchFund(chain, address string) (ScanTXResponse, er
 	}
 	return txResp, nil
 }
-
-func GetFundAddress(chain, contractAddress, openApiServer string) (ScanTXResponse, error) {
-	message := struct {
-		Code int            `json:"code"`
-		Msg  string         `json:"msg"`
-		Data ScanTXResponse `json:"data"`
-	}{}
-	url := fmt.Sprintf("%s/api/v1/address/%s/fund?apikey=%s&chain=%s", openApiServer, contractAddress, config.Conf.HTTPServer.APIKey, chain)
-	resp, err := client.HTTPClient().Get(url)
-	if err != nil {
-		return ScanTXResponse{}, fmt.Errorf("get the contract fund from scan is err: %v", err)
-	}
-	defer resp.Body.Close()
-
-	body, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return ScanTXResponse{}, fmt.Errorf("read response body is err :%v", err)
-	}
-
-	if err = json.Unmarshal(body, &message); err != nil {
-		return ScanTXResponse{}, fmt.Errorf("json unmarshall from body %s is err: %v", string(body), err)
-	}
-	if message.Code != http.StatusOK {
-		return ScanTXResponse{}, fmt.Errorf("get txs from open api server is err: %s", message.Msg)
-	}
-
-	return message.Data, nil
-}
-
-func GetContractCodeFromScan(chain, contractAddress string) (ScanContractResponse, error) {
-	r := rand.New(rand.NewSource(time.Now().UnixNano()))
-
-	scanAPI := utils.GetScanAPI(chain)
-	apiKeys := config.Conf.ScanInfos[chain].APIKeys
-
-	scanAPIKey := apiKeys[r.Intn(len(apiKeys))]
-	contract := ScanContractResponse{}
-	url := fmt.Sprintf("%s?module=contract&action=getsourcecode&address=%s&apikey=%s", scanAPI, contractAddress, scanAPIKey)
-	resp, err := client.HTTPClient().Get(url)
-	if err != nil {
-		return contract, fmt.Errorf("get the contract source code from scan %s is err %v", scanAPI, err)
-	}
-	defer resp.Body.Close()
-	body, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return contract, fmt.Errorf("read response body is err :%v", err)
-	}
-
-	if err = json.Unmarshal(body, &contract); err != nil {
-		return contract, fmt.Errorf("json unmarshall from body %s is err %v", string(body), err)
-	}
-
-	if contract.Status != "1" {
-		return contract, fmt.Errorf("get contract from scan is err %s", contract.Message)
-	}
-
-	return contract, nil
-}
-
-func HexToASCII(hexStr string) (string, error) {
-	bytes, err := hex.DecodeString(hexStr)
-	if err != nil {
-		return "", err
-	}
-	return string(bytes), nil
-}
-
 func IsPrintableASCII(r rune) bool {
 	return r >= 32 && r <= 126
 }
