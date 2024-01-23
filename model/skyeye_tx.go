@@ -39,9 +39,6 @@ func (st *SkyEyeTransaction) ConvertFromTransaction(tx Transaction) {
 	st.TxPos = tx.TxPos
 	st.FromAddress = tx.FromAddress
 	st.ContractAddress = multiContracts[0]
-	if len(multiContracts) > 1 {
-		st.MultiContract = multiContracts[1:]
-	}
 	st.Nonce = tx.Nonce
 }
 

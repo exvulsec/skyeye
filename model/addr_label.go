@@ -10,6 +10,7 @@ import (
 
 const (
 	TornadoCash = "Tornado.Cash"
+	FixedFloat  = "FixedFloat"
 	ChangeNow   = "ChangeNOW"
 )
 
@@ -41,6 +42,14 @@ func (al *AddressLabel) GetLabel(chain, address string) error {
 
 func (al *AddressLabel) IsTornadoCashAddress() bool {
 	return strings.HasPrefix(al.Label, TornadoCash)
+}
+
+func (al *AddressLabel) IsFixedFloat() bool {
+	return strings.HasPrefix(al.Label, FixedFloat)
+}
+
+func (al *AddressLabel) IsChangeNow() bool {
+	return strings.HasPrefix(al.Label, ChangeNow)
 }
 
 func (al *AddressLabel) Create() error {

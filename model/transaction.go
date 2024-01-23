@@ -106,23 +106,8 @@ func (tx *Transaction) enrichReceipt(receipt types.Receipt) {
 		tx.GasPrice = decimal.NewFromBigInt(receipt.EffectiveGasPrice, 0)
 		tx.GasFee = decimal.NewFromInt(tx.GasUsed).Mul(tx.GasPrice)
 	}
-	contractAddress := strings.ToLower(receipt.ContractAddress.String())
 	if tx.ContractAddress != utils.ZeroAddress {
-		tx.ToAddress = &contractAddress
-		multiContracts := []string{contractAddress}
-		txTraces := GetTransactionTrace(tx.TxHash)
-		for index := range txTraces {
-			txTrace := txTraces[index]
-			if txTrace.ContractAddress != "" && len(txTrace.TraceAddress) != 0 {
-				for _, contract := range multiContracts {
-					if contract == strings.ToLower(txTrace.From) {
-						multiContracts = append(multiContracts, strings.ToLower(txTrace.ContractAddress))
-						break
-					}
-				}
-			}
-		}
-		tx.ContractAddress = strings.Join(multiContracts, ",")
+		tx.ContractAddress = strings.ToLower(receipt.ContractAddress.String())
 	}
 	tx.TxPos = int64(receipt.TransactionIndex)
 	tx.TxStatus = int64(receipt.Status)

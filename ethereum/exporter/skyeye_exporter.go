@@ -63,7 +63,7 @@ func (se *SkyEyeExporter) ExportItems() {
 			continue
 		}
 		for _, tx := range txs {
-			if tx.ContractAddress != "" {
+			if tx.ToAddress == nil && tx.ContractAddress != "" {
 				if tx.TxStatus != 0 {
 					go se.exportItem(tx)
 				}
@@ -114,13 +114,13 @@ func (se *SkyEyeExporter) CalcContractByPolicies(tx *model.SkyEyeTransaction) {
 		},
 		&model.Push20PolicyCalc{},
 		&model.FundPolicyCalc{IsNastiff: true},
-		//&model.MultiContractCalc{},
+		&model.MultiContractCalc{},
 	}
 	splitScores := []string{}
 	totalScore := 0
 	for _, p := range policies {
 		score := p.Calc(tx)
-		splitScores = append(splitScores, fmt.Sprintf("%d", score))
+		splitScores = append(splitScores, fmt.Sprintf("%s: %d", p.Name(), score))
 		totalScore += score
 	}
 	tx.SplitScores = strings.Join(splitScores, ",")
