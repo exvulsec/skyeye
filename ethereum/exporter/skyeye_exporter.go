@@ -42,6 +42,7 @@ func NewSkyEyeExporter(chain, openserver string, interval, workers int) Exporter
 		linkURLs: map[string]string{
 			"Scan_Contract": fmt.Sprintf("%s/address/%%s", utils.GetScanURL(chain)),
 			"Dedaub":        "https://library.dedaub.com/decompile?md5=%s",
+			"MCL":           fmt.Sprintf("%s/decompile_contract/%%s?chain=%s", config.Conf.ETL.MCLServer, chain),
 		},
 	}
 }
@@ -181,31 +182,17 @@ func (se *SkyEyeExporter) ComposeSlackAction(tx model.SkyEyeTransaction) []slack
 	actions := []slack.AttachmentAction{}
 	var actionURL string
 	for key, url := range se.linkURLs {
-		if key == "Dedaub" {
+		switch key {
+		case "Dedaub":
 			var dedaubMD5String model.DeDaubResponseString
 			err := dedaubMD5String.GetCodeMD5(tx.ByteCode)
 			if err != nil {
 				logrus.Errorf("get md5 for contract %s is err:", err)
 				continue
 			}
-			logrus.Info(dedaubMD5String)
 			actionURL = fmt.Sprintf(url, dedaubMD5String)
-		} else {
+		case "MCL", "Scan_Contract":
 			actionURL = fmt.Sprintf(url, tx.ContractAddress)
-			if len(tx.MultiContract) > 0 {
-				for index := range tx.MultiContract {
-					contract := tx.MultiContract[index]
-					multiContractActionURL := fmt.Sprintf(url, contract)
-					newKey := fmt.Sprintf("%s_%d", key, index+1)
-					actions = append(actions, slack.AttachmentAction{
-						Name: newKey,
-						Text: newKey,
-						Type: "button",
-						URL:  multiContractActionURL,
-					})
-				}
-
-			}
 		}
 		actions = append(actions, slack.AttachmentAction{
 			Name: key,

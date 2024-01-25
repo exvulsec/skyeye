@@ -39,7 +39,19 @@ func (mcc *MultiContractCalc) Calc(tx *SkyEyeTransaction) int {
 		case "":
 			contractAddrs = append(contractAddrs, txTrace.ContractAddress)
 		default:
-			if IsInContractAddrs(contractAddrs, txTrace.To) {
+			if IsInContractAddrs(contractAddrs, txTrace.To) && IsInContractAddrs(contractAddrs, txTrace.From) && txTrace.Input != "0x" {
+				input := txTrace.Input[:10]
+
+				s := Signature{
+					ByteSign: input,
+				}
+				if err := s.GetTextSign(); err != nil {
+					logrus.Error(err)
+					return 0
+				}
+				if s.TextSign != "" {
+					return 0
+				}
 				return 60
 			}
 		}
