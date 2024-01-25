@@ -64,6 +64,7 @@ type RedisConfig struct {
 
 type ETLConfig struct {
 	ProviderURL               string `mapstructure:"provider_url" yaml:"provider_url"`
+	MCLServer                 string `mapstructure:"mcl_server" yaml:"mcl_server"`
 	Chain                     string `mapstructure:"chain" yaml:"chain"`
 	Worker                    int64  `mapstructure:"worker" yaml:"worker"`
 	PreviousFile              string `mapstructure:"previous_file" yaml:"previous_file"`

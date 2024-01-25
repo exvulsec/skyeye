@@ -56,7 +56,7 @@ type TransactionTrace struct {
 func (txTraceResp *TransactionTraceResponse) convertToTransactionTrace() TransactionTrace {
 	txTrace := TransactionTrace{}
 	txTrace.TransactionTraceBase = txTraceResp.TransactionTraceBase
-	if txTraceResp.CallType == "CREATE" {
+	if txTraceResp.CallType == "CREATE" || txTraceResp.CallType == "CREATE2" {
 		txTrace.ContractAddress = txTrace.To
 		txTrace.To = ""
 	}
