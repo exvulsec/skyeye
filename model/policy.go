@@ -166,6 +166,8 @@ func (fpc *FundPolicyCalc) Calc(tx *SkyEyeTransaction) int {
 			if scanTxResp.Address != utils.ScanGenesisAddress {
 				if len(scanTxResp.Nonce) == 5 {
 					label = "UnKnown"
+				} else if scanTxResp.Label != utils.ScanGenesisAddress {
+					label = scanTxResp.Label
 				} else {
 					label = scanTxResp.Address
 				}
