@@ -40,8 +40,8 @@ func (mcc *MultiContractCalc) Calc(tx *SkyEyeTransaction) int {
 			contractAddrs = append(contractAddrs, txTrace.ContractAddress)
 		default:
 			if IsInContractAddrs(contractAddrs, txTrace.To) && IsInContractAddrs(contractAddrs, txTrace.From) && txTrace.Input != "0x" {
+				tx.IsMultiContract = true
 				input := txTrace.Input[:10]
-
 				s := Signature{
 					ByteSign: input,
 				}

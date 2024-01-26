@@ -42,7 +42,7 @@ func NewSkyEyeExporter(chain, openserver string, interval, workers int) Exporter
 		linkURLs: map[string]string{
 			"Scan_Contract": fmt.Sprintf("%s/address/%%s", utils.GetScanURL(chain)),
 			"Dedaub":        "https://library.dedaub.com/decompile?md5=%s",
-			"MCL":           fmt.Sprintf("%s/decompile_contract/%%s?chain=%s", config.Conf.ETL.MCLServer, chain),
+			"MCL":           fmt.Sprintf("%s/decompile_%%s/%%s?chain=%s", config.Conf.ETL.MCLServer, chain),
 		},
 	}
 }
@@ -162,15 +162,6 @@ func (se *SkyEyeExporter) ComposeMessage(tx model.SkyEyeTransaction) string {
 	text += fmt.Sprintf("*TXhash:* <%s|%s>\n", fmt.Sprintf("%s/tx/%s", scanURL, tx.TxHash), tx.TxHash)
 	text += fmt.Sprintf("*DateTime:* `%s UTC`\n", time.Unix(tx.BlockTimestamp, 0).Format(time.DateTime))
 	text += fmt.Sprintf("*Contract:* <%s|%s>\n", fmt.Sprintf("%s/address/%s", utils.GetScanURL(tx.Chain), tx.ContractAddress), tx.ContractAddress)
-	if len(tx.MultiContract) > 0 {
-		text += "*MultiContract:*"
-		for index := range tx.MultiContract {
-			contract := tx.MultiContract[index]
-			text += fmt.Sprintf(" <%s|%s>", fmt.Sprintf("%s/address/%s", utils.GetScanURL(tx.Chain), contract), contract)
-		}
-		text += "\n"
-	}
-
 	text += fmt.Sprintf("*Fund:* `%s`\n", tx.Fund)
 	text += fmt.Sprintf("*Deployer:* <%s|%s>\n", fmt.Sprintf("%s/address/%s", utils.GetScanURL(tx.Chain), tx.FromAddress), tx.FromAddress)
 	text += fmt.Sprintf("*CodeSize:* `%d`\n", len(tx.ByteCode))
@@ -191,8 +182,16 @@ func (se *SkyEyeExporter) ComposeSlackAction(tx model.SkyEyeTransaction) []slack
 				continue
 			}
 			actionURL = fmt.Sprintf(url, dedaubMD5String)
-		case "MCL", "Scan_Contract":
+		case "Scan_Contract":
 			actionURL = fmt.Sprintf(url, tx.ContractAddress)
+		case "MCL":
+			urlPattern := "contract"
+			urlKey := tx.ContractAddress
+			if tx.IsMultiContract {
+				urlPattern = "tx"
+				urlKey = tx.TxHash
+			}
+			actionURL = fmt.Sprintf(url, urlPattern, urlKey)
 		}
 		actions = append(actions, slack.AttachmentAction{
 			Name: key,

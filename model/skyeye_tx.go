@@ -29,6 +29,7 @@ type SkyEyeTransaction struct {
 	Push32Args      []string `json:"-" gorm:"-"`
 	PushStringLogs  []string `json:"-" gorm:"-"`
 	Fund            string   `json:"-" gorm:"-"`
+	IsMultiContract bool     `json:"-" gorm:"-"`
 }
 
 func (st *SkyEyeTransaction) ConvertFromTransaction(tx Transaction) {
