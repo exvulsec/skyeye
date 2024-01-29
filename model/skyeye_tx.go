@@ -120,5 +120,5 @@ func (st *SkyEyeTransaction) GetLatestRecord(chain string) error {
 
 func (st *SkyEyeTransaction) GetInfoByContract(chain, contract string) error {
 	tableName := utils.ComposeTableName(datastore.SchemaPublic, datastore.TableNastiffTransaction)
-	return datastore.DB().Table(tableName).Where("chain = ? AND contract_address", chain, contract).Find(st).Error
+	return datastore.DB().Table(tableName).Where("chain = ? AND contract_address = ?", chain, contract).Find(st).Error
 }
