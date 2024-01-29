@@ -100,6 +100,7 @@ func (tc *TXController) Reviewed(c *gin.Context) {
 					Code: http.StatusInternalServerError,
 					Msg:  fmt.Sprintf("get skyeye tx info from contract %s on chain %s is err %v", contractAddress, chain, err),
 				})
+			return
 		}
 
 		code, err := ethClient.CodeAt(context.Background(), common.HexToAddress(contractAddress), big.NewInt(skyTx.BlockNumber))
