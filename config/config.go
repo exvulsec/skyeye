@@ -41,7 +41,6 @@ type ScanInfoConfig struct {
 	APIKeyString          string   `mapstructure:"apikeys" yaml:"apikeys"`
 	APIKeys               []string `mapstructure:"-" yaml:"-"`
 	AddressNonceThreshold uint64   `mapstructure:"address_nonce_threshold" yaml:"address_nonce_threshold"`
-	SolidityCodePath      string   `mapstructure:"solidity_code_path" yaml:"solidity_code_path"`
 }
 
 type PostgresqlConfig struct {

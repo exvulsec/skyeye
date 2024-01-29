@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"math/big"
 	"strconv"
 	"strings"
 	"time"
@@ -81,7 +82,7 @@ func (se *SkyEyeExporter) exportItem(tx model.Transaction) {
 }
 
 func (se *SkyEyeExporter) processSkyTX(skyTX model.SkyEyeTransaction) {
-	code, err := client.EvmClient().CodeAt(context.Background(), common.HexToAddress(skyTX.ContractAddress), nil)
+	code, err := client.EvmClient().CodeAt(context.Background(), common.HexToAddress(skyTX.ContractAddress), big.NewInt(skyTX.BlockNumber))
 	if err != nil {
 		logrus.Errorf("get contract %s's bytecode is err %v ", skyTX.ContractAddress, err)
 		return

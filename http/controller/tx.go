@@ -3,6 +3,7 @@ package controller
 import (
 	"context"
 	"fmt"
+	"math/big"
 	"net/http"
 	"strconv"
 	"strings"
@@ -91,9 +92,19 @@ func (tc *TXController) Reviewed(c *gin.Context) {
 	}
 
 	if contractAddress != "" {
-		code, err := ethClient.CodeAt(context.Background(), common.HexToAddress(contractAddress), nil)
+		skyTx := model.SkyEyeTransaction{}
+		if err := skyTx.GetInfoByContract(chain, contractAddress); err != nil {
+			c.JSON(
+				http.StatusOK,
+				model.Message{
+					Code: http.StatusInternalServerError,
+					Msg:  fmt.Sprintf("get skyeye tx info from contract %s on chain %s is err %v", contractAddress, chain, err),
+				})
+		}
+
+		code, err := ethClient.CodeAt(context.Background(), common.HexToAddress(contractAddress), big.NewInt(skyTx.BlockNumber))
 		if err != nil {
-			c.JSON(http.StatusOK, model.Message{Code: http.StatusInternalServerError, Msg: fmt.Sprintf("get contract %s's bytecode is err %v ", contractAddress, err)})
+			c.JSON(http.StatusOK, model.Message{Code: http.StatusInternalServerError, Msg: fmt.Sprintf("get contract %s's bytecode is err %v", contractAddress, err)})
 			return
 		}
 
@@ -135,14 +146,15 @@ func (tc *TXController) Reviewed(c *gin.Context) {
 	}
 	contractAddress = receipt.ContractAddress.String()
 
-	code, err := ethClient.CodeAt(context.Background(), common.HexToAddress(contractAddress), nil)
-	if err != nil {
-		c.JSON(http.StatusOK, model.Message{Code: http.StatusInternalServerError, Msg: fmt.Sprintf("get contract %s's bytecode is err %v ", receipt.ContractAddress.String(), err)})
-		return
-	}
 	block, err := ethClient.BlockByHash(c, receipt.BlockHash)
 	if err != nil {
 		c.JSON(http.StatusOK, model.Message{Code: http.StatusInternalServerError, Msg: fmt.Sprintf("get contract %s's block number is err %v ", receipt.ContractAddress.String(), err)})
+		return
+	}
+
+	code, err := ethClient.CodeAt(context.Background(), common.HexToAddress(contractAddress), block.Number())
+	if err != nil {
+		c.JSON(http.StatusOK, model.Message{Code: http.StatusInternalServerError, Msg: fmt.Sprintf("get contract %s's bytecode is err %v ", receipt.ContractAddress.String(), err)})
 		return
 	}
 
