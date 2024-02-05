@@ -12,6 +12,7 @@ const (
 	EtherScanURL          = "https://etherscan.io"
 	BSCScanURL            = "https://bscscan.com"
 	ArbiturmScanURL       = "https://arbiscan.io"
+	AvalancheScanURL      = "https://43114.snowtrace.io"
 	APIQuery              = "?module=account&apikey=%s&address=%s&startblock=0&endblock=99999999&sort=asc&action=%s&page=1&offset=1"
 	ScanTransactionAction = "txlist"
 	ScanTraceAction       = "txlistinternal"
@@ -39,6 +40,8 @@ func GetScanURL(chain string) string {
 		return BSCScanURL
 	case ChainArbitrum:
 		return ArbiturmScanURL
+	case ChainAvalanche:
+		return AvalancheScanURL
 	default:
 		return EtherScanURL
 	}
@@ -52,6 +55,8 @@ func GetChainFromScanURL(scanURL string) string {
 		return ChainBSC
 	case strings.HasPrefix(scanURL, ArbiturmScanURL):
 		return ChainArbitrum
+	case strings.HasPrefix(scanURL, AvalancheScanURL):
+		return ChainAvalanche
 	default:
 		return ChainEthereum
 	}
