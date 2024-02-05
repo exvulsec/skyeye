@@ -157,6 +157,9 @@ type FundPolicyCalc struct {
 func (fpc *FundPolicyCalc) Calc(tx *SkyEyeTransaction) int {
 	if fpc.IsNastiff {
 		var fund string
+		if tx.Chain == utils.ChainAvalanche {
+			return 0
+		}
 		scanTxResp, err := fpc.SearchFund(tx.Chain, tx.FromAddress)
 		if err != nil {
 			logrus.Errorf("get contract %s's fund is err: %v", tx.ContractAddress, err)
