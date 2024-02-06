@@ -206,7 +206,7 @@ func (se *SkyEyeExporter) ComposeSlackAction(tx model.SkyEyeTransaction) []slack
 }
 
 func (se *SkyEyeExporter) SendMessageToSlack(tx model.SkyEyeTransaction) error {
-	summary := fmt.Sprintf("⚠️Detected a suspected risk transaction on *%s*⚠️\n", strings.ToUpper(se.chain))
+	summary := fmt.Sprintf("⚠️Detected a suspected risk transactionon %s, score %d ⚠️\n", strings.ToUpper(se.chain), tx.Score)
 	attachment := slack.Attachment{
 		Color:      "warning",
 		AuthorName: "EXVul",
