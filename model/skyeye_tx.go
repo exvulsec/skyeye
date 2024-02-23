@@ -54,6 +54,15 @@ func (st *SkyEyeTransaction) hasFlashLoan(flashLoanFuncNames []string) bool {
 	return false
 }
 
+func (st *SkyEyeTransaction) hasStart() bool {
+	for _, push4 := range st.Push4Args {
+		if strings.Contains(strings.ToLower(push4), "start") {
+			return true
+		}
+	}
+	return false
+}
+
 func (st *SkyEyeTransaction) hasRiskAddress(addrs []string) bool {
 	for _, push20 := range st.Push20Args {
 		for _, addr := range addrs {

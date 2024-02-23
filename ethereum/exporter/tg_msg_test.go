@@ -5,7 +5,6 @@ import (
 	"testing"
 
 	"github.com/ethereum/go-ethereum/common/hexutil"
-
 	"github.com/sirupsen/logrus"
 
 	"go-etl/config"

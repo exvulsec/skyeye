@@ -1,6 +1,6 @@
 module go-etl
 
-go 1.21
+go 1.22
 
 require (
 	github.com/deckarep/golang-set/v2 v2.1.0
@@ -14,6 +14,7 @@ require (
 	github.com/slack-go/slack v0.12.3
 	github.com/spf13/cobra v1.6.1
 	github.com/spf13/viper v1.15.0
+	github.com/status-im/keycard-go v0.2.0
 	gorm.io/driver/postgres v1.4.8
 	gorm.io/gorm v1.24.6
 )
