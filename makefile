@@ -21,17 +21,9 @@ build-local:
 	go build -v -o $(OUTPUT_DIR)/$(TARGET) main.go;
 
 build-linux:
-	@docker run --rm -it                                              \
-	  --platform=linux/amd64                                          \
-	  -v $(PWD):/go/src/$(TARGET)                                     \
-	  -w /go/src/$(TARGET)                                            \
-	  -e GOPROXY=https://goproxy.io,direct                            \
-	  -e GOPATH=/go                                                   \
-	  -e SHELLOPTS="$(SHELLOPTS)"                                     \
-	  golang:1.21.6-bullseye                                          \
-	    /bin/bash -c 'go mod download;                                \
-	    CGO_ENABLED=0 GOOS=linux GOARCH=amd64                         \
-	    go build -v -o $(OUTPUT_DIR)/$(TARGET) main.go;'
+	  go mod download;                                                \
+	  CGO_ENABLED=0 GOOS=linux GOARCH=amd64                           \
+	  go build -v -o $(OUTPUT_DIR)/$(TARGET) main.go;
 
 build-image: build-linux
 	image=$(IMAGE_PREFIX)$(TARGET)$(IMAGE_SUFFIX);                              \
