@@ -73,6 +73,7 @@ type ETLConfig struct {
 	DangerScoreAlertThreshold int    `mapstructure:"danger_score_alert_threshold" yaml:"danger_score_alert_threshold"`
 	LogPath                   string `mapstructure:"log_path" yaml:"log_path"`
 	SlackWebHook              string `mapstructure:"slack_webhook" yaml:"slack_webhook"`
+	HeimdallServer            string `mapstructure:"heidmall_server" yaml:"heimdall_server"`
 }
 
 func SetupConfig(configPath string) {

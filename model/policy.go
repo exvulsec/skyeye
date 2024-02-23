@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io"
 	"math/rand"
+	"net/http"
 	"os"
 	"sort"
 	"strings"
@@ -17,6 +18,7 @@ import (
 	"github.com/ethereum/go-ethereum/core/asm"
 	"github.com/ethereum/go-ethereum/core/vm"
 	"github.com/sirupsen/logrus"
+	"github.com/status-im/keycard-go/hexutils"
 
 	"go-etl/client"
 	"go-etl/config"
@@ -90,10 +92,56 @@ func (npc *NoncePolicyCalc) Name() string {
 type ByteCodePolicyCalc struct{}
 
 func (bpc *ByteCodePolicyCalc) Calc(tx *SkyEyeTransaction) int {
-	if len(tx.ByteCode) == 0 || len(tx.ByteCode[2:]) < 500 {
-		return 0
+	score := 0
+	existed, err := bpc.GetSenderExisted(tx)
+	if err != nil {
+		logrus.Error(err)
+		return score
 	}
-	return 12
+	if existed {
+		score += 30
+	}
+
+	if len(tx.ByteCode) == 0 || len(tx.ByteCode[2:]) < 500 {
+		return score
+	}
+	return score + 12
+}
+
+func (bpc *ByteCodePolicyCalc) GetSenderExisted(tx *SkyEyeTransaction) (bool, error) {
+	url := fmt.Sprintf("%s/decompile", config.Conf.ETL.HeimdallServer)
+	body := map[string]string{
+		"address":  tx.ContractAddress,
+		"bytecode": hexutils.BytesToHex(tx.ByteCode),
+	}
+	data, err := json.Marshal(body)
+	if err != nil {
+		return false, fmt.Errorf("marhsal is data for heimdall is err %v", err)
+	}
+	req, err := http.NewRequest(http.MethodPost, url, strings.NewReader(string(data)))
+	if err != nil {
+		return false, fmt.Errorf("compose request for heimdall is err %v", err)
+	}
+	req.Header.Add("Content-Type", "application/json")
+
+	res, err := client.HTTPClient().Do(req)
+	if err != nil {
+		return false, fmt.Errorf("get response for heimdall is err %v", err)
+	}
+
+	defer res.Body.Close()
+
+	b, err := io.ReadAll(res.Body)
+	if err != nil {
+		return false, fmt.Errorf("read data from res body is err %v", err)
+	}
+	responseData := strings.Split(string(b)[2:len(b)-2], ",")
+	for _, rd := range responseData {
+		if strings.Contains(rd, "if (msg.sender == (address(storage[0]))) { .. }") {
+			return true, nil
+		}
+	}
+	return false, nil
 }
 
 func (bpc *ByteCodePolicyCalc) Name() string {
@@ -126,10 +174,14 @@ type Push4PolicyCalc struct {
 }
 
 func (p4pc *Push4PolicyCalc) Calc(tx *SkyEyeTransaction) int {
+	score := 0
 	if tx.hasFlashLoan(p4pc.FlashLoanFuncNames) {
-		return 30
+		score += 30
 	}
-	return 0
+	if tx.hasStart() {
+		score += 30
+	}
+	return score
 }
 func (p4pc *Push4PolicyCalc) Name() string {
 	return "Push4"
