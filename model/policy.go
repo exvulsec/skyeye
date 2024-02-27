@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"io"
 	"math/rand"
-	"net/http"
 	"os"
 	"sort"
 	"strings"
@@ -18,7 +17,6 @@ import (
 	"github.com/ethereum/go-ethereum/core/asm"
 	"github.com/ethereum/go-ethereum/core/vm"
 	"github.com/sirupsen/logrus"
-	"github.com/status-im/keycard-go/hexutils"
 
 	"go-etl/client"
 	"go-etl/config"
@@ -74,6 +72,38 @@ func (mcc *MultiContractCalc) Name() string {
 	return "MultiContract"
 }
 
+type HeimdallPolicyCalc struct {
+}
+
+func (hdpc *HeimdallPolicyCalc) Calc(tx *SkyEyeTransaction) int {
+	if hdpc.GetPolicy(tx) {
+		return 30
+	}
+	return 0
+}
+func (hdpc *HeimdallPolicyCalc) Name() string {
+	return "Heimdall"
+}
+
+func (hdpc *HeimdallPolicyCalc) GetPolicy(tx *SkyEyeTransaction) bool {
+	hdl := HeimdallList{}
+	if err := hdl.List(tx.ContractAddress, tx.ByteCode); err != nil {
+		logrus.Error(err)
+		return false
+	}
+	for _, hd := range hdl {
+		if hd.Payable {
+			for _, statement := range hd.ControlStatements {
+				if statement == "if (msg.sender == (address(storage[0]))) { .. }" {
+					return true
+				}
+
+			}
+		}
+	}
+	return false
+}
+
 type NoncePolicyCalc struct{}
 
 func (npc *NoncePolicyCalc) Calc(tx *SkyEyeTransaction) int {
@@ -92,56 +122,10 @@ func (npc *NoncePolicyCalc) Name() string {
 type ByteCodePolicyCalc struct{}
 
 func (bpc *ByteCodePolicyCalc) Calc(tx *SkyEyeTransaction) int {
-	score := 0
-	existed, err := bpc.GetSenderExisted(tx)
-	if err != nil {
-		logrus.Error(err)
-		return score
-	}
-	if existed {
-		score += 30
-	}
-
 	if len(tx.ByteCode) == 0 || len(tx.ByteCode[2:]) < 500 {
-		return score
+		return 12
 	}
-	return score + 12
-}
-
-func (bpc *ByteCodePolicyCalc) GetSenderExisted(tx *SkyEyeTransaction) (bool, error) {
-	url := fmt.Sprintf("%s/decompile", config.Conf.ETL.HeimdallServer)
-	body := map[string]string{
-		"address":  tx.ContractAddress,
-		"bytecode": hexutils.BytesToHex(tx.ByteCode),
-	}
-	data, err := json.Marshal(body)
-	if err != nil {
-		return false, fmt.Errorf("marhsal is data for heimdall is err %v", err)
-	}
-	req, err := http.NewRequest(http.MethodPost, url, strings.NewReader(string(data)))
-	if err != nil {
-		return false, fmt.Errorf("compose request for heimdall is err %v", err)
-	}
-	req.Header.Add("Content-Type", "application/json")
-
-	res, err := client.HTTPClient().Do(req)
-	if err != nil {
-		return false, fmt.Errorf("get response for heimdall is err %v", err)
-	}
-
-	defer res.Body.Close()
-
-	b, err := io.ReadAll(res.Body)
-	if err != nil {
-		return false, fmt.Errorf("read data from res body is err %v", err)
-	}
-	responseData := strings.Split(string(b)[2:len(b)-2], ",")
-	for _, rd := range responseData {
-		if strings.Contains(rd, "if (msg.sender == (address(storage[0]))) { .. }") {
-			return true, nil
-		}
-	}
-	return false, nil
+	return 0
 }
 
 func (bpc *ByteCodePolicyCalc) Name() string {
