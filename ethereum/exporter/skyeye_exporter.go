@@ -117,6 +117,7 @@ func (se *SkyEyeExporter) CalcContractByPolicies(tx *model.SkyEyeTransaction) {
 		&model.Push20PolicyCalc{},
 		&model.FundPolicyCalc{IsNastiff: true},
 		&model.MultiContractCalc{},
+		&model.HeimdallPolicyCalc{},
 	}
 	splitScores := []string{}
 	totalScore := 0
