@@ -24,8 +24,6 @@ func NewBlockExecutor(chain string) BlockExecutor {
 	return BlockExecutor{
 		chain:               chain,
 		processPreviousDone: false,
-		latestBlocks:        make(chan uint64, 10000),
-		blocks:              make(chan uint64, 10000),
 		latestBlockNumber:   0,
 	}
 }
@@ -88,6 +86,7 @@ func (be *BlockExecutor) subNewHeader() {
 	headers := make(chan *types.Header)
 	sub := event.Resubscribe(10*time.Second, func(ctx context.Context) (event.Subscription, error) {
 		be.latestBlocks = make(chan uint64, 10000)
+		be.blocks = make(chan uint64, 10000)
 		be.processPreviousDone = false
 		go be.getPreviousBlocks()
 		return client.EvmClient().SubscribeNewHead(context.Background(), headers)
