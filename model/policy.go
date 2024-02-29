@@ -92,7 +92,7 @@ func (hdpc *HeimdallPolicyCalc) GetPolicy(tx *SkyEyeTransaction) bool {
 		return false
 	}
 	for _, hd := range hdl {
-		if hd.Payable {
+		if hd.View {
 			for _, statement := range hd.ControlStatements {
 				if statement == "if (msg.sender == (address(storage[0]))) { .. }" {
 					return true

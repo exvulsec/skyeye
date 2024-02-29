@@ -17,6 +17,7 @@ type Heimdall struct {
 	ControlStatements []string `json:"control_statements"`
 	Selector          string   `json:"selector"`
 	Payable           bool     `json:"payable"`
+	View              bool     `json:"view"`
 }
 
 type HeimdallList []Heimdall
