@@ -134,23 +134,26 @@ func (bpc *ByteCodePolicyCalc) Name() string {
 
 type ContractTypePolicyCalc struct{}
 
+const ContractTypePolicyName = "ContractType"
+
 func (cpc *ContractTypePolicyCalc) Calc(tx *SkyEyeTransaction) int {
 	opCodeArgs := GetPushTypeArgs(tx.ByteCode)
 	push4Codes := opCodeArgs[utils.PUSH4]
 	push20Codes := opCodeArgs[utils.PUSH20]
 	stringLogs := opCodeArgs[utils.LOGS]
+
+	if utils.IsToken(utils.Erc20Signatures, push4Codes, utils.Erc20SignatureThreshold) ||
+		utils.IsToken(utils.Erc721Signatures, push4Codes, utils.Erc721SignatureThreshold) ||
+		utils.IsToken(utils.Erc1155Signatures, push4Codes, utils.Erc1155SignatureThreshold) {
+		return 0
+	}
 	tx.Push4Args = GetPush4Args(push4Codes)
 	tx.Push20Args = GetPush20Args(tx.Chain, push20Codes)
 	tx.PushStringLogs = stringLogs
-
-	if utils.IsErc20Or721(utils.Erc20Signatures, push4Codes, utils.Erc20SignatureThreshold) ||
-		utils.IsErc20Or721(utils.Erc721Signatures, push4Codes, utils.Erc721SignatureThreshold) {
-		return 0
-	}
 	return 20
 }
 func (cpc *ContractTypePolicyCalc) Name() string {
-	return "ContractType"
+	return ContractTypePolicyName
 }
 
 type Push4PolicyCalc struct {

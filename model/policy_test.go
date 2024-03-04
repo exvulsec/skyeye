@@ -39,7 +39,7 @@ func TestGetPush20Args(t *testing.T) {
 
 }
 
-func TestIsErc20Or721(t *testing.T) {
+func TestIsToken(t *testing.T) {
 	config.SetupConfig("../config/config.dev.yaml")
 	code, err := client.EvmClient().CodeAt(context.Background(), common.HexToAddress("0xc667e8ac55590d140957df005ca0c2ef69698270"), nil)
 	if err != nil {
@@ -50,7 +50,7 @@ func TestIsErc20Or721(t *testing.T) {
 		panic(err)
 	}
 	args := GetPush4Args(opCodeArgs[utils.PUSH4])
-	assert.Equal(t, utils.IsErc20Or721(utils.Erc20Signatures, args, 5), false)
+	assert.Equal(t, utils.IsToken(utils.Erc20Signatures, args, utils.Erc20SignatureThreshold), false)
 }
 
 func TestGetPushTypeArgs(t *testing.T) {
