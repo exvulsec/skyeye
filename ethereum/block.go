@@ -2,10 +2,8 @@ package ethereum
 
 import (
 	"context"
-	"time"
 
 	"github.com/ethereum/go-ethereum/core/types"
-	"github.com/ethereum/go-ethereum/event"
 	"github.com/sirupsen/logrus"
 
 	"go-etl/client"
@@ -24,6 +22,8 @@ func NewBlockExecutor(chain string) BlockExecutor {
 	return BlockExecutor{
 		chain:               chain,
 		processPreviousDone: false,
+		latestBlocks:        make(chan uint64, 10000),
+		blocks:              make(chan uint64, 10000),
 		latestBlockNumber:   0,
 	}
 }
@@ -84,20 +84,16 @@ func (be *BlockExecutor) processHeader(header *types.Header) {
 
 func (be *BlockExecutor) subNewHeader() {
 	headers := make(chan *types.Header)
-	sub := event.Resubscribe(10*time.Second, func(ctx context.Context) (event.Subscription, error) {
-		be.latestBlocks = make(chan uint64, 10000)
-		be.blocks = make(chan uint64, 10000)
-		be.processPreviousDone = false
-		go be.getPreviousBlocks()
-		return client.EvmClient().SubscribeNewHead(context.Background(), headers)
-	})
+	go be.getPreviousBlocks()
+	sub, err := client.EvmClient().SubscribeNewHead(context.Background(), headers)
+	if err != nil {
+		panic(err)
+	}
 	logrus.Info("listing the new block...")
 	for {
 		select {
-		case err := <-sub.Err():
+		case err = <-sub.Err():
 			sub.Unsubscribe()
-			close(headers)
-			close(be.blocks)
 			logrus.Fatalf("subscription block is error: %v", err)
 		case header := <-headers:
 			be.processHeader(header)

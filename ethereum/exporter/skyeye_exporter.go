@@ -123,6 +123,9 @@ func (se *SkyEyeExporter) CalcContractByPolicies(tx *model.SkyEyeTransaction) {
 	totalScore := 0
 	for _, p := range policies {
 		score := p.Calc(tx)
+		if p.Name() == model.ContractTypePolicyName && score == 0 {
+			return
+		}
 		splitScores = append(splitScores, fmt.Sprintf("%s: %d", p.Name(), score))
 		totalScore += score
 	}
