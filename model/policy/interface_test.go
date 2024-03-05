@@ -36,7 +36,6 @@ func TestGetPush20Args(t *testing.T) {
 	}
 	addr := GetPush20Args("ethereum", opCodeArgs[utils.PUSH20])
 	assert.Equal(t, addr, []string{"Null: 0xeee...eee"})
-
 }
 
 func TestIsToken(t *testing.T) {

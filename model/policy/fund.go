@@ -140,7 +140,7 @@ func (fpc *FundPolicyCalc) SearchFund(chain, address string) (model.ScanTXRespon
 			}
 			txResp.Nonce = append(txResp.Nonce, nonce)
 		}
-		var addrLabel = model.AddressLabel{Label: utils.ScanGenesisAddress}
+		addrLabel := model.AddressLabel{Label: utils.ScanGenesisAddress}
 		if address != utils.ScanGenesisAddress && address != "" {
 			if err = addrLabel.GetLabel(chain, address); err != nil {
 				return txResp, fmt.Errorf("get address %s label is err: %v", address, err)

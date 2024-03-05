@@ -16,12 +16,12 @@ func (hdpc *HeimdallPolicyCalc) Calc(tx *model.SkyEyeTransaction) int {
 	}
 	return 0
 }
+
 func (hdpc *HeimdallPolicyCalc) Name() string {
 	return "Heimdall"
 }
 
 func (hdpc *HeimdallPolicyCalc) GetPolicy(tx *model.SkyEyeTransaction) bool {
-
 	for _, metadata := range hdpc.Heimdall.MetaData {
 		if metadata.View {
 			for _, statement := range metadata.ControlStatements {

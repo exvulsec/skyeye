@@ -44,7 +44,7 @@ func (sc *SkyEyeController) GetLatestBlockNumber(c *gin.Context) {
 }
 
 func (sc *SkyEyeController) DecodeByteCode(c *gin.Context) {
-	var request = struct {
+	request := struct {
 		Chain    string `json:"chain"`
 		ByteCode string `json:"byte_code"`
 	}{}
