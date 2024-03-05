@@ -18,6 +18,7 @@ type Heimdall struct {
 	FunctionCount int64      `json:"function_count"`
 	MetaData      []MetaData `json:"metadatas"`
 }
+
 type MetaData struct {
 	ControlStatements []string `json:"control_statements"`
 	Selector          string   `json:"selector"`

@@ -13,6 +13,7 @@ func (p20pc *Push20PolicyCalc) Calc(tx *model.SkyEyeTransaction) int {
 	}
 	return 5
 }
+
 func (p20pc *Push20PolicyCalc) Name() string {
 	return "Push20"
 }

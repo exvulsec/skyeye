@@ -19,6 +19,7 @@ func (cpc *ContractTypePolicyCalc) Calc(tx *model.SkyEyeTransaction) int {
 	tx.PushStringLogs = cpc.PushStringLogs
 	return 20
 }
+
 func (cpc *ContractTypePolicyCalc) Name() string {
 	return ContractTypePolicyName
 }
