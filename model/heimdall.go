@@ -3,26 +3,29 @@ package model
 import (
 	"encoding/json"
 	"fmt"
-	"go-etl/client"
-	"go-etl/config"
 	"io"
 	"net/http"
 	"strings"
 
 	"github.com/status-im/keycard-go/hexutils"
+
+	"go-etl/client"
+	"go-etl/config"
 )
 
 type Heimdall struct {
-	Address           string   `json:"address"`
+	Address       string     `json:"address"`
+	FunctionCount int64      `json:"function_count"`
+	MetaData      []MetaData `json:"metadatas"`
+}
+type MetaData struct {
 	ControlStatements []string `json:"control_statements"`
 	Selector          string   `json:"selector"`
 	Payable           bool     `json:"payable"`
 	View              bool     `json:"view"`
 }
 
-type HeimdallList []Heimdall
-
-func (hdl *HeimdallList) List(address string, byteCode []byte) error {
+func (hdl *Heimdall) Get(address string, byteCode []byte) error {
 	url := fmt.Sprintf("%s/decompile", config.Conf.ETL.HeimdallServer)
 	body := map[string]string{
 		"address":  address,
