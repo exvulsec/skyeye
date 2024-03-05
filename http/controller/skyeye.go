@@ -10,6 +10,7 @@ import (
 
 	"go-etl/client"
 	"go-etl/model"
+	"go-etl/model/policy"
 	"go-etl/utils"
 )
 
@@ -61,11 +62,11 @@ func (sc *SkyEyeController) DecodeByteCode(c *gin.Context) {
 }
 
 func (sc *SkyEyeController) GetScoreFromByteCode(skyTx *model.SkyEyeTransaction) {
-	policies := []model.PolicyCalc{
-		&model.ByteCodePolicyCalc{},
-		&model.ContractTypePolicyCalc{},
-		&model.Push4PolicyCalc{FlashLoanFuncNames: model.LoadFlashLoanFuncNames()},
-		&model.Push20PolicyCalc{},
+	policies := []policy.PolicyCalc{
+		&policy.ByteCodePolicyCalc{},
+		&policy.ContractTypePolicyCalc{},
+		&policy.Push4PolicyCalc{FlashLoanFuncNames: policy.LoadFlashLoanFuncNames()},
+		&policy.Push20PolicyCalc{},
 	}
 	splitScores := []string{}
 	totalScore := 0

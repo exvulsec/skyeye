@@ -43,7 +43,7 @@ func (st *SkyEyeTransaction) ConvertFromTransaction(tx Transaction) {
 	st.Nonce = tx.Nonce
 }
 
-func (st *SkyEyeTransaction) hasFlashLoan(flashLoanFuncNames []string) bool {
+func (st *SkyEyeTransaction) HasFlashLoan(flashLoanFuncNames []string) bool {
 	for _, push4 := range st.Push4Args {
 		for _, funcName := range flashLoanFuncNames {
 			if push4 == funcName {
@@ -54,16 +54,25 @@ func (st *SkyEyeTransaction) hasFlashLoan(flashLoanFuncNames []string) bool {
 	return false
 }
 
-func (st *SkyEyeTransaction) hasStart() bool {
+func (st *SkyEyeTransaction) HasStart() bool {
+	skipFuncNames := []string{"tokenName", "tokenSymbol"}
 	for _, push4 := range st.Push4Args {
-		if strings.Contains(strings.ToLower(push4), "start") {
+		for _, funcName := range skipFuncNames {
+			if strings.EqualFold(push4, funcName) {
+				return false
+			}
+		}
+	}
+
+	for _, push4 := range st.Push4Args {
+		if strings.EqualFold(push4, "start") {
 			return true
 		}
 	}
 	return false
 }
 
-func (st *SkyEyeTransaction) hasRiskAddress(addrs []string) bool {
+func (st *SkyEyeTransaction) HasRiskAddress(addrs []string) bool {
 	for _, push20 := range st.Push20Args {
 		for _, addr := range addrs {
 			if push20 == addr {

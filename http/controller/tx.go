@@ -16,6 +16,7 @@ import (
 
 	"go-etl/client"
 	"go-etl/model"
+	"go-etl/model/policy"
 	"go-etl/utils"
 )
 
@@ -29,13 +30,13 @@ func (tc *TXController) Routers(routers gin.IRouter) {
 }
 
 func (tc *TXController) ReviewedCompose(st *model.SkyEyeTransaction, searchFund bool, weights []string) error {
-	policies := []model.PolicyCalc{
-		&model.NoncePolicyCalc{},
-		&model.ByteCodePolicyCalc{},
-		&model.ContractTypePolicyCalc{},
-		&model.Push4PolicyCalc{FlashLoanFuncNames: model.LoadFlashLoanFuncNames()},
-		&model.Push20PolicyCalc{},
-		&model.FundPolicyCalc{IsNastiff: searchFund},
+	policies := []policy.PolicyCalc{
+		&policy.NoncePolicyCalc{},
+		&policy.ByteCodePolicyCalc{},
+		&policy.ContractTypePolicyCalc{},
+		&policy.Push4PolicyCalc{FlashLoanFuncNames: policy.LoadFlashLoanFuncNames()},
+		&policy.Push20PolicyCalc{},
+		&policy.FundPolicyCalc{IsNastiff: searchFund},
 	}
 	splitScores := []string{}
 	totalScore := 0
@@ -72,7 +73,7 @@ func (tc *TXController) Reviewed(c *gin.Context) {
 	}
 
 	weightStrings := c.Query("weights")
-	var weights = make([]string, 7)
+	weights := make([]string, 7)
 	if weightStrings != "" {
 		weights = strings.Split(weightStrings, ",")
 	} else {

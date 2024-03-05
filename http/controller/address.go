@@ -8,11 +8,12 @@ import (
 	"github.com/gin-gonic/gin"
 
 	"go-etl/model"
+	"go-etl/model/policy"
 	"go-etl/utils"
 )
 
 type AddressController struct {
-	fpc model.FundPolicyCalc
+	fpc policy.FundPolicyCalc
 }
 
 func (ac *AddressController) Routers(routers gin.IRouter) {

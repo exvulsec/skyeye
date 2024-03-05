@@ -16,6 +16,7 @@ import (
 	"go-etl/client"
 	"go-etl/config"
 	"go-etl/model"
+	"go-etl/model/policy"
 	"go-etl/utils"
 )
 
@@ -107,25 +108,25 @@ func (se *SkyEyeExporter) processSkyTX(skyTX model.SkyEyeTransaction) {
 }
 
 func (se *SkyEyeExporter) CalcContractByPolicies(tx *model.SkyEyeTransaction) {
-	policies := []model.PolicyCalc{
-		&model.NoncePolicyCalc{},
-		&model.ByteCodePolicyCalc{},
-		&model.ContractTypePolicyCalc{},
-		&model.Push4PolicyCalc{
-			FlashLoanFuncNames: model.LoadFlashLoanFuncNames(),
+	policies := []policy.PolicyCalc{
+		&policy.HeimdallPolicyCalc{},
+		&policy.NoncePolicyCalc{},
+		&policy.ByteCodePolicyCalc{},
+		&policy.ContractTypePolicyCalc{},
+		&policy.Push4PolicyCalc{
+			FlashLoanFuncNames: policy.LoadFlashLoanFuncNames(),
 		},
-		&model.Push20PolicyCalc{},
-		&model.FundPolicyCalc{IsNastiff: true},
-		&model.MultiContractCalc{},
-		&model.HeimdallPolicyCalc{},
+		&policy.Push20PolicyCalc{},
+		&policy.FundPolicyCalc{IsNastiff: true},
+		&policy.MultiContractCalc{},
 	}
 	splitScores := []string{}
 	totalScore := 0
 	for _, p := range policies {
-		score := p.Calc(tx)
-		if p.Name() == model.ContractTypePolicyName && score == 0 {
+		if p.Filter(tx) {
 			return
 		}
+		score := p.Calc(tx)
 		splitScores = append(splitScores, fmt.Sprintf("%s: %d", p.Name(), score))
 		totalScore += score
 	}
