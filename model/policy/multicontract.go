@@ -1,6 +1,8 @@
 package policy
 
 import (
+	"strings"
+
 	"github.com/sirupsen/logrus"
 
 	"go-etl/model"
@@ -9,29 +11,35 @@ import (
 type MultiContractCalc struct{}
 
 func (mcc *MultiContractCalc) Calc(tx *model.SkyEyeTransaction) int {
+	multiContracts := []string{}
 	txTraces := model.GetTransactionTrace(tx.TxHash)
-	contractAddrs := []string{}
 	for _, txTrace := range txTraces {
 		switch txTrace.To {
 		case "":
-			contractAddrs = append(contractAddrs, txTrace.ContractAddress)
+			multiContracts = append(multiContracts, txTrace.ContractAddress)
 		default:
-			if IsInContractAddrs(contractAddrs, txTrace.To) && IsInContractAddrs(contractAddrs, txTrace.From) && txTrace.Input != "0x" {
-				tx.IsMultiContract = true
+			if IsInContractAddrs(multiContracts, txTrace.From) && IsInContractAddrs(multiContracts, txTrace.To) && txTrace.Input != "0x" {
 				input := txTrace.Input[:10]
 				s := model.Signature{
 					ByteSign: input,
 				}
 				if err := s.GetTextSign(); err != nil {
 					logrus.Error(err)
-					return 0
+					continue
 				}
 				if s.TextSign != "" {
-					return 0
+					for index, contract := range multiContracts {
+						if strings.EqualFold(contract, txTrace.To) {
+							multiContracts = append(multiContracts[:index], multiContracts[index+1:]...)
+						}
+					}
 				}
-				return 60
 			}
 		}
+	}
+	tx.MultiContracts = multiContracts
+	if len(multiContracts) > 1 {
+		return 60
 	}
 	return 0
 }

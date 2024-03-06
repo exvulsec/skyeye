@@ -76,10 +76,38 @@ func (se *SkyEyeExporter) ExportItems() {
 }
 
 func (se *SkyEyeExporter) exportItem(tx model.Transaction) {
+	policies := []policy.PolicyCalc{
+		&policy.MultiContractCalc{},
+		&policy.FundPolicyCalc{IsNastiff: true},
+		&policy.NoncePolicyCalc{},
+	}
 	skyTx := model.SkyEyeTransaction{}
 	skyTx.ConvertFromTransaction(tx)
 	skyTx.Chain = se.chain
-	se.processSkyTX(skyTx)
+	for _, p := range policies {
+		if p.Filter(&skyTx) {
+			return
+		}
+		score := p.Calc(&skyTx)
+		skyTx.Scores = append(skyTx.Scores, fmt.Sprintf("%s: %d", p.Name(), score))
+		skyTx.Score += score
+	}
+	for _, contract := range skyTx.MultiContracts {
+		newSkyTx := model.SkyEyeTransaction{
+			Chain:           skyTx.Chain,
+			BlockTimestamp:  skyTx.BlockTimestamp,
+			BlockNumber:     skyTx.BlockNumber,
+			TxHash:          skyTx.TxHash,
+			TxPos:           skyTx.TxPos,
+			FromAddress:     skyTx.FromAddress,
+			ContractAddress: contract,
+			Nonce:           skyTx.Nonce,
+			Score:           skyTx.Score,
+			Scores:          skyTx.Scores,
+			Fund:            skyTx.Fund,
+		}
+		se.processSkyTX(newSkyTx)
+	}
 }
 
 func (se *SkyEyeExporter) processSkyTX(skyTX model.SkyEyeTransaction) {
@@ -110,28 +138,22 @@ func (se *SkyEyeExporter) processSkyTX(skyTX model.SkyEyeTransaction) {
 func (se *SkyEyeExporter) CalcContractByPolicies(tx *model.SkyEyeTransaction) {
 	policies := []policy.PolicyCalc{
 		&policy.HeimdallPolicyCalc{},
-		&policy.NoncePolicyCalc{},
 		&policy.ByteCodePolicyCalc{},
 		&policy.ContractTypePolicyCalc{},
 		&policy.Push4PolicyCalc{
 			FlashLoanFuncNames: policy.LoadFlashLoanFuncNames(),
 		},
 		&policy.Push20PolicyCalc{},
-		&policy.FundPolicyCalc{IsNastiff: true},
-		&policy.MultiContractCalc{},
 	}
-	splitScores := []string{}
-	totalScore := 0
 	for _, p := range policies {
 		if p.Filter(tx) {
 			return
 		}
 		score := p.Calc(tx)
-		splitScores = append(splitScores, fmt.Sprintf("%s: %d", p.Name(), score))
-		totalScore += score
+		tx.Scores = append(tx.Scores, fmt.Sprintf("%s: %d", p.Name(), score))
+		tx.Score += score
 	}
-	tx.SplitScores = strings.Join(splitScores, ",")
-	tx.Score = totalScore
+	tx.SplitScores = strings.Join(tx.Scores, ",")
 }
 
 func (se *SkyEyeExporter) MonitorContractAddress(tx model.SkyEyeTransaction) error {
@@ -193,10 +215,6 @@ func (se *SkyEyeExporter) ComposeSlackAction(tx model.SkyEyeTransaction) []slack
 		case "MCL":
 			urlPattern := "contract"
 			urlKey := tx.ContractAddress
-			if tx.IsMultiContract {
-				urlPattern = "tx"
-				urlKey = tx.TxHash
-			}
 			actionURL = fmt.Sprintf(url, urlPattern, urlKey)
 		}
 		actions = append(actions, slack.AttachmentAction{
