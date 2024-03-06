@@ -38,7 +38,7 @@ func (hdpc *HeimdallPolicyCalc) Filter(tx *model.SkyEyeTransaction) bool {
 	hdl := model.Heimdall{}
 	if err := hdl.Get(tx.ContractAddress, tx.ByteCode); err != nil {
 		logrus.Error(err)
-		return true
+		return false
 	}
 
 	if hdl.FunctionCount > 10 {
