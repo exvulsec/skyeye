@@ -119,7 +119,8 @@ func (txs *Transactions) CopyToDB(chain string) error {
 		pgx.Identifier{chain, datastore.TableTransactions},
 		columns,
 		pgx.CopyFromSlice(len(*txs), func(i int) ([]any, error) {
-			return []any{(*txs)[i].BlockTimestamp,
+			return []any{
+				(*txs)[i].BlockTimestamp,
 				(*txs)[i].BlockNumber,
 				(*txs)[i].TxHash,
 				(*txs)[i].TxPos,

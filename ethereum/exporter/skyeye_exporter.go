@@ -117,7 +117,10 @@ func (se *SkyEyeExporter) processSkyTX(skyTX model.SkyEyeTransaction) {
 		return
 	}
 	skyTX.ByteCode = code
-	se.CalcContractByPolicies(&skyTX)
+	if se.CalcContractByPolicies(&skyTX) {
+		return
+	}
+	skyTX.SplitScores = strings.Join(skyTX.Scores, ",")
 	if skyTX.Score > config.Conf.ETL.ScoreAlertThreshold {
 		if err = se.SendMessageToSlack(skyTX); err != nil {
 			logrus.Errorf("send txhash %s's contract %s message to slack is err %v", skyTX.TxHash, skyTX.ContractAddress, err)
@@ -135,7 +138,7 @@ func (se *SkyEyeExporter) processSkyTX(skyTX model.SkyEyeTransaction) {
 	}
 }
 
-func (se *SkyEyeExporter) CalcContractByPolicies(tx *model.SkyEyeTransaction) {
+func (se *SkyEyeExporter) CalcContractByPolicies(tx *model.SkyEyeTransaction) bool {
 	policies := []policy.PolicyCalc{
 		&policy.HeimdallPolicyCalc{},
 		&policy.ByteCodePolicyCalc{},
@@ -147,13 +150,13 @@ func (se *SkyEyeExporter) CalcContractByPolicies(tx *model.SkyEyeTransaction) {
 	}
 	for _, p := range policies {
 		if p.Filter(tx) {
-			return
+			return true
 		}
 		score := p.Calc(tx)
 		tx.Scores = append(tx.Scores, fmt.Sprintf("%s: %d", p.Name(), score))
 		tx.Score += score
 	}
-	tx.SplitScores = strings.Join(tx.Scores, ",")
+	return false
 }
 
 func (se *SkyEyeExporter) MonitorContractAddress(tx model.SkyEyeTransaction) error {
