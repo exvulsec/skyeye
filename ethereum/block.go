@@ -57,10 +57,9 @@ func (be *BlockExecutor) getPreviousBlocks() {
 	}
 
 	logrus.Infof("latest block number is %d", be.latestBlockNumber)
-	// if previousBlockNumber < be.latestBlockNumber {
-	if true {
+	if previousBlockNumber < be.latestBlockNumber {
 		logrus.Infof("start to sync from block %d to block %d", previousBlockNumber+1, be.latestBlockNumber)
-		be.setBlocksToChannel(187383545, 187383546)
+		be.setBlocksToChannel(previousBlockNumber+1, be.latestBlockNumber)
 	}
 	be.processPreviousDone = true
 	close(be.latestBlocks)
