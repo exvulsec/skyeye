@@ -69,7 +69,7 @@ func (tx *Transaction) ConvertFromBlock(transaction *types.Transaction) {
 
 func (tx *Transaction) GetLatestRecord(chain string) error {
 	tableName := utils.ComposeTableName(chain, datastore.TableTransactions)
-	return datastore.DB().Table(tableName).Order("created_at DESC").Limit(1).Find(tx).Error
+	return datastore.DB().Table(tableName).Order("id DESC").Limit(1).Find(tx).Error
 }
 
 func getReceiptWithTimeOut(txHash common.Hash) (*types.Receipt, error) {
