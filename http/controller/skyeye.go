@@ -32,7 +32,7 @@ func (sc *SkyEyeController) GetLatestBlockNumber(c *gin.Context) {
 		c.String(http.StatusOK, fmt.Sprintf("get latest block from rpc node for chain %s is err %v", chain, err))
 		return
 	}
-	stx := model.SkyEyeTransaction{}
+	stx := model.Transaction{}
 	if err = stx.GetLatestRecord(chain); err != nil {
 		c.String(http.StatusOK, fmt.Sprintf("get latest record from skyeye table for chain %s is err %v", chain, err))
 		return

@@ -40,7 +40,7 @@ func GetBlockNumberFromDB(chain string) uint64 {
 
 func WriteBlockNumberToFile(filePath string, blockNumber int64) {
 	blockNumberString := strconv.FormatInt(blockNumber, 10)
-	err := os.WriteFile(filePath, []byte(blockNumberString), 0777)
+	err := os.WriteFile(filePath, []byte(blockNumberString), 0o777)
 	if err != nil {
 		logrus.Errorf("failed to write blocknumber %d to file, err is %v", blockNumber, err)
 	}
@@ -70,7 +70,6 @@ func ComposeTableName(schema string, tableName string) string {
 		return fmt.Sprintf("%s.%s", schema, tableName)
 	}
 	return tableName
-
 }
 
 func CheckHeaderIsGZip(header http.Header) bool {
