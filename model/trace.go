@@ -2,13 +2,13 @@ package model
 
 import (
 	"context"
-	"go-etl/client"
-	"go-etl/utils"
 	"time"
 
 	"github.com/ethereum/go-ethereum/common"
-
 	"github.com/sirupsen/logrus"
+
+	"go-etl/client"
+	"go-etl/utils"
 )
 
 type TransactionTraceBase struct {
@@ -84,7 +84,6 @@ func (txTraceResp *TransactionTraceResponse) flatTraceTransaction() []Transactio
 		}
 
 	}
-
 	return traces
 }
 

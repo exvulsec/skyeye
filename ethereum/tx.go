@@ -29,7 +29,8 @@ type transactionExecutor struct {
 func NewTransactionExecutor(blockExecutor BlockExecutor,
 	logExecutor Executor,
 	chain, openapi string,
-	workers int, isNastiff bool) Executor {
+	workers int, isNastiff bool,
+) Executor {
 	return &transactionExecutor{
 		blockExecutor: blockExecutor,
 		logExecutor:   logExecutor,
@@ -138,7 +139,6 @@ func (te *transactionExecutor) enrichContractCreation(items model.Transactions) 
 }
 
 func (te *transactionExecutor) Enrich() {
-
 	if te.logExecutor != nil {
 		lge, _ := te.logExecutor.(*logExecutor)
 		lge.filterLogsByTopics(te.blockNumber, te.blockNumber)
