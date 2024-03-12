@@ -6,19 +6,16 @@ import (
 	"math/big"
 	"strings"
 
-	"github.com/sirupsen/logrus"
-
-	"go-etl/datastore"
-	"go-etl/utils"
-
-	"go-etl/client"
-
-	"github.com/ethereum/go-ethereum/common"
-	"go-etl/model/erc20"
-
 	"github.com/ethereum/go-ethereum/accounts/abi"
+	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/shopspring/decimal"
+	"github.com/sirupsen/logrus"
+
+	"go-etl/client"
+	"go-etl/datastore"
+	"go-etl/model/erc20"
+	"go-etl/utils"
 )
 
 type CurrencyTransfer struct {
