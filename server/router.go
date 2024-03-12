@@ -18,7 +18,6 @@ func addRouters(r gin.IRouter) {
 	ctrls := []controller.Controller{
 		&controller.AddressController{},
 		&controller.MonitorController{},
-		&controller.TokenController{},
 		&controller.SkyEyeController{},
 		&controller.TXController{},
 		&controller.CMCController{AuditController: auditController},
