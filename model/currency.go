@@ -2,7 +2,6 @@ package model
 
 import (
 	"context"
-	"fmt"
 	"math/big"
 	"strings"
 
@@ -10,12 +9,7 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/shopspring/decimal"
-	"github.com/sirupsen/logrus"
-
 	"go-etl/client"
-	"go-etl/datastore"
-	"go-etl/model/erc20"
-	"go-etl/utils"
 )
 
 type CurrencyTransfer struct {
@@ -40,7 +34,7 @@ const (
 	]`
 )
 
-type CurrencyBalances map[string]map[string]decimal.Decimal
+type CurrencyBalances map[string]map[string]Token
 
 func (c *CurrencyTransfer) Decode(log types.Log) error {
 	eventAbi, err := abi.JSON(strings.NewReader(ABIs))
@@ -119,82 +113,59 @@ func (c *CurrencyTransfer) DecodeDeposit(event map[string]any, log types.Log) {
 	c.Address = strings.ToLower(log.Address.String())
 }
 
-func (cbs *CurrencyBalances) SetBalanceValue(address, token string, value decimal.Decimal) {
+func (cbs *CurrencyBalances) SetBalanceValue(chain, address, token string, value decimal.Decimal) {
 	if address == "" {
 		return
 	}
 	_, ok := (*cbs)[address]
 	if !ok {
-		(*cbs)[address] = map[string]decimal.Decimal{}
+		(*cbs)[address] = map[string]Token{}
 	}
 	_, ok = (*cbs)[address][token]
 	if !ok {
-		(*cbs)[address][token] = value
+		t := Token{
+			Address: token,
+		}
+		existed := t.IsExisted(chain, token)
+		if !existed {
+			t.GetMetadataOnChain(chain, token)
+		}
+		(*cbs)[address][token] = Token{Value: value}
 	} else {
-		(*cbs)[address][token] = (*cbs)[address][token].Add(value)
+		(*cbs)[address][token].Value.Add(value)
 	}
 }
 
-func (cbs *CurrencyBalances) calcBalance(transfers []CurrencyTransfer) {
+func (cbs *CurrencyBalances) calcBalance(chain string, transfers []CurrencyTransfer) {
 	for _, transfer := range transfers {
 		if !transfer.Value.Equal(decimal.Decimal{}) {
-			cbs.SetBalanceValue(transfer.From, transfer.Address, transfer.Value.Mul(decimal.NewFromInt(-1)))
-			cbs.SetBalanceValue(transfer.To, transfer.Address, transfer.Value)
+			cbs.SetBalanceValue(chain, transfer.From, transfer.Address, transfer.Value.Mul(decimal.NewFromInt(-1)))
+			cbs.SetBalanceValue(chain, transfer.To, transfer.Address, transfer.Value)
 		}
 	}
+}
 
-	for key, tokens := range *cbs {
-		for token, value := range tokens {
-			if value.Equal(decimal.Decimal{}) {
-				delete(tokens, token)
+func (cbs *CurrencyBalances) filterEmptyBalance() {
+	for address, tokens := range *cbs {
+		for tokenAddr, token := range tokens {
+			if token.Value.Equal(decimal.Decimal{}) {
+				delete(tokens, tokenAddr)
 			}
 		}
 		if len(tokens) == 0 {
-			delete(*cbs, key)
+			delete(*cbs, address)
 		}
 	}
 }
 
-func (cbs *CurrencyBalances) readable(chain string) error {
-	var (
-		symbol          string
-		decimalsWithPow decimal.Decimal
-		err             error
-	)
+func (cbs *CurrencyBalances) enrichDecimals() {
 	for address, tokens := range *cbs {
-		fmt.Printf("Address: %s\n", address)
-		for tokenAddr, value := range tokens {
-			token := Token{}
-			tableName := utils.ComposeTableName(chain, datastore.TableTokens)
-			if err = token.GetToken(tableName, tokenAddr); err != nil {
-				return err
-			}
-			if token.Address == "" {
-				e20, err := erc20.NewErc20(common.HexToAddress(tokenAddr), client.MultiEvmClient()[chain])
-				if err != nil {
-					return fmt.Errorf("failed to instantiate a token contract %s: %v", tokenAddr, err)
-				}
-				name, err := e20.Name(nil)
-				symbol, err = e20.Symbol(nil)
-				decimals, err := e20.Decimals(nil)
-				decimalsWithPow = decimal.NewFromInt(10).Pow(decimal.NewFromInt(int64(decimals)))
-
-				token.Address = tokenAddr
-				token.Name = name
-				token.Symbol = symbol
-				token.Decimals = int64(decimals)
-				if err = token.Create(chain); err != nil {
-					logrus.Errorf("create token %s to db is err %v", token.Address, err)
-				}
-			} else {
-				symbol = tokenAddr
-				decimalsWithPow = decimal.NewFromInt(10).Pow(decimal.NewFromInt(token.Decimals))
-			}
-			fmt.Printf("Value: %s %s\n", value.DivRound(decimalsWithPow, 20), symbol)
+		for tokenAddr, token := range tokens {
+			token.Value = token.GetValueWithDecimals(token.Value)
+			tokens[tokenAddr] = token
 		}
-		fmt.Println()
+		(*cbs)[address] = tokens
 	}
-	return nil
 }
 
 func mapKeyExist(m map[string]interface{}, key string) bool {
