@@ -1,6 +1,8 @@
 package model
 
 import (
+	"time"
+
 	"github.com/shopspring/decimal"
 
 	"github.com/ethereum/go-ethereum/common"
@@ -12,13 +14,14 @@ import (
 )
 
 type Token struct {
-	ID       *int64          `json:"id" gorm:"column:id"`
-	Address  string          `json:"address" gorm:"column:address"`
-	Name     string          `json:"name" gorm:"column:name"`
-	Symbol   string          `json:"symbol" gorm:"column:symbol"`
-	Decimals int64           `json:"decimals" gorm:"column:decimals"`
-	Value    decimal.Decimal `json:"value" gorm:"column:-"`
-	ValueUSD decimal.Decimal `json:"value_usd" gorm:"column:-"`
+	ID        *int64          `json:"id" gorm:"column:id"`
+	Address   string          `json:"address" gorm:"column:address"`
+	Name      string          `json:"name" gorm:"column:name"`
+	Symbol    string          `json:"symbol" gorm:"column:symbol"`
+	Decimals  int64           `json:"decimals" gorm:"column:decimals"`
+	Value     decimal.Decimal `json:"value" gorm:"column:-"`
+	Price     decimal.Decimal `json:"price" gorm:"column:price"`
+	UpdatedAt time.Time       `json:"updated_at" gorm:"column:updated_at"`
 }
 
 func (t *Token) IsExisted(chain, address string) bool {
