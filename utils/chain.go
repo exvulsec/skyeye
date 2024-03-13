@@ -55,3 +55,23 @@ func ConvertChainToDeFiHackLabChain(chain string) string {
 		return ChainEth
 	}
 }
+
+const (
+	CGCEthereum  = ChainEthereum
+	CGCBSC       = "binance-smart-chain"
+	CGCArbitrum  = "arbitrum-one"
+	CGCAvalanche = "avalanche"
+)
+
+func ConvertChainToCGCID(chain string) string {
+	switch chain {
+	case ChainBSC:
+		return CGCBSC
+	case ChainArbitrum:
+		return CGCArbitrum
+	case ChainAvalanche:
+		return CGCAvalanche
+	default:
+		return CGCEthereum
+	}
+}

@@ -74,6 +74,7 @@ type ETLConfig struct {
 	LogPath                   string `mapstructure:"log_path" yaml:"log_path"`
 	SlackWebHook              string `mapstructure:"slack_webhook" yaml:"slack_webhook"`
 	HeimdallServer            string `mapstructure:"heidmall_server" yaml:"heimdall_server"`
+	CGCAPIKey                 string `mapstructure:"cgc_apikey" yaml:"cgc_apikey"`
 }
 
 func SetupConfig(configPath string) {
