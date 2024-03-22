@@ -1,14 +1,9 @@
 package model
 
 import (
-	"context"
-	"time"
+	"strings"
 
-	"github.com/ethereum/go-ethereum/common"
-	"github.com/sirupsen/logrus"
-
-	"go-etl/client"
-	"go-etl/utils"
+	"github.com/exvulsec/skyeye/config"
 )
 
 type TransactionTraceBase struct {
@@ -22,19 +17,19 @@ type TransactionTraceBase struct {
 	CallType string `json:"type"`
 }
 
-type TransactionTraceResponse struct {
+type TransactionTrace struct {
 	TransactionTraceBase
-	Calls []TransactionTraceResponse `json:"calls"`
+	Calls []TransactionTrace `json:"calls"`
 	Depth []int
 }
 
-type Queue []TransactionTraceResponse
+type Queue []TransactionTrace
 
-func (q *Queue) Push(trace TransactionTraceResponse) {
+func (q *Queue) Push(trace TransactionTrace) {
 	*q = append(*q, trace)
 }
 
-func (q *Queue) Pop() *TransactionTraceResponse {
+func (q *Queue) Pop() *TransactionTrace {
 	if !q.IsEmpty() {
 		top := (*q)[0]
 		*q = (*q)[1:]
@@ -47,35 +42,28 @@ func (q *Queue) IsEmpty() bool {
 	return len(*q) == 0
 }
 
-type TransactionTrace struct {
-	TransactionTraceBase
-	ContractAddress string `json:"contract_address"`
-	TraceAddress    []int  `json:"trace_address"`
-}
-
-func (txTraceResp *TransactionTraceResponse) convertToTransactionTrace() TransactionTrace {
-	txTrace := TransactionTrace{}
-	txTrace.TransactionTraceBase = txTraceResp.TransactionTraceBase
-	if txTraceResp.CallType == "CREATE" || txTraceResp.CallType == "CREATE2" {
-		txTrace.ContractAddress = txTrace.To
-		txTrace.To = ""
+func (trace *TransactionTrace) GetContractAddress() string {
+	if trace.CallType == "CREATE" || trace.CallType == "CREATE2" {
+		if trace.FilterAddress(trace.TransactionTraceBase.From) {
+			return ""
+		}
+		return trace.TransactionTraceBase.To
 	}
-	txTrace.TraceAddress = txTraceResp.Depth
-	return txTrace
+	return ""
 }
 
-func (txTraceResp *TransactionTraceResponse) flatTraceTransaction() []TransactionTrace {
+func (trace *TransactionTrace) ListContracts() []string {
 	queue := Queue{}
-	txTraceResp.Depth = []int{}
-	queue.Push(*txTraceResp)
-	traces := []TransactionTrace{}
+	queue.Push(*trace)
+	contracts := []string{}
 	for {
 		if queue.IsEmpty() {
 			break
 		}
 		txTrace := queue.Pop()
-		if txTrace != nil {
-			traces = append(traces, txTrace.convertToTransactionTrace())
+		address := txTrace.GetContractAddress()
+		if address != "" {
+			contracts = append(contracts, address)
 		}
 		for index := range txTrace.Calls {
 			call := txTrace.Calls[index]
@@ -84,33 +72,15 @@ func (txTraceResp *TransactionTraceResponse) flatTraceTransaction() []Transactio
 		}
 
 	}
-	return traces
+	return contracts
 }
 
-func GetTransactionTrace(txHash string) []TransactionTrace {
-	ctxWithTimeOut, cancel := context.WithTimeout(context.TODO(), 20*time.Second)
-	defer cancel()
-	var txTraceResp *TransactionTraceResponse
-	for i := 0; i < 5; i++ {
-		err := client.EvmClient().Client().CallContext(ctxWithTimeOut, &txTraceResp,
-			"debug_traceTransaction",
-			common.HexToHash(txHash),
-			map[string]string{
-				"tracer": "callTracer",
-			})
-		if err != nil && !utils.IsRetriableError(err) {
-			logrus.Errorf("get tx trace for tx %s is err %v", txHash, err)
-			return []TransactionTrace{}
+func (trace *TransactionTrace) FilterAddress(addr string) bool {
+	contracts := strings.Split(config.Conf.ETL.FilterContracts, ",")
+	for _, contract := range contracts {
+		if strings.EqualFold(contract, addr) {
+			return true
 		}
-		if txTraceResp != nil {
-			break
-		}
-		time.Sleep(1 * time.Second)
-		logrus.Infof("retry %d times to get tx's trace %s", i+1, txHash)
 	}
-	if txTraceResp == nil {
-		logrus.Infof("get receipt with txhash %s failed, drop it", txHash)
-		return []TransactionTrace{}
-	}
-	return txTraceResp.flatTraceTransaction()
+	return false
 }

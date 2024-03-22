@@ -7,8 +7,8 @@ import (
 
 	"github.com/gin-gonic/gin"
 
-	"go-etl/http/controller"
-	"go-etl/middleware"
+	"github.com/exvulsec/skyeye/http/controller"
+	"github.com/exvulsec/skyeye/middleware"
 )
 
 func addRouters(r gin.IRouter) {

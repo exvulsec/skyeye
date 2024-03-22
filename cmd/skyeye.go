@@ -3,9 +3,9 @@ package cmd
 import (
 	"github.com/spf13/cobra"
 
-	"go-etl/config"
-	"go-etl/ethereum"
-	"go-etl/log"
+	"github.com/exvulsec/skyeye/config"
+	"github.com/exvulsec/skyeye/ethereum"
+	"github.com/exvulsec/skyeye/log"
 )
 
 var skyeyeCmd = &cobra.Command{
@@ -39,6 +39,5 @@ func skyEyeCmdInit() {
 }
 
 func init() {
-	etlCmd.AddCommand(skyeyeCmd)
 	skyEyeCmdInit()
 }

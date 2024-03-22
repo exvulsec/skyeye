@@ -14,10 +14,9 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/sirupsen/logrus"
 
-	"go-etl/client"
-	"go-etl/model"
-	"go-etl/model/policy"
-	"go-etl/utils"
+	"github.com/exvulsec/skyeye/client"
+	"github.com/exvulsec/skyeye/model"
+	"github.com/exvulsec/skyeye/utils"
 )
 
 type TXController struct{}
@@ -30,13 +29,13 @@ func (tc *TXController) Routers(routers gin.IRouter) {
 }
 
 func (tc *TXController) ReviewedCompose(st *model.SkyEyeTransaction, searchFund bool, weights []string) error {
-	policies := []policy.PolicyCalc{
-		&policy.NoncePolicyCalc{},
-		&policy.ByteCodePolicyCalc{},
-		&policy.ContractTypePolicyCalc{},
-		&policy.Push4PolicyCalc{FlashLoanFuncNames: policy.LoadFlashLoanFuncNames()},
-		&policy.Push20PolicyCalc{},
-		&policy.FundPolicyCalc{IsNastiff: searchFund},
+	policies := []model.PolicyCalc{
+		&model.NoncePolicyCalc{},
+		&model.ByteCodePolicyCalc{},
+		&model.ContractTypePolicyCalc{},
+		&model.Push4PolicyCalc{FlashLoanFuncNames: model.LoadFlashLoanFuncNames()},
+		&model.Push20PolicyCalc{},
+		&model.FundPolicyCalc{IsNastiff: searchFund},
 	}
 	splitScores := []string{}
 	totalScore := 0

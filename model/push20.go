@@ -1,10 +1,8 @@
-package policy
-
-import "go-etl/model"
+package model
 
 type Push20PolicyCalc struct{}
 
-func (p20pc *Push20PolicyCalc) Calc(tx *model.SkyEyeTransaction) int {
+func (p20pc *Push20PolicyCalc) Calc(tx *SkyEyeTransaction) int {
 	if len(tx.Push20Args) == 0 {
 		return 0
 	}
@@ -18,6 +16,6 @@ func (p20pc *Push20PolicyCalc) Name() string {
 	return "Push20"
 }
 
-func (p20pc *Push20PolicyCalc) Filter(tx *model.SkyEyeTransaction) bool {
+func (p20pc *Push20PolicyCalc) Filter(tx *SkyEyeTransaction) bool {
 	return false
 }

@@ -1,4 +1,4 @@
-package policy
+package model
 
 import (
 	"context"
@@ -8,9 +8,9 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/magiconair/properties/assert"
 
-	"go-etl/client"
-	"go-etl/config"
-	"go-etl/utils"
+	"github.com/exvulsec/skyeye/client"
+	"github.com/exvulsec/skyeye/config"
+	"github.com/exvulsec/skyeye/utils"
 )
 
 func TestGetPush4Args(t *testing.T) {

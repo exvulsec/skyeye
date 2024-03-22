@@ -6,7 +6,7 @@ import (
 
 	"github.com/sirupsen/logrus"
 
-	"go-etl/config"
+	"github.com/exvulsec/skyeye/config"
 )
 
 type HTTPInstance struct {

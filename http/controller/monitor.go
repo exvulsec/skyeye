@@ -7,8 +7,8 @@ import (
 
 	"github.com/gin-gonic/gin"
 
-	"go-etl/model"
-	"go-etl/utils"
+	"github.com/exvulsec/skyeye/model"
+	"github.com/exvulsec/skyeye/utils"
 )
 
 type MonitorController struct {

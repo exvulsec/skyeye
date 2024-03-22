@@ -11,7 +11,7 @@ import (
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/shopspring/decimal"
 
-	"go-etl/client"
+	"github.com/exvulsec/skyeye/client"
 )
 
 type AssetTransfer struct {

@@ -7,8 +7,8 @@ import (
 	"net/http"
 	"strconv"
 
-	"go-etl/client"
-	"go-etl/utils"
+	"github.com/exvulsec/skyeye/client"
+	"github.com/exvulsec/skyeye/utils"
 )
 
 type ScanBaseResponse struct {

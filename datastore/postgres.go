@@ -10,7 +10,7 @@ import (
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
 
-	"go-etl/config"
+	"github.com/exvulsec/skyeye/config"
 )
 
 var dbInstance *DBInstance

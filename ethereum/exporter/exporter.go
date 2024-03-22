@@ -1,7 +1,7 @@
 package exporter
 
 import (
-	"go-etl/config"
+	"github.com/exvulsec/skyeye/config"
 )
 
 type Exporter interface {

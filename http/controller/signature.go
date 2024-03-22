@@ -2,7 +2,7 @@ package controller
 
 import (
 	"fmt"
-	"go-etl/model"
+	"github.com/exvulsec/skyeye/model"
 	"net/http"
 	"strings"
 

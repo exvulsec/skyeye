@@ -1,4 +1,4 @@
-package policy
+package model
 
 import (
 	"fmt"
@@ -7,8 +7,7 @@ import (
 	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/sirupsen/logrus"
 
-	"go-etl/config"
-	"go-etl/model"
+	"github.com/exvulsec/skyeye/config"
 )
 
 func TestHeimdallPolicyCalc(t *testing.T) {
@@ -17,7 +16,7 @@ func TestHeimdallPolicyCalc(t *testing.T) {
 	if err != nil {
 		logrus.Fatal(err)
 	}
-	tx := model.SkyEyeTransaction{
+	tx := SkyEyeTransaction{
 		ContractAddress: "0x58e3b3ac35351d3f3a51e7d63216a279662377e0",
 		ByteCode:        data,
 	}

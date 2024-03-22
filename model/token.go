@@ -12,11 +12,11 @@ import (
 	"github.com/shopspring/decimal"
 	"github.com/sirupsen/logrus"
 
-	"go-etl/client"
-	"go-etl/config"
-	"go-etl/datastore"
-	"go-etl/model/erc20"
-	"go-etl/utils"
+	"github.com/exvulsec/skyeye/client"
+	"github.com/exvulsec/skyeye/config"
+	"github.com/exvulsec/skyeye/datastore"
+	"github.com/exvulsec/skyeye/model/erc20"
+	"github.com/exvulsec/skyeye/utils"
 )
 
 type Token struct {

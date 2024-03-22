@@ -6,7 +6,7 @@ import (
 	"github.com/ethereum/go-ethereum/rpc"
 	"github.com/sirupsen/logrus"
 
-	"go-etl/config"
+	"github.com/exvulsec/skyeye/config"
 )
 
 type RPCBatchClient struct {

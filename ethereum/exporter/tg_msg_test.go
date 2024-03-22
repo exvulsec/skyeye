@@ -7,8 +7,8 @@ import (
 	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/sirupsen/logrus"
 
-	"go-etl/config"
-	"go-etl/model"
+	"github.com/exvulsec/skyeye/config"
+	"github.com/exvulsec/skyeye/model"
 )
 
 func TestNastiffTransactionExporter_SendToTelegram(t *testing.T) {

@@ -1,10 +1,8 @@
-package policy
-
-import "go-etl/model"
+package model
 
 type ByteCodePolicyCalc struct{}
 
-func (bpc *ByteCodePolicyCalc) Calc(tx *model.SkyEyeTransaction) int {
+func (bpc *ByteCodePolicyCalc) Calc(tx *SkyEyeTransaction) int {
 	if len(tx.ByteCode) == 0 || len(tx.ByteCode[2:]) < 500 {
 		return 0
 	}
@@ -15,6 +13,6 @@ func (bpc *ByteCodePolicyCalc) Name() string {
 	return "ByteCode"
 }
 
-func (bpc *ByteCodePolicyCalc) Filter(tx *model.SkyEyeTransaction) bool {
+func (bpc *ByteCodePolicyCalc) Filter(tx *SkyEyeTransaction) bool {
 	return false
 }

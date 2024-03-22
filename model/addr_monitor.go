@@ -3,8 +3,8 @@ package model
 import (
 	"github.com/sirupsen/logrus"
 
-	"go-etl/datastore"
-	"go-etl/utils"
+	"github.com/exvulsec/skyeye/datastore"
+	"github.com/exvulsec/skyeye/utils"
 )
 
 type MonitorAddr struct {

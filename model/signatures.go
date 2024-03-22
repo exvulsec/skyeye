@@ -10,10 +10,10 @@ import (
 
 	"github.com/sirupsen/logrus"
 
-	"go-etl/client"
-	"go-etl/config"
-	"go-etl/datastore"
-	"go-etl/utils"
+	"github.com/exvulsec/skyeye/client"
+	"github.com/exvulsec/skyeye/config"
+	"github.com/exvulsec/skyeye/datastore"
+	"github.com/exvulsec/skyeye/utils"
 )
 
 type OpenChainResponse struct {

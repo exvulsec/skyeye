@@ -5,7 +5,7 @@ import (
 
 	"github.com/sirupsen/logrus"
 
-	"go-etl/model"
+	"github.com/exvulsec/skyeye/model"
 )
 
 type TransactionPostgresqlExporter struct {
