@@ -1,25 +1,23 @@
 package model
 
 import (
-	"context"
+	"encoding/json"
+	"fmt"
 	"math/big"
+	"strconv"
 	"strings"
+	"time"
 
 	mapset "github.com/deckarep/golang-set/v2"
 	"github.com/ethereum/go-ethereum/accounts/abi"
-	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/shopspring/decimal"
+	"github.com/sirupsen/logrus"
+	"github.com/slack-go/slack"
 
-	"github.com/exvulsec/skyeye/client"
+	"github.com/exvulsec/skyeye/config"
+	"github.com/exvulsec/skyeye/utils"
 )
-
-type AssetTransfer struct {
-	From    string
-	To      string
-	Value   decimal.Decimal
-	Address string
-}
 
 const (
 	TransferTopic     = "0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef"
@@ -44,7 +42,33 @@ type Asset struct {
 	TotalUSD decimal.Decimal `json:"total_usd"`
 }
 
+type Event map[string]any
+
 type Assets []Asset
+
+type AssetTransfer struct {
+	From    string
+	To      string
+	Value   decimal.Decimal
+	Address string
+}
+
+type AssetTransfers []AssetTransfer
+
+func (ats *AssetTransfers) compose(logs []*types.Log, trace TransactionTrace) {
+	for _, l := range logs {
+		assetTransfer := AssetTransfer{}
+		err := assetTransfer.Decode(*l)
+		if err != nil {
+			logrus.Error(err)
+			return
+		}
+		if assetTransfer.Address != "" {
+			*ats = append(*ats, assetTransfer)
+		}
+	}
+	*ats = append(*ats, trace.ListTransferEvent()...)
+}
 
 func (a *AssetTransfer) Decode(log types.Log) error {
 	eventAbi, err := abi.JSON(strings.NewReader(ABIs))
@@ -91,8 +115,8 @@ func (a *AssetTransfer) DecodeEvent(topic string, event map[string]any, log type
 	}
 }
 
-func (a *AssetTransfer) DecodeTransfer(event map[string]any, log types.Log) {
-	if mapKeyExist(event, "from") && mapKeyExist(event, "to") {
+func (a *AssetTransfer) DecodeTransfer(event Event, log types.Log) {
+	if event.mapKeyExist("from") && event.mapKeyExist("to") {
 		a.From = convertAddress(event["from"].(string))
 		a.To = convertAddress(event["to"].(string))
 	} else {
@@ -103,8 +127,8 @@ func (a *AssetTransfer) DecodeTransfer(event map[string]any, log types.Log) {
 	a.Address = strings.ToLower(log.Address.String())
 }
 
-func (a *AssetTransfer) DecodeWithdrawal(event map[string]any, log types.Log) {
-	if mapKeyExist(event, "src") {
+func (a *AssetTransfer) DecodeWithdrawal(event Event, log types.Log) {
+	if event.mapKeyExist("src") {
 		a.From = convertAddress(event["src"].(string))
 	} else {
 		a.From = convertAddress(log.Topics[1].String())
@@ -113,8 +137,8 @@ func (a *AssetTransfer) DecodeWithdrawal(event map[string]any, log types.Log) {
 	a.Address = strings.ToLower(log.Address.String())
 }
 
-func (a *AssetTransfer) DecodeDeposit(event map[string]any, log types.Log) {
-	if mapKeyExist(event, "dst") {
+func (a *AssetTransfer) DecodeDeposit(event Event, log types.Log) {
+	if event.mapKeyExist("dst") {
 		a.To = convertAddress(event["dst"].(string))
 	} else {
 		a.To = convertAddress(log.Topics[1].String())
@@ -139,16 +163,31 @@ func (abs *AssetBalances) SetBalanceValue(address, token string, value decimal.D
 	}
 }
 
-func (abs *AssetBalances) calcBalance(transfers []AssetTransfer) {
+func (abs *AssetBalances) calcBalance(transfers []AssetTransfer, focuses []string) {
 	for _, transfer := range transfers {
 		if !transfer.Value.Equal(decimal.Decimal{}) {
 			abs.SetBalanceValue(transfer.From, transfer.Address, transfer.Value.Mul(decimal.NewFromInt(-1)))
 			abs.SetBalanceValue(transfer.To, transfer.Address, transfer.Value)
 		}
 	}
+	abs.filterBalance(focuses)
 }
 
-func (abs *AssetBalances) filterEmptyBalance() {
+func checkAddressExisted(focuses []string, address string) bool {
+	for _, focus := range focuses {
+		if strings.EqualFold(address, focus) {
+			return true
+		}
+	}
+	return false
+}
+
+func (abs *AssetBalances) filterBalance(focuses []string) {
+	for address := range *abs {
+		if !checkAddressExisted(focuses, address) {
+			delete(*abs, address)
+		}
+	}
 	for address, tokens := range *abs {
 		for tokenAddr, value := range tokens {
 			if value.Equal(decimal.Decimal{}) {
@@ -161,7 +200,7 @@ func (abs *AssetBalances) filterEmptyBalance() {
 	}
 }
 
-func (abs *AssetBalances) ListPrices(chain string) (map[string]Token, error) {
+func (abs *AssetBalances) ListPrices() (map[string]Token, error) {
 	set := mapset.NewSet[string]()
 	for address, tokens := range *abs {
 		for tokenAddr := range tokens {
@@ -169,7 +208,7 @@ func (abs *AssetBalances) ListPrices(chain string) (map[string]Token, error) {
 		}
 		(*abs)[address] = tokens
 	}
-	tokens, err := UpdateTokensPrice(chain, set.ToSlice())
+	tokens, err := UpdateTokensPrice(config.Conf.ETL.Chain, set.ToSlice())
 	if err != nil {
 		return nil, err
 	}
@@ -180,28 +219,8 @@ func (abs *AssetBalances) ListPrices(chain string) (map[string]Token, error) {
 	return tokenMaps, nil
 }
 
-func (abs *AssetBalances) enrich(chain string) error {
-	tokensWithPrice, err := abs.ListPrices(chain)
-	if err != nil {
-		return err
-	}
-	assets := Assets{}
-	for address, tokens := range *abs {
-		asset := Asset{Address: address, TotalUSD: decimal.Decimal{}}
-		assetTokens := []Token{}
-		for tokenAddr, value := range tokens {
-			token := tokensWithPrice[tokenAddr]
-			token.Value = token.GetValueWithDecimals(value)
-			assetTokens = append(assetTokens, token)
-			asset.TotalUSD.Add(token.Value.Mul(*token.Price))
-		}
-		assets = append(assets, asset)
-	}
-	return nil
-}
-
-func mapKeyExist(m map[string]interface{}, key string) bool {
-	_, ok := m[key]
+func (e *Event) mapKeyExist(key string) bool {
+	_, ok := (*e)[key]
 	return ok
 }
 
@@ -214,21 +233,63 @@ func convertAddress(origin string) string {
 	return origin
 }
 
-func GenerateLogs(chain, txHash string) []AssetTransfer {
-	assetTransfers := []AssetTransfer{}
-	r, err := client.MultiEvmClient()[chain].TransactionReceipt(context.TODO(), common.HexToHash(txHash))
+func (as *Assets) analysisAssetTransfers(assetTransfers AssetTransfers, focuses []string) error {
+	balances := AssetBalances{}
+	balances.calcBalance(assetTransfers, focuses)
+	tokensWithPrice, err := balances.ListPrices()
 	if err != nil {
-		panic(err)
+		return err
 	}
-	for _, l := range r.Logs {
-		assetTransfer := AssetTransfer{}
-		err := assetTransfer.Decode(*l)
-		if err != nil {
-			panic(err)
+	for address, tokens := range balances {
+		asset := Asset{Address: address, TotalUSD: decimal.Decimal{}}
+		assetTokens := []Token{}
+
+		for tokenAddr, value := range tokens {
+			token := tokensWithPrice[tokenAddr]
+			token.Value = token.GetValueWithDecimals(value)
+			assetTokens = append(assetTokens, token)
+			asset.TotalUSD.Add(token.Value.Mul(*token.Price))
 		}
-		if assetTransfer.Address != "" {
-			assetTransfers = append(assetTransfers, assetTransfer)
-		}
+		*as = append(*as, asset)
 	}
-	return assetTransfers
+	return nil
+}
+
+func (as *Assets) composeMsg() string {
+	chain := config.Conf.ETL.Chain
+	scanURL := utils.GetScanURL(chain)
+	text := fmt.Sprintf("*Chain:* `%s`\n", strings.ToUpper(chain))
+	text += fmt.Sprintf("*Block:* `%d`\n", st.BlockNumber)
+	text += fmt.Sprintf("*Contract:* <%s|%s>\n", fmt.Sprintf("%s/address/%s", utils.GetScanURL(chain), st.ContractAddress), st.ContractAddress)
+	text += fmt.Sprintf("*Funcs:* `%s`\n", strings.Join(st.Push4Args, ","))
+	text += fmt.Sprintf("*Address Labels:* `%s`\n", strings.Join(st.Push20Args, ","))
+	text += fmt.Sprintf("*Emit Logs:* `%s`\n", strings.Join(st.PushStringLogs, ","))
+
+	text += fmt.Sprintf("*TXhash:* <%s|%s>\n", fmt.Sprintf("%s/tx/%s", scanURL, st.TxHash), st.TxHash)
+	text += fmt.Sprintf("*DateTime:* `%s UTC`\n", time.Unix(st.BlockTimestamp, 0).Format(time.DateTime))
+
+	text += fmt.Sprintf("*Fund:* `%s`\n", st.Fund)
+	text += fmt.Sprintf("*Deployer:* <%s|%s>\n", fmt.Sprintf("%s/address/%s", utils.GetScanURL(chain), st.FromAddress), st.FromAddress)
+	text += fmt.Sprintf("*CodeSize:* `%d`\n", len(st.ByteCode))
+	text += fmt.Sprintf("*Split Scores:* `%s`\n", st.SplitScores)
+	return text
+}
+
+func (as *Assets) SendMessageToSlack() error {
+	summary := fmt.Sprintf("⚠️Detected a suspected risk transactionon %s, score %d ⚠️\n", strings.ToUpper(config.Conf.ETL.Chain), st.Score)
+	attachment := slack.Attachment{
+		Color:      "warning",
+		AuthorName: "EXVul",
+		Fallback:   summary,
+		Text:       summary + as.composeMsg(),
+		Footer:     fmt.Sprintf("skyeye-on-%s", config.Conf.ETL.Chain),
+		Ts:         json.Number(strconv.FormatInt(time.Now().Unix(), 10)),
+	}
+	msg := slack.WebhookMessage{
+		Attachments: []slack.Attachment{attachment},
+	}
+	return slack.PostWebhook(config.Conf.ETL.SlackWebHook, &msg)
+}
+
+func (as *Assets) alert() {
 }

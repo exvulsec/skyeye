@@ -11,8 +11,7 @@ import (
 	"github.com/exvulsec/skyeye/utils"
 )
 
-type MonitorController struct {
-}
+type MonitorController struct{}
 
 func (mc *MonitorController) Routers(routers gin.IRouter) {
 	routers.POST("/monitoring", mc.AppendMonitorAddress)

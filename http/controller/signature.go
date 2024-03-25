@@ -2,15 +2,15 @@ package controller
 
 import (
 	"fmt"
-	"github.com/exvulsec/skyeye/model"
 	"net/http"
 	"strings"
 
 	"github.com/gin-gonic/gin"
+
+	"github.com/exvulsec/skyeye/model"
 )
 
-type SignatureController struct {
-}
+type SignatureController struct{}
 
 func (sc *SignatureController) Routers(routers gin.IRouter) {
 	routers.GET("/signatures/:bytesign", sc.GetSignatureByByteSign)

@@ -1,8 +1,11 @@
 package model
 
 import (
+	"strings"
+
 	"github.com/sirupsen/logrus"
 
+	"github.com/exvulsec/skyeye/config"
 	"github.com/exvulsec/skyeye/datastore"
 	"github.com/exvulsec/skyeye/utils"
 )
@@ -14,8 +17,11 @@ type MonitorAddr struct {
 	Description string `json:"description" gorm:"column:description"`
 }
 
+type MonitorAddrs []MonitorAddr
+
+var tableName = utils.ComposeTableName(datastore.SchemaPublic, datastore.TableMonitorAddrs)
+
 func (ma *MonitorAddr) Create() error {
-	tableName := utils.ComposeTableName(datastore.SchemaPublic, datastore.TableMonitorAddrs)
 	if ma.Exist() {
 		return nil
 	}
@@ -23,7 +29,6 @@ func (ma *MonitorAddr) Create() error {
 }
 
 func (ma *MonitorAddr) Get(chain, address string) error {
-	tableName := utils.ComposeTableName(datastore.SchemaPublic, datastore.TableMonitorAddrs)
 	return datastore.DB().Table(tableName).
 		Where("chain = ?", chain).
 		Where("address = ?", address).
@@ -31,7 +36,6 @@ func (ma *MonitorAddr) Get(chain, address string) error {
 }
 
 func (ma *MonitorAddr) Exist() bool {
-	tableName := utils.ComposeTableName(datastore.SchemaPublic, datastore.TableMonitorAddrs)
 	err := datastore.DB().Table(tableName).
 		Where("chain = ?", ma.Chain).
 		Where("address = ?", ma.Address).
@@ -44,9 +48,21 @@ func (ma *MonitorAddr) Exist() bool {
 }
 
 func (ma *MonitorAddr) Delete() error {
-	tableName := utils.ComposeTableName(datastore.SchemaPublic, datastore.TableMonitorAddrs)
 	return datastore.DB().Table(tableName).
 		Where("chain = ?", ma.Chain).
 		Where("address = ?", ma.Address).
 		Delete(nil).Error
+}
+
+func (mas *MonitorAddrs) List() error {
+	return datastore.DB().Table(tableName).
+		Where("chain = ?", config.Conf.ETL.Chain).
+		Find(mas).Error
+}
+
+func (mas *MonitorAddrs) Existed(addr string) bool {
+	for _, monitorAddr := range *mas {
+		return strings.EqualFold(monitorAddr.Address, addr)
+	}
+	return false
 }

@@ -3,7 +3,7 @@ package datastore
 import (
 	"sync"
 
-	"github.com/redis/go-redis/v9"
+	redis "github.com/redis/go-redis/v9"
 
 	"github.com/exvulsec/skyeye/config"
 )

@@ -35,7 +35,7 @@ func (tc *TXController) ReviewedCompose(st *model.SkyEyeTransaction, searchFund 
 		&model.ContractTypePolicyCalc{},
 		&model.Push4PolicyCalc{FlashLoanFuncNames: model.LoadFlashLoanFuncNames()},
 		&model.Push20PolicyCalc{},
-		&model.FundPolicyCalc{IsNastiff: searchFund},
+		&model.FundPolicyCalc{NeedFund: searchFund},
 	}
 	splitScores := []string{}
 	totalScore := 0
@@ -110,7 +110,6 @@ func (tc *TXController) Reviewed(c *gin.Context) {
 		}
 
 		st := model.SkyEyeTransaction{
-			Chain:           chain,
 			FromAddress:     contractAddress,
 			ContractAddress: contractAddress,
 			ByteCode:        code,
@@ -165,7 +164,6 @@ func (tc *TXController) Reviewed(c *gin.Context) {
 	}
 
 	st := model.SkyEyeTransaction{
-		Chain:           chain,
 		BlockNumber:     block.Number().Int64(),
 		BlockTimestamp:  int64(block.Time()),
 		TxHash:          tx.Hash().String(),

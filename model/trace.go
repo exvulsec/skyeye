@@ -3,7 +3,14 @@ package model
 import (
 	"strings"
 
+	"github.com/ethereum/go-ethereum/common/hexutil"
+	"github.com/shopspring/decimal"
+
 	"github.com/exvulsec/skyeye/config"
+)
+
+const (
+	EVMPlatformCurrency = "0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee"
 )
 
 type TransactionTraceBase struct {
@@ -70,9 +77,39 @@ func (trace *TransactionTrace) ListContracts() []string {
 			call.Depth = append(txTrace.Depth, index)
 			queue.Push(call)
 		}
-
 	}
 	return contracts
+}
+
+func (trace *TransactionTrace) ListTransferEvent() []AssetTransfer {
+	assetTransfers := []AssetTransfer{}
+	queue := Queue{}
+	queue.Push(*trace)
+	for {
+		if queue.IsEmpty() {
+			break
+		}
+		trace := queue.Pop()
+		if trace != nil {
+			if !strings.EqualFold(trace.Value, "0x0") && trace.Value != "" {
+				value, err := hexutil.DecodeBig(trace.Value)
+				if err != nil {
+					panic(err)
+				}
+				newValue := decimal.NewFromBigInt(value, 0)
+				assetTransfers = append(assetTransfers, AssetTransfer{
+					From:    trace.From,
+					To:      trace.To,
+					Address: EVMPlatformCurrency,
+					Value:   newValue,
+				})
+			}
+		}
+		for _, call := range trace.Calls {
+			queue.Push(call)
+		}
+	}
+	return assetTransfers
 }
 
 func (trace *TransactionTrace) FilterAddress(addr string) bool {

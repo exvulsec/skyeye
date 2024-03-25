@@ -14,6 +14,7 @@ import (
 )
 
 var dbInstance *DBInstance
+
 var pgxInstance *PGXInstance
 
 type DBInstance struct {

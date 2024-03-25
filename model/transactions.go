@@ -7,12 +7,11 @@ import (
 	"github.com/sirupsen/logrus"
 
 	"github.com/exvulsec/skyeye/datastore"
-	"github.com/exvulsec/skyeye/utils"
 )
 
 type Transactions []Transaction
 
-func (txs *Transactions) MonitorContractCreation() {
+func (txs *Transactions) analysisContracts() {
 	originTxs := Transactions{}
 	needEnrichTXs := Transactions{}
 	for _, tx := range *txs {
@@ -24,21 +23,31 @@ func (txs *Transactions) MonitorContractCreation() {
 	}
 	needEnrichTXs.enrichTxs()
 	for _, tx := range needEnrichTXs {
-		tx.EvaluateContractScore()
+		tx.analysisContract()
 	}
 	*txs = append(originTxs, needEnrichTXs...)
 }
 
-func (txs *Transactions) EvaluateContractCreation() {
-}
+func (txs *Transactions) EvaluateAssertTransfer(addrs MonitorAddrs) {
+	originTxs := Transactions{}
+	needMonitorTxs := Transactions{}
+	for _, tx := range *txs {
+		if !addrs.Existed(*tx.ToAddress) {
+			originTxs = append(originTxs, tx)
+			continue
+		}
+		needMonitorTxs = append(needMonitorTxs, tx)
+	}
 
-func (txs *Transactions) MonitorAssetTransfer() {
+	for _, tx := range needMonitorTxs {
+		tx.analysisTrace()
+	}
 }
 
 func (txs *Transactions) enrichTxs() {
 	for index, tx := range *txs {
 		tx.enrichReceipt()
-		tx.enrichTrace()
+		tx.getTrace()
 		(*txs)[index] = tx
 	}
 }
@@ -73,26 +82,4 @@ func (txs *Transactions) CreateBatchToDB(tableName string, batchSize int) {
 	if result.Error != nil {
 		logrus.Fatalf("insert tx into db is err %v", result.Error)
 	}
-}
-
-func (txs *Transactions) ListTransactionsWithFromAddress(tableName, address string) error {
-	result := datastore.DB().Table(tableName).
-		Where("from_address = ?", address).
-		Order("block_timestamp asc").
-		Find(txs)
-	return result.Error
-}
-
-func (txs *Transactions) FilterAssociatedAddrs(chain, fromAddr string, filterAddrs []string) error {
-	txList := Transactions{}
-	tableName := utils.ComposeTableName(chain, datastore.TableAssociatedTxs)
-	if err := txList.ListTransactionsWithFromAddress(tableName, fromAddr); err != nil {
-		return err
-	}
-	for index := range txList {
-		if txList[index].filterAddrs(filterAddrs) {
-			*txs = append(*txs, txList[index])
-		}
-	}
-	return nil
 }

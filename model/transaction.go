@@ -95,7 +95,7 @@ func (tx *Transaction) filterAddrs(addrs []string) bool {
 	return false
 }
 
-func (tx *Transaction) enrichTrace() {
+func (tx *Transaction) getTrace() {
 	var trace *TransactionTrace
 	fn := func(element any) (any, error) {
 		ctxWithTimeOut, cancel := context.WithTimeout(context.TODO(), 20*time.Second)
@@ -116,7 +116,7 @@ func (tx *Transaction) enrichTrace() {
 	tx.Trace = trace
 }
 
-func (tx *Transaction) EvaluateContractScore() {
+func (tx *Transaction) analysisContract() {
 	policies := []PolicyCalc{
 		&MultiContractCalc{},
 		&FundPolicyCalc{NeedFund: true},
@@ -145,7 +145,25 @@ func (tx *Transaction) EvaluateContractScore() {
 			Scores:          skyTx.Scores,
 			Fund:            skyTx.Fund,
 		}
-		newSkyTx.Evaluate()
-		newSkyTx.Alert()
+		newSkyTx.analysis()
+		newSkyTx.alert()
+	}
+}
+
+func (tx *Transaction) analysisTrace() {
+	if tx.Trace == nil {
+		tx.getTrace()
+	}
+	if tx.Receipt == nil {
+		tx.getReceipt()
+	}
+	focusesAddresses := []string{
+		tx.FromAddress,
+		*tx.ToAddress,
+	}
+	assetTransfers := AssetTransfers{}
+	assetTransfers.compose(tx.Receipt.Logs, *tx.Trace)
+	assets := Assets{}
+	if err := assets.analysisAssetTransfers(assetTransfers, focusesAddresses); err != nil {
 	}
 }

@@ -36,6 +36,7 @@ type ScanTransactionResponse struct {
 	ScanBaseResponse
 	Result []ScanTransaction `json:"result"`
 }
+
 type ScanTransaction struct {
 	TimestampString string `json:"timeStamp"`
 	Timestamp       int64  `json:"-"`

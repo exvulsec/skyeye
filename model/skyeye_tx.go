@@ -145,20 +145,20 @@ func (st *SkyEyeTransaction) GetInfoByContract(chain, contract string) error {
 	return datastore.DB().Table(tableName).Where("chain = ? AND contract_address = ?", chain, contract).Find(st).Error
 }
 
-func (st *SkyEyeTransaction) Evaluate() {
+func (st *SkyEyeTransaction) analysis() {
 	code, err := client.EvmClient().CodeAt(context.Background(), common.HexToAddress(st.ContractAddress), big.NewInt(st.BlockNumber))
 	if err != nil {
 		logrus.Errorf("get contract %s's bytecode is err %v ", st.ContractAddress, err)
 		return
 	}
 	st.ByteCode = code
-	if st.CalcContractByPolicies() {
+	if st.analysisContractByPolicies() {
 		return
 	}
 	st.SplitScores = strings.Join(st.Scores, ",")
 }
 
-func (st *SkyEyeTransaction) Alert() {
+func (st *SkyEyeTransaction) alert() {
 	if st.Score > config.Conf.ETL.ScoreAlertThreshold {
 		if err := st.SendMessageToSlack(); err != nil {
 			logrus.Errorf("send txhash %s's contract %s message to slack is err %v", st.TxHash, st.ContractAddress, err)
@@ -174,7 +174,7 @@ func (st *SkyEyeTransaction) Alert() {
 	}
 }
 
-func (st *SkyEyeTransaction) CalcContractByPolicies() bool {
+func (st *SkyEyeTransaction) analysisContractByPolicies() bool {
 	policies := []PolicyCalc{
 		&HeimdallPolicyCalc{},
 		&ByteCodePolicyCalc{},
