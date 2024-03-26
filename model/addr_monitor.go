@@ -19,24 +19,24 @@ type MonitorAddr struct {
 
 type MonitorAddrs []MonitorAddr
 
-var tableName = utils.ComposeTableName(datastore.SchemaPublic, datastore.TableMonitorAddrs)
+var monitorAddrTableName = utils.ComposeTableName(datastore.SchemaPublic, datastore.TableMonitorAddrs)
 
 func (ma *MonitorAddr) Create() error {
 	if ma.Exist() {
 		return nil
 	}
-	return datastore.DB().Table(tableName).Create(ma).Error
+	return datastore.DB().Table(monitorAddrTableName).Create(ma).Error
 }
 
 func (ma *MonitorAddr) Get(chain, address string) error {
-	return datastore.DB().Table(tableName).
+	return datastore.DB().Table(monitorAddrTableName).
 		Where("chain = ?", chain).
 		Where("address = ?", address).
 		Find(ma).Error
 }
 
 func (ma *MonitorAddr) Exist() bool {
-	err := datastore.DB().Table(tableName).
+	err := datastore.DB().Table(monitorAddrTableName).
 		Where("chain = ?", ma.Chain).
 		Where("address = ?", ma.Address).
 		Find(ma).Error
@@ -48,21 +48,23 @@ func (ma *MonitorAddr) Exist() bool {
 }
 
 func (ma *MonitorAddr) Delete() error {
-	return datastore.DB().Table(tableName).
+	return datastore.DB().Table(monitorAddrTableName).
 		Where("chain = ?", ma.Chain).
 		Where("address = ?", ma.Address).
 		Delete(nil).Error
 }
 
 func (mas *MonitorAddrs) List() error {
-	return datastore.DB().Table(tableName).
+	return datastore.DB().Table(monitorAddrTableName).
 		Where("chain = ?", config.Conf.ETL.Chain).
 		Find(mas).Error
 }
 
 func (mas *MonitorAddrs) Existed(addr string) bool {
 	for _, monitorAddr := range *mas {
-		return strings.EqualFold(monitorAddr.Address, addr)
+		if strings.EqualFold(monitorAddr.Address, addr) {
+			return true
+		}
 	}
 	return false
 }

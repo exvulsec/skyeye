@@ -13,6 +13,7 @@ import (
 	"github.com/sirupsen/logrus"
 
 	"github.com/exvulsec/skyeye/client"
+	"github.com/exvulsec/skyeye/config"
 	"github.com/exvulsec/skyeye/datastore"
 	"github.com/exvulsec/skyeye/utils"
 )
@@ -80,6 +81,7 @@ func (tx *Transaction) enrichReceipt() {
 	if tx.Receipt != nil {
 		if tx.ContractAddress != utils.ZeroAddress {
 			tx.ContractAddress = strings.ToLower(tx.Receipt.ContractAddress.String())
+			tx.ToAddress = &tx.ContractAddress
 		}
 		tx.TxPos = int64(tx.Receipt.TransactionIndex)
 		tx.TxStatus = int64(tx.Receipt.Status)
@@ -116,7 +118,7 @@ func (tx *Transaction) getTrace() {
 	tx.Trace = trace
 }
 
-func (tx *Transaction) analysisContract() {
+func (tx *Transaction) analysisContract(addrs *MonitorAddrs) {
 	policies := []PolicyCalc{
 		&MultiContractCalc{},
 		&FundPolicyCalc{NeedFund: true},
@@ -133,20 +135,23 @@ func (tx *Transaction) analysisContract() {
 		skyTx.Score += score
 	}
 	for _, contract := range skyTx.MultiContracts {
-		newSkyTx := SkyEyeTransaction{
-			BlockTimestamp:  skyTx.BlockTimestamp,
-			BlockNumber:     skyTx.BlockNumber,
-			TxHash:          skyTx.TxHash,
-			TxPos:           skyTx.TxPos,
-			FromAddress:     skyTx.FromAddress,
-			ContractAddress: contract,
-			Nonce:           skyTx.Nonce,
-			Score:           skyTx.Score,
-			Scores:          skyTx.Scores,
-			Fund:            skyTx.Fund,
+		contractTX := SkyEyeTransaction{
+			Chain:               skyTx.Chain,
+			BlockTimestamp:      skyTx.BlockTimestamp,
+			BlockNumber:         skyTx.BlockNumber,
+			TxHash:              skyTx.TxHash,
+			TxPos:               skyTx.TxPos,
+			FromAddress:         skyTx.FromAddress,
+			ContractAddress:     contract,
+			Nonce:               skyTx.Nonce,
+			Score:               skyTx.Score,
+			Scores:              skyTx.Scores,
+			Fund:                skyTx.Fund,
+			MonitorAddrs:        addrs,
+			MultiContractString: skyTx.MultiContractString,
 		}
-		newSkyTx.analysis()
-		newSkyTx.alert()
+		contractTX.analysis()
+		contractTX.alert()
 	}
 }
 
@@ -159,11 +164,28 @@ func (tx *Transaction) analysisTrace() {
 	}
 	focusesAddresses := []string{
 		tx.FromAddress,
-		*tx.ToAddress,
+	}
+	skyTx := SkyEyeTransaction{}
+	if err := skyTx.GetInfoByContract(config.Conf.ETL.Chain, *tx.ToAddress); err != nil {
+		logrus.Errorf("get skyeye tx info is err %v", err)
+	}
+	skyTx.MultiContracts = strings.Split(skyTx.MultiContractString, ",")
+	for _, contract := range skyTx.MultiContracts {
+		focusesAddresses = append(focusesAddresses, contract)
 	}
 	assetTransfers := AssetTransfers{}
 	assetTransfers.compose(tx.Receipt.Logs, *tx.Trace)
-	assets := Assets{}
-	if err := assets.analysisAssetTransfers(assetTransfers, focusesAddresses); err != nil {
+	assets := Assets{
+		BlockNumber:    tx.BlockNumber,
+		BlockTimestamp: tx.BlockTimestamp,
+		TxHash:         tx.TxHash,
+		ToAddress:      *tx.ToAddress,
+		Items:          []Asset{},
+		TotalUSD:       decimal.Decimal{},
 	}
+	if err := assets.analysisAssetTransfers(assetTransfers, focusesAddresses); err != nil {
+		logrus.Errorf("analysis asset transfer is err %v", err)
+		return
+	}
+	assets.alert()
 }

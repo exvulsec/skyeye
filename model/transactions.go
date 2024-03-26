@@ -11,37 +11,37 @@ import (
 
 type Transactions []Transaction
 
-func (txs *Transactions) analysisContracts() {
+func (txs *Transactions) AnalysisContracts(addrs MonitorAddrs) {
 	originTxs := Transactions{}
-	needEnrichTXs := Transactions{}
+	needAnalysisTxs := Transactions{}
 	for _, tx := range *txs {
 		if tx.ToAddress == nil {
-			needEnrichTXs = append(needEnrichTXs, tx)
+			needAnalysisTxs = append(needAnalysisTxs, tx)
 		} else {
 			originTxs = append(originTxs, tx)
 		}
 	}
-	needEnrichTXs.enrichTxs()
-	for _, tx := range needEnrichTXs {
-		tx.analysisContract()
+	needAnalysisTxs.enrichTxs()
+	for _, tx := range needAnalysisTxs {
+		tx.analysisContract(&addrs)
 	}
-	*txs = append(originTxs, needEnrichTXs...)
+	*txs = append(originTxs, needAnalysisTxs...)
 }
 
-func (txs *Transactions) EvaluateAssertTransfer(addrs MonitorAddrs) {
+func (txs *Transactions) AnalysisAssertTransfer(addrs MonitorAddrs) {
 	originTxs := Transactions{}
-	needMonitorTxs := Transactions{}
+	needAnalysisTxs := Transactions{}
 	for _, tx := range *txs {
-		if !addrs.Existed(*tx.ToAddress) {
+		if addrs.Existed(*tx.ToAddress) {
+			needAnalysisTxs = append(needAnalysisTxs, tx)
+		} else {
 			originTxs = append(originTxs, tx)
-			continue
 		}
-		needMonitorTxs = append(needMonitorTxs, tx)
 	}
-
-	for _, tx := range needMonitorTxs {
+	for _, tx := range needAnalysisTxs {
 		tx.analysisTrace()
 	}
+	*txs = append(originTxs, needAnalysisTxs...)
 }
 
 func (txs *Transactions) enrichTxs() {

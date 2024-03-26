@@ -47,6 +47,10 @@ func (te *TransactionExtractor) extractPreviousBlocks() {
 		previousBlockNumber = latestBlockNumber - 1
 	}
 	previousBlockNumber += 1
+	previousBlockNumber = 19515697
+	// previousBlockNumber = 19515669
+	latestBlockNumber = 19515698
+	// latestBlockNumber = 19515670
 	for previousBlockNumber < latestBlockNumber {
 		te.sendItemsToExporters(te.extractTransactionFromBlock(previousBlockNumber))
 		previousBlockNumber++
@@ -103,7 +107,7 @@ func (te *TransactionExtractor) extractTransactionFromBlock(blockNumber uint64) 
 	if block == nil {
 		return nil
 	}
-	logrus.Infof("extract %d transactions from block number %d", block.Transactions().Len(), blockNumber)
+	logrus.Infof("start to extract %d transactions from block %d", block.Transactions().Len(), blockNumber)
 	return te.convertTransactionFromBlock(block)
 }
 
@@ -131,7 +135,7 @@ func (te *TransactionExtractor) convertTransactionFromBlock(block *types.Block) 
 		}(index)
 	}
 	wg.Wait()
-	logrus.Infof("extract %d txs from block %d cost %.2fs",
+	logrus.Infof("extract %d transactions from block %d cost %.2fs",
 		len(block.Transactions()),
 		block.Number(),
 		time.Since(startTimestamp).Seconds())

@@ -1,9 +1,12 @@
 package model
 
+import "strings"
+
 type MultiContractCalc struct{}
 
 func (mcc *MultiContractCalc) Calc(tx *SkyEyeTransaction) int {
 	tx.MultiContracts = tx.Trace.ListContracts()
+	tx.MultiContractString = strings.Join(tx.MultiContracts, ",")
 	if len(tx.MultiContracts) > 1 {
 		return 60
 	}

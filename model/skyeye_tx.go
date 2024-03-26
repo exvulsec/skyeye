@@ -19,29 +19,35 @@ import (
 	"github.com/exvulsec/skyeye/utils"
 )
 
+var skyEyeTableName = utils.ComposeTableName(datastore.SchemaPublic, datastore.TableSkyEyeTransaction)
+
 type SkyEyeTransaction struct {
-	BlockTimestamp  int64             `json:"block_timestamp" gorm:"column:block_timestamp"`
-	BlockNumber     int64             `json:"block_number" gorm:"column:blknum"`
-	TxHash          string            `json:"txhash" gorm:"column:txhash"`
-	TxPos           int64             `json:"txpos" gorm:"column:txpos"`
-	FromAddress     string            `json:"from_address" gorm:"column:from_address"`
-	ContractAddress string            `json:"contract_address" gorm:"column:contract_address"`
-	MultiContracts  []string          `json:"multi_contracts" gorm:"-"`
-	Nonce           uint64            `json:"nonce" gorm:"column:nonce"`
-	Score           int               `json:"score" gorm:"column:score"`
-	Scores          []string          `json:"-" gorm:"-"`
-	SplitScores     string            `json:"split_scores" gorm:"column:split_scores"`
-	Values          []byte            `json:"-" gorm:"column:nastiff_values"`
-	Trace           *TransactionTrace `json:"-" gorm:"-"`
-	ByteCode        []byte            `json:"-" gorm:"-"`
-	Push4Args       []string          `json:"-" gorm:"-"`
-	Push20Args      []string          `json:"-" gorm:"-"`
-	Push32Args      []string          `json:"-" gorm:"-"`
-	PushStringLogs  []string          `json:"-" gorm:"-"`
-	Fund            string            `json:"-" gorm:"-"`
+	Chain               string            `json:"chain" gorm:"column:chain"`
+	BlockTimestamp      int64             `json:"block_timestamp" gorm:"column:block_timestamp"`
+	BlockNumber         int64             `json:"block_number" gorm:"column:blknum"`
+	TxHash              string            `json:"txhash" gorm:"column:txhash"`
+	TxPos               int64             `json:"txpos" gorm:"column:txpos"`
+	FromAddress         string            `json:"from_address" gorm:"column:from_address"`
+	ContractAddress     string            `json:"contract_address" gorm:"column:contract_address"`
+	MultiContracts      []string          `json:"multi_contracts" gorm:"-"`
+	MultiContractString string            `json:"-" gorm:"column:multi_contracts"`
+	Nonce               uint64            `json:"nonce" gorm:"column:nonce"`
+	Score               int               `json:"score" gorm:"column:score"`
+	Scores              []string          `json:"-" gorm:"-"`
+	SplitScores         string            `json:"split_scores" gorm:"column:split_scores"`
+	Values              []byte            `json:"-" gorm:"column:skyeye_values"`
+	Trace               *TransactionTrace `json:"-" gorm:"-"`
+	ByteCode            []byte            `json:"-" gorm:"-"`
+	Push4Args           []string          `json:"-" gorm:"-"`
+	Push20Args          []string          `json:"-" gorm:"-"`
+	Push32Args          []string          `json:"-" gorm:"-"`
+	PushStringLogs      []string          `json:"-" gorm:"-"`
+	Fund                string            `json:"-" gorm:"-"`
+	MonitorAddrs        *MonitorAddrs     `json:"-" gorm:"-"`
 }
 
 func (st *SkyEyeTransaction) ConvertFromTransaction(tx Transaction) {
+	st.Chain = config.Conf.ETL.Chain
 	st.BlockTimestamp = tx.BlockTimestamp
 	st.BlockNumber = tx.BlockNumber
 	st.TxHash = tx.TxHash
@@ -136,13 +142,11 @@ func (st *SkyEyeTransaction) Insert() error {
 			return fmt.Errorf("marhsal nastiffValues is err %v", err)
 		}
 	}
-	tableName := utils.ComposeTableName(datastore.SchemaPublic, datastore.TableNastiffTransaction)
-	return datastore.DB().Table(tableName).Create(st).Error
+	return datastore.DB().Table(skyEyeTableName).Create(st).Error
 }
 
 func (st *SkyEyeTransaction) GetInfoByContract(chain, contract string) error {
-	tableName := utils.ComposeTableName(datastore.SchemaPublic, datastore.TableNastiffTransaction)
-	return datastore.DB().Table(tableName).Where("chain = ? AND contract_address = ?", chain, contract).Find(st).Error
+	return datastore.DB().Table(skyEyeTableName).Where("chain = ? AND contract_address = ?", chain, contract).Find(st).Error
 }
 
 func (st *SkyEyeTransaction) analysis() {
@@ -166,11 +170,11 @@ func (st *SkyEyeTransaction) alert() {
 		if err := st.MonitorContractAddress(); err != nil {
 			logrus.Error(err)
 		}
-	}
-	logrus.Infof("start to insert tx %s's contract %s to db", st.TxHash, st.ContractAddress)
-	if err := st.Insert(); err != nil {
-		logrus.Errorf("insert txhash %s's contract %s to db is err %v", st.TxHash, st.ContractAddress, err)
-		return
+		logrus.Infof("insert tx %s's contract %s to %s", st.TxHash, st.ContractAddress, skyEyeTableName)
+		if err := st.Insert(); err != nil {
+			logrus.Errorf("insert txhash %s's contract %s to %s is err %v", st.TxHash, st.ContractAddress, skyEyeTableName, err)
+			return
+		}
 	}
 }
 
@@ -204,6 +208,7 @@ func (st *SkyEyeTransaction) MonitorContractAddress() error {
 	if err := monitorAddr.Create(); err != nil {
 		return fmt.Errorf("create monitor address chain %s address %s is err %v", config.Conf.ETL.Chain, st.ContractAddress, err)
 	}
+	*st.MonitorAddrs = append(*st.MonitorAddrs, monitorAddr)
 	return nil
 }
 
@@ -281,5 +286,5 @@ func (st *SkyEyeTransaction) SendMessageToSlack() error {
 	msg := slack.WebhookMessage{
 		Attachments: []slack.Attachment{attachment},
 	}
-	return slack.PostWebhook(config.Conf.ETL.SlackWebHook, &msg)
+	return slack.PostWebhook(config.Conf.ETL.SlackContractWebHook, &msg)
 }

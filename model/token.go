@@ -20,14 +20,14 @@ import (
 )
 
 type Token struct {
-	ID        *int64           `json:"id" gorm:"column:id"`
-	Address   string           `json:"address" gorm:"column:address"`
-	Name      string           `json:"name" gorm:"column:name"`
-	Symbol    string           `json:"symbol" gorm:"column:symbol"`
-	Decimals  int64            `json:"decimals" gorm:"column:decimals"`
-	Value     decimal.Decimal  `json:"value" gorm:"column:-"`
-	Price     *decimal.Decimal `json:"price" gorm:"column:price"`
-	UpdatedAt time.Time        `json:"updated_at" gorm:"column:updated_at"`
+	ID        *int64           `json:"-" gorm:"column:id"`
+	Address   string           `json:"-" gorm:"column:address"`
+	Name      string           `json:"-" gorm:"column:name"`
+	Symbol    string           `json:"-" gorm:"column:symbol"`
+	Decimals  int64            `json:"-" gorm:"column:decimals"`
+	Value     decimal.Decimal  `json:"value" gorm:"-"`
+	Price     *decimal.Decimal `json:"-" gorm:"column:price"`
+	UpdatedAt time.Time        `json:"-" gorm:"column:updated_at"`
 }
 
 type Tokens []Token
@@ -108,27 +108,31 @@ func UpdateTokensPrice(chain string, tokenAddrs []string) (Tokens, error) {
 				return nil, err
 			}
 		}
-		if token.Price != nil && time.Since(token.UpdatedAt) > time.Hour {
+		if token.Price == nil || time.Since(token.UpdatedAt) > time.Hour {
 			updateTokens = append(updateTokens, token)
 		} else {
 			tokens = append(tokens, token)
 		}
 	}
-	prices, err := updateTokens.GetCoinGeCkoPrices()
-	if err != nil {
-		return nil, err
-	}
-	for index, token := range updateTokens {
-		if price, ok := prices[token.Address]; ok {
-			p := price["usd"]
-			token.Price = &p
-			updateTokens[index] = token
-			if err := token.Update(chain); err != nil {
-				logrus.Errorf("update token %s to db is err %v", token.Address, err)
-				continue
+
+	if len(updateTokens) > 0 {
+		prices, err := updateTokens.GetCoinGeCkoPrices()
+		if err != nil {
+			return nil, err
+		}
+		for index, token := range updateTokens {
+			if price, ok := prices[token.Address]; ok {
+				usdPrice := price["usd"]
+				token.Price = &usdPrice
+				updateTokens[index] = token
+				if err := token.Update(chain); err != nil {
+					logrus.Errorf("update token %s to db is err %v", token.Address, err)
+					continue
+				}
 			}
 		}
 	}
+
 	tokens = append(tokens, updateTokens...)
 
 	return tokens, nil
