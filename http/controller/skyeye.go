@@ -3,7 +3,6 @@ package controller
 import (
 	"fmt"
 	"net/http"
-	"strings"
 
 	"github.com/gin-gonic/gin"
 
@@ -38,22 +37,4 @@ func (sc *SkyEyeController) GetLatestBlockNumber(c *gin.Context) {
 	text += fmt.Sprintf("SkyEye processed block number: `%d`\n", stx.BlockNumber)
 
 	c.String(http.StatusOK, text)
-}
-
-func (sc *SkyEyeController) GetScoreFromByteCode(skyTx *model.SkyEyeTransaction) {
-	policies := []model.PolicyCalc{
-		&model.ByteCodePolicyCalc{},
-		&model.ContractTypePolicyCalc{},
-		&model.Push4PolicyCalc{FlashLoanFuncNames: model.FuncNameList},
-		&model.Push20PolicyCalc{},
-	}
-	splitScores := []string{}
-	totalScore := 0
-	for _, p := range policies {
-		score := p.Calc(skyTx)
-		splitScores = append(splitScores, fmt.Sprintf("%s: %d", p.Name(), score))
-		totalScore += score
-	}
-	skyTx.Score = totalScore
-	skyTx.SplitScores = strings.Join(splitScores, " ")
 }

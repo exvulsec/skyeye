@@ -180,13 +180,13 @@ func (st *SkyEyeTransaction) alert() {
 
 func (st *SkyEyeTransaction) analysisContractByPolicies() bool {
 	policies := []PolicyCalc{
-		&HeimdallPolicyCalc{},
 		&ByteCodePolicyCalc{},
 		&ContractTypePolicyCalc{},
 		&Push4PolicyCalc{
-			FlashLoanFuncNames: LoadFlashLoanFuncNames(),
+			FlashLoanFuncNames: FuncNameList,
 		},
 		&Push20PolicyCalc{},
+		&HeimdallPolicyCalc{},
 	}
 	for _, p := range policies {
 		if p.Filter(st) {
