@@ -33,7 +33,7 @@ func (tc *TXController) ReviewedCompose(st *model.SkyEyeTransaction, searchFund 
 		&model.NoncePolicyCalc{},
 		&model.ByteCodePolicyCalc{},
 		&model.ContractTypePolicyCalc{},
-		&model.Push4PolicyCalc{FlashLoanFuncNames: model.LoadFlashLoanFuncNames()},
+		&model.Push4PolicyCalc{FlashLoanFuncNames: model.FuncNameList},
 		&model.Push20PolicyCalc{},
 		&model.FundPolicyCalc{NeedFund: searchFund},
 	}

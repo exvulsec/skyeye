@@ -1,10 +1,13 @@
 package cmd
 
 import (
+	"os"
+
+	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 
 	"github.com/exvulsec/skyeye/config"
-	"github.com/exvulsec/skyeye/ethereum"
+	"github.com/exvulsec/skyeye/extractor"
 	"github.com/exvulsec/skyeye/log"
 )
 
@@ -13,19 +16,16 @@ var skyeyeCmd = &cobra.Command{
 	Short: "watch the risk transaction on the chain",
 	Run: func(cmd *cobra.Command, args []string) {
 		configFile, _ := cmd.Flags().GetString("config")
-		config.SetupConfig(configFile)
+		if configFile != "" {
+			if err := os.Setenv("CONFIG_PATH", configFile); err != nil {
+				logrus.Panicf("set CONFIG_PATH's value to envoriment is err %v", err)
+			}
+		}
 		log.InitLog(config.Conf.ETL.LogPath)
 
 		workers, _ := cmd.Flags().GetInt("workers")
-		chain, _ := cmd.Flags().GetString("chain")
-		openAPIServer, _ := cmd.Flags().GetString("openapi_server")
-		topicString, _ := cmd.Flags().GetString("topics")
-		blockExecutor := ethereum.NewBlockExecutor(chain)
-		var logExecutor ethereum.Executor
-		if topicString != "" {
-			logExecutor = ethereum.NewLogExecutor(chain, workers, ethereum.ConvertTopicsFromString(topicString))
-		}
-		executor := ethereum.NewTransactionExecutor(blockExecutor, logExecutor, chain, openAPIServer, workers, true)
+
+		executor := extractor.NewTransactionExtractor(workers)
 		executor.Run()
 	},
 }

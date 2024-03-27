@@ -47,10 +47,6 @@ func (te *TransactionExtractor) extractPreviousBlocks() {
 		previousBlockNumber = latestBlockNumber - 1
 	}
 	previousBlockNumber += 1
-	previousBlockNumber = 19515697
-	// previousBlockNumber = 19515669
-	latestBlockNumber = 19515698
-	// latestBlockNumber = 19515670
 	for previousBlockNumber < latestBlockNumber {
 		te.sendItemsToExporters(te.extractTransactionFromBlock(previousBlockNumber))
 		previousBlockNumber++

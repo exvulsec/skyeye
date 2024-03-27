@@ -19,6 +19,13 @@ import (
 	"github.com/exvulsec/skyeye/utils"
 )
 
+const (
+	WETHAddress    = "0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2"
+	WBNBAddress    = "0xbb4cdb9cbd36b01bd1cbaebf2de08d9173bc095c"
+	ARBWETHAddress = "0x82af49447d8a07e3bd95bd0d56f35241523fbab1"
+	WAVAXAddress   = "0xb31f66aa3c1e785363f0875a1b74e27b85fd66c7"
+)
+
 type Token struct {
 	ID        *int64           `json:"-" gorm:"column:id"`
 	Address   string           `json:"-" gorm:"column:address"`
@@ -121,7 +128,7 @@ func UpdateTokensPrice(chain string, tokenAddrs []string) (Tokens, error) {
 			return nil, err
 		}
 		for index, token := range updateTokens {
-			if price, ok := prices[token.Address]; ok {
+			if price, ok := prices[token.WrapperCurrencyAddress()]; ok {
 				usdPrice := price["usd"]
 				token.Price = &usdPrice
 				updateTokens[index] = token
@@ -142,7 +149,7 @@ func (ts *Tokens) GetCoinGeCkoPrices() (map[string]map[string]decimal.Decimal, e
 	baseURL := `https://api.coingecko.com/api/v3/simple/token_price/%s?contract_addresses=%s&vs_currencies=usd`
 	tokenAddrs := []string{}
 	for _, token := range *ts {
-		tokenAddrs = append(tokenAddrs, token.Address)
+		tokenAddrs = append(tokenAddrs, token.WrapperCurrencyAddress())
 	}
 	url := fmt.Sprintf(baseURL, utils.ConvertChainToCGCID(config.Conf.ETL.Chain), strings.Join(tokenAddrs, ","))
 	req, _ := http.NewRequest("GET", url, nil)
@@ -159,4 +166,20 @@ func (ts *Tokens) GetCoinGeCkoPrices() (map[string]map[string]decimal.Decimal, e
 		return nil, fmt.Errorf("unmarshal price map is err %v", err)
 	}
 	return priceMaps, nil
+}
+
+func (t *Token) WrapperCurrencyAddress() string {
+	if t.Address == EVMPlatformCurrency {
+		switch strings.ToLower(config.Conf.ETL.Chain) {
+		case utils.ChainEthereum, utils.ChainEth:
+			return WETHAddress
+		case utils.ChainBSC:
+			return WBNBAddress
+		case utils.ChainArbitrum:
+			return ARBWETHAddress
+		case utils.ChainAvalanche:
+			return WAVAXAddress
+		}
+	}
+	return t.Address
 }

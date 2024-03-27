@@ -16,6 +16,32 @@ import (
 	"github.com/exvulsec/skyeye/utils"
 )
 
+var FuncNameList []string
+
+func init() {
+	funcNameList := []string{}
+	f, err := os.Open(config.Conf.ETL.FlashLoanFile)
+	if err != nil {
+		logrus.Fatalf("read flash loan config file %s is err %v", config.Conf.ETL.FlashLoanFile, err)
+	}
+	defer f.Close()
+	scanner := bufio.NewScanner(f)
+	for scanner.Scan() {
+		if scanner.Text() != "" {
+			funcNames := strings.Split(scanner.Text(), "(")
+			if len(funcNames) > 0 {
+				funcNameList = append(funcNameList, funcNames[0])
+			}
+		}
+	}
+
+	if err := scanner.Err(); err != nil {
+		logrus.Fatalf("read flash loan function names is err %v", err)
+	}
+
+	FuncNameList = mapset.NewSet[string](funcNameList...).ToSlice()
+}
+
 type PolicyCalc interface {
 	Calc(transaction *SkyEyeTransaction) int
 	Name() string
@@ -131,28 +157,4 @@ func GetPush20Args(chain string, args []string) []string {
 		labelAddrs = append(labelAddrs, fmt.Sprintf("0x{%d}", len(noneLabelAddrs)))
 	}
 	return labelAddrs
-}
-
-func LoadFlashLoanFuncNames() []string {
-	funcNameList := []string{}
-	f, err := os.Open(config.Conf.ETL.FlashLoanFile)
-	if err != nil {
-		logrus.Fatalf("read flash loan config file %s is err %v", config.Conf.ETL.FlashLoanFile, err)
-	}
-	defer f.Close()
-	scanner := bufio.NewScanner(f)
-	for scanner.Scan() {
-		if scanner.Text() != "" {
-			funcNames := strings.Split(scanner.Text(), "(")
-			if len(funcNames) > 0 {
-				funcNameList = append(funcNameList, funcNames[0])
-			}
-		}
-	}
-
-	if err := scanner.Err(); err != nil {
-		logrus.Fatalf("read flash loan function names is err %v", err)
-	}
-
-	return mapset.NewSet[string](funcNameList...).ToSlice()
 }

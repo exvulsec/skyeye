@@ -44,7 +44,7 @@ func (sc *SkyEyeController) GetScoreFromByteCode(skyTx *model.SkyEyeTransaction)
 	policies := []model.PolicyCalc{
 		&model.ByteCodePolicyCalc{},
 		&model.ContractTypePolicyCalc{},
-		&model.Push4PolicyCalc{FlashLoanFuncNames: model.LoadFlashLoanFuncNames()},
+		&model.Push4PolicyCalc{FlashLoanFuncNames: model.FuncNameList},
 		&model.Push20PolicyCalc{},
 	}
 	splitScores := []string{}
