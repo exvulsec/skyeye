@@ -11,6 +11,7 @@ import (
 	"github.com/sirupsen/logrus"
 
 	"github.com/exvulsec/skyeye/client"
+	"github.com/exvulsec/skyeye/config"
 	"github.com/exvulsec/skyeye/executor"
 	"github.com/exvulsec/skyeye/model"
 	"github.com/exvulsec/skyeye/utils"
@@ -41,7 +42,7 @@ func (te *TransactionExtractor) extractTransactions() {
 }
 
 func (te *TransactionExtractor) extractPreviousBlocks() {
-	previousBlockNumber := utils.GetBlockNumberFromDB()
+	previousBlockNumber := utils.GetBlockNumberFromFile(config.Conf.ETL.PreviousFile)
 	latestBlockNumber := <-te.previousBlockNumber
 	if previousBlockNumber == 0 {
 		previousBlockNumber = latestBlockNumber - 1
@@ -140,7 +141,9 @@ func (te *TransactionExtractor) convertTransactionFromBlock(block *types.Block) 
 
 func (te *TransactionExtractor) Run() {
 	for _, exec := range te.executors {
-		go exec.Execute()
+		for index := range te.workers {
+			go exec.Execute(index + 1)
+		}
 	}
 	te.extractTransactions()
 }
