@@ -12,7 +12,6 @@ var httpCmd = &cobra.Command{
 	Use:   "http",
 	Short: "run http server",
 	Run: func(cmd *cobra.Command, args []string) {
-		config.SetupConfig("")
 		log.InitLog(config.Conf.HTTPServer.LogPath)
 		srv := server.NewHTTPServer()
 		srv.Run()
