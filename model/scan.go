@@ -85,7 +85,6 @@ func (rs *ScanStringResult) GetOpCodes(chain, address string) (string, error) {
 	}
 	req, err := http.NewRequest(http.MethodGet, scanAPIURL, nil)
 	if err != nil {
-
 		return "", fmt.Errorf("new request for get meta dock labels is err: %v", err)
 	}
 
