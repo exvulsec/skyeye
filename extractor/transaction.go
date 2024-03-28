@@ -44,7 +44,7 @@ func (te *TransactionExtractor) extractTransactions() {
 func (te *TransactionExtractor) extractPreviousBlocks() {
 	previousBlockNumber := utils.GetBlockNumberFromFile(config.Conf.ETL.PreviousFile)
 	latestBlockNumber := <-te.previousBlockNumber
-	if previousBlockNumber == -1 {
+	if previousBlockNumber == 0 {
 		previousBlockNumber = latestBlockNumber - 1
 	}
 	previousBlockNumber += 1
