@@ -6,7 +6,7 @@ import (
 
 	"github.com/magiconair/properties/assert"
 
-	"go-etl/config"
+	"github.com/exvulsec/skyeye/config"
 )
 
 func TestOpenChainResponse_GetSignatures(t *testing.T) {

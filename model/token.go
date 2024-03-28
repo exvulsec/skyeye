@@ -12,22 +12,29 @@ import (
 	"github.com/shopspring/decimal"
 	"github.com/sirupsen/logrus"
 
-	"go-etl/client"
-	"go-etl/config"
-	"go-etl/datastore"
-	"go-etl/model/erc20"
-	"go-etl/utils"
+	"github.com/exvulsec/skyeye/client"
+	"github.com/exvulsec/skyeye/config"
+	"github.com/exvulsec/skyeye/datastore"
+	"github.com/exvulsec/skyeye/model/erc20"
+	"github.com/exvulsec/skyeye/utils"
+)
+
+const (
+	WETHAddress    = "0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2"
+	WBNBAddress    = "0xbb4cdb9cbd36b01bd1cbaebf2de08d9173bc095c"
+	ARBWETHAddress = "0x82af49447d8a07e3bd95bd0d56f35241523fbab1"
+	WAVAXAddress   = "0xb31f66aa3c1e785363f0875a1b74e27b85fd66c7"
 )
 
 type Token struct {
-	ID        *int64           `json:"id" gorm:"column:id"`
-	Address   string           `json:"address" gorm:"column:address"`
-	Name      string           `json:"name" gorm:"column:name"`
-	Symbol    string           `json:"symbol" gorm:"column:symbol"`
-	Decimals  int64            `json:"decimals" gorm:"column:decimals"`
-	Value     decimal.Decimal  `json:"value" gorm:"column:-"`
-	Price     *decimal.Decimal `json:"price" gorm:"column:price"`
-	UpdatedAt time.Time        `json:"updated_at" gorm:"column:updated_at"`
+	ID        *int64           `json:"-" gorm:"column:id"`
+	Address   string           `json:"-" gorm:"column:address"`
+	Name      string           `json:"-" gorm:"column:name"`
+	Symbol    string           `json:"-" gorm:"column:symbol"`
+	Decimals  int64            `json:"-" gorm:"column:decimals"`
+	Value     decimal.Decimal  `json:"value" gorm:"-"`
+	Price     *decimal.Decimal `json:"-" gorm:"column:price"`
+	UpdatedAt time.Time        `json:"-" gorm:"column:updated_at"`
 }
 
 type Tokens []Token
@@ -108,27 +115,31 @@ func UpdateTokensPrice(chain string, tokenAddrs []string) (Tokens, error) {
 				return nil, err
 			}
 		}
-		if token.Price != nil && time.Since(token.UpdatedAt) > time.Hour {
+		if token.Price == nil || time.Since(token.UpdatedAt) > time.Hour {
 			updateTokens = append(updateTokens, token)
 		} else {
 			tokens = append(tokens, token)
 		}
 	}
-	prices, err := updateTokens.GetCoinGeCkoPrices()
-	if err != nil {
-		return nil, err
-	}
-	for index, token := range updateTokens {
-		if price, ok := prices[token.Address]; ok {
-			p := price["usd"]
-			token.Price = &p
-			updateTokens[index] = token
-			if err := token.Update(chain); err != nil {
-				logrus.Errorf("update token %s to db is err %v", token.Address, err)
-				continue
+
+	if len(updateTokens) > 0 {
+		prices, err := updateTokens.GetCoinGeCkoPrices()
+		if err != nil {
+			return nil, err
+		}
+		for index, token := range updateTokens {
+			if price, ok := prices[token.WrapperCurrencyAddress()]; ok {
+				usdPrice := price["usd"]
+				token.Price = &usdPrice
+				updateTokens[index] = token
+				if err := token.Update(chain); err != nil {
+					logrus.Errorf("update token %s to db is err %v", token.Address, err)
+					continue
+				}
 			}
 		}
 	}
+
 	tokens = append(tokens, updateTokens...)
 
 	return tokens, nil
@@ -138,7 +149,7 @@ func (ts *Tokens) GetCoinGeCkoPrices() (map[string]map[string]decimal.Decimal, e
 	baseURL := `https://api.coingecko.com/api/v3/simple/token_price/%s?contract_addresses=%s&vs_currencies=usd`
 	tokenAddrs := []string{}
 	for _, token := range *ts {
-		tokenAddrs = append(tokenAddrs, token.Address)
+		tokenAddrs = append(tokenAddrs, token.WrapperCurrencyAddress())
 	}
 	url := fmt.Sprintf(baseURL, utils.ConvertChainToCGCID(config.Conf.ETL.Chain), strings.Join(tokenAddrs, ","))
 	req, _ := http.NewRequest("GET", url, nil)
@@ -155,4 +166,20 @@ func (ts *Tokens) GetCoinGeCkoPrices() (map[string]map[string]decimal.Decimal, e
 		return nil, fmt.Errorf("unmarshal price map is err %v", err)
 	}
 	return priceMaps, nil
+}
+
+func (t *Token) WrapperCurrencyAddress() string {
+	if t.Address == EVMPlatformCurrency {
+		switch strings.ToLower(config.Conf.ETL.Chain) {
+		case utils.ChainEthereum, utils.ChainEth:
+			return WETHAddress
+		case utils.ChainBSC:
+			return WBNBAddress
+		case utils.ChainArbitrum:
+			return ARBWETHAddress
+		case utils.ChainAvalanche:
+			return WAVAXAddress
+		}
+	}
+	return t.Address
 }

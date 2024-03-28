@@ -3,9 +3,9 @@ package cmd
 import (
 	"github.com/spf13/cobra"
 
-	"go-etl/config"
-	"go-etl/log"
-	"go-etl/server"
+	"github.com/exvulsec/skyeye/config"
+	"github.com/exvulsec/skyeye/log"
+	"github.com/exvulsec/skyeye/server"
 )
 
 var httpCmd = &cobra.Command{

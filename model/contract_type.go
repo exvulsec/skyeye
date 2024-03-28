@@ -1,8 +1,8 @@
-package policy
+package model
 
 import (
-	"go-etl/model"
-	"go-etl/utils"
+	"github.com/exvulsec/skyeye/config"
+	"github.com/exvulsec/skyeye/utils"
 )
 
 type ContractTypePolicyCalc struct {
@@ -13,9 +13,9 @@ type ContractTypePolicyCalc struct {
 
 const ContractTypePolicyName = "ContractType"
 
-func (cpc *ContractTypePolicyCalc) Calc(tx *model.SkyEyeTransaction) int {
+func (cpc *ContractTypePolicyCalc) Calc(tx *SkyEyeTransaction) int {
 	tx.Push4Args = GetPush4Args(cpc.Push4Codes)
-	tx.Push20Args = GetPush20Args(tx.Chain, cpc.Push20Codes)
+	tx.Push20Args = GetPush20Args(config.Conf.ETL.Chain, cpc.Push20Codes)
 	tx.PushStringLogs = cpc.PushStringLogs
 	return 20
 }
@@ -24,7 +24,7 @@ func (cpc *ContractTypePolicyCalc) Name() string {
 	return ContractTypePolicyName
 }
 
-func (cpc *ContractTypePolicyCalc) Filter(tx *model.SkyEyeTransaction) bool {
+func (cpc *ContractTypePolicyCalc) Filter(tx *SkyEyeTransaction) bool {
 	opCodeArgs := GetPushTypeArgs(tx.ByteCode)
 	push4Codes := opCodeArgs[utils.PUSH4]
 

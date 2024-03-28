@@ -3,9 +3,9 @@ package datastore
 import (
 	"sync"
 
-	"github.com/redis/go-redis/v9"
+	redis "github.com/redis/go-redis/v9"
 
-	"go-etl/config"
+	"github.com/exvulsec/skyeye/config"
 )
 
 var redisInstance *RedisInstance

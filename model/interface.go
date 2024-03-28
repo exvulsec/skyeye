@@ -1,4 +1,4 @@
-package policy
+package model
 
 import (
 	"bufio"
@@ -12,15 +12,40 @@ import (
 	"github.com/ethereum/go-ethereum/core/vm"
 	"github.com/sirupsen/logrus"
 
-	"go-etl/config"
-	"go-etl/model"
-	"go-etl/utils"
+	"github.com/exvulsec/skyeye/config"
+	"github.com/exvulsec/skyeye/utils"
 )
 
+var FuncNameList []string
+
+func init() {
+	funcNameList := []string{}
+	f, err := os.Open(config.Conf.ETL.FlashLoanFile)
+	if err != nil {
+		logrus.Fatalf("read flash loan config file %s is err %v", config.Conf.ETL.FlashLoanFile, err)
+	}
+	defer f.Close()
+	scanner := bufio.NewScanner(f)
+	for scanner.Scan() {
+		if scanner.Text() != "" {
+			funcNames := strings.Split(scanner.Text(), "(")
+			if len(funcNames) > 0 {
+				funcNameList = append(funcNameList, funcNames[0])
+			}
+		}
+	}
+
+	if err := scanner.Err(); err != nil {
+		logrus.Fatalf("read flash loan function names is err %v", err)
+	}
+
+	FuncNameList = mapset.NewSet[string](funcNameList...).ToSlice()
+}
+
 type PolicyCalc interface {
-	Calc(transaction *model.SkyEyeTransaction) int
+	Calc(transaction *SkyEyeTransaction) int
 	Name() string
-	Filter(tx *model.SkyEyeTransaction) bool
+	Filter(tx *SkyEyeTransaction) bool
 }
 
 func IsPrintableASCII(r rune) bool {
@@ -84,7 +109,7 @@ func GetPushTypeArgs(byteCode []byte) map[string][]string {
 
 func GetPush4Args(args []string) []string {
 	byteSignatures := mapset.NewSet[string](args...).ToSlice()
-	textSignatures, err := model.GetSignatures(byteSignatures)
+	textSignatures, err := GetSignatures(byteSignatures)
 
 	for index := range textSignatures {
 		textSignature := textSignatures[index]
@@ -106,9 +131,9 @@ func GetPush20Args(chain string, args []string) []string {
 	noneLabelAddrs := []string{}
 	addrs := mapset.NewSet[string](args...).ToSlice()
 	if len(addrs) > 0 {
-		addrLabels := []model.AddressLabel{}
+		addrLabels := []AddressLabel{}
 		for _, addr := range addrs {
-			label := model.AddressLabel{
+			label := AddressLabel{
 				Chain:   chain,
 				Address: addr,
 			}
@@ -132,28 +157,4 @@ func GetPush20Args(chain string, args []string) []string {
 		labelAddrs = append(labelAddrs, fmt.Sprintf("0x{%d}", len(noneLabelAddrs)))
 	}
 	return labelAddrs
-}
-
-func LoadFlashLoanFuncNames() []string {
-	funcNameList := []string{}
-	f, err := os.Open(config.Conf.ETL.FlashLoanFile)
-	if err != nil {
-		logrus.Fatalf("read flash loan config file %s is err %v", config.Conf.ETL.FlashLoanFile, err)
-	}
-	defer f.Close()
-	scanner := bufio.NewScanner(f)
-	for scanner.Scan() {
-		if scanner.Text() != "" {
-			funcNames := strings.Split(scanner.Text(), "(")
-			if len(funcNames) > 0 {
-				funcNameList = append(funcNameList, funcNames[0])
-			}
-		}
-	}
-
-	if err := scanner.Err(); err != nil {
-		logrus.Fatalf("read flash loan function names is err %v", err)
-	}
-
-	return mapset.NewSet[string](funcNameList...).ToSlice()
 }

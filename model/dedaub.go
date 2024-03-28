@@ -11,9 +11,9 @@ import (
 
 	"github.com/ethereum/go-ethereum/common/hexutil"
 
-	"go-etl/client"
-	"go-etl/datastore"
-	"go-etl/utils"
+	"github.com/exvulsec/skyeye/client"
+	"github.com/exvulsec/skyeye/datastore"
+	"github.com/exvulsec/skyeye/utils"
 )
 
 type DeDaubRequest struct {

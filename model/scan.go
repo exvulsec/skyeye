@@ -7,8 +7,8 @@ import (
 	"net/http"
 	"strconv"
 
-	"go-etl/client"
-	"go-etl/utils"
+	"github.com/exvulsec/skyeye/client"
+	"github.com/exvulsec/skyeye/utils"
 )
 
 type ScanBaseResponse struct {
@@ -36,6 +36,7 @@ type ScanTransactionResponse struct {
 	ScanBaseResponse
 	Result []ScanTransaction `json:"result"`
 }
+
 type ScanTransaction struct {
 	TimestampString string `json:"timeStamp"`
 	Timestamp       int64  `json:"-"`

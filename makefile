@@ -1,5 +1,5 @@
 .PHONY: build
-TARGET=etl
+TARGET=skyeye
 
 OUTPUT_DIR := ./bin
 BUILD_DIR = ./build

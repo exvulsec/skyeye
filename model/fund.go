@@ -1,4 +1,4 @@
-package policy
+package model
 
 import (
 	"context"
@@ -12,23 +12,23 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/sirupsen/logrus"
 
-	"go-etl/client"
-	"go-etl/config"
-	"go-etl/model"
-	"go-etl/utils"
+	"github.com/exvulsec/skyeye/client"
+	"github.com/exvulsec/skyeye/config"
+	"github.com/exvulsec/skyeye/utils"
 )
 
 type FundPolicyCalc struct {
-	IsNastiff bool
+	NeedFund bool
 }
 
-func (fpc *FundPolicyCalc) Calc(tx *model.SkyEyeTransaction) int {
-	if fpc.IsNastiff {
+func (fpc *FundPolicyCalc) Calc(tx *SkyEyeTransaction) int {
+	chain := config.Conf.ETL.Chain
+	if fpc.NeedFund {
 		var fund string
-		if tx.Chain == utils.ChainAvalanche {
+		if chain == utils.ChainAvalanche {
 			return 0
 		}
-		scanTxResp, err := fpc.SearchFund(tx.Chain, tx.FromAddress)
+		scanTxResp, err := fpc.SearchFund(chain, tx.FromAddress)
 		if err != nil {
 			logrus.Errorf("get contract %s's fund is err: %v", tx.ContractAddress, err)
 		}
@@ -51,11 +51,11 @@ func (fpc *FundPolicyCalc) Calc(tx *model.SkyEyeTransaction) int {
 
 	}
 	switch {
-	case strings.Contains(strings.ToLower(tx.Fund), strings.ToLower(model.TornadoCash)):
+	case strings.Contains(strings.ToLower(tx.Fund), strings.ToLower(TornadoCash)):
 		return 40
-	case strings.Contains(strings.ToLower(tx.Fund), strings.ToLower(model.FixedFloat)):
+	case strings.Contains(strings.ToLower(tx.Fund), strings.ToLower(FixedFloat)):
 		return 20
-	case strings.Contains(strings.ToLower(tx.Fund), strings.ToLower(model.ChangeNow)):
+	case strings.Contains(strings.ToLower(tx.Fund), strings.ToLower(ChangeNow)):
 		return 13
 	default:
 		return 0
@@ -66,8 +66,8 @@ func (fpc *FundPolicyCalc) Name() string {
 	return "Fund"
 }
 
-func (fpc *FundPolicyCalc) SearchFund(chain, address string) (model.ScanTXResponse, error) {
-	txResp := model.ScanTXResponse{}
+func (fpc *FundPolicyCalc) SearchFund(chain, address string) (ScanTXResponse, error) {
+	txResp := ScanTXResponse{}
 	scanAPI := fmt.Sprintf("%s%s", utils.GetScanAPI(chain), utils.APIQuery)
 	r := rand.New(rand.NewSource(time.Now().UnixNano()))
 	for {
@@ -79,8 +79,8 @@ func (fpc *FundPolicyCalc) SearchFund(chain, address string) (model.ScanTXRespon
 			fmt.Sprintf(scanAPI, scanAPIKEY, address, utils.ScanTraceAction),
 		}
 		var (
-			transaction model.ScanTransaction
-			trace       model.ScanTransaction
+			transaction ScanTransaction
+			trace       ScanTransaction
 		)
 
 		for _, api := range apis {
@@ -89,7 +89,7 @@ func (fpc *FundPolicyCalc) SearchFund(chain, address string) (model.ScanTXRespon
 				return txResp, fmt.Errorf("get address %s's from scan api is err %v", address, err)
 			}
 			defer resp.Body.Close()
-			base := model.ScanBaseResponse{}
+			base := ScanBaseResponse{}
 			body, err := io.ReadAll(resp.Body)
 			if err != nil {
 				return txResp, fmt.Errorf("read body from resp.Body via %s  is err %v", api, err)
@@ -98,13 +98,13 @@ func (fpc *FundPolicyCalc) SearchFund(chain, address string) (model.ScanTXRespon
 				return txResp, fmt.Errorf("unmarshal json from body to scan base response via %s is err %v", api, err)
 			}
 			if base.Message == "NOTOK" {
-				result := model.ScanStringResult{}
+				result := ScanStringResult{}
 				if err = json.Unmarshal(body, &result); err != nil {
 					return txResp, fmt.Errorf("unmarshal json from body to scan string result via %s is err %v", api, err)
 				}
 				return txResp, fmt.Errorf("get address %s from scan via %s is err: %s, message is %s", address, api, err, result.Message)
 			}
-			tx := model.ScanTransactionResponse{}
+			tx := ScanTransactionResponse{}
 			if err = json.Unmarshal(body, &tx); err != nil {
 				return txResp, fmt.Errorf("unmarshal json from body to scan transaction response via api %s is err %v", api, err)
 			}
@@ -140,7 +140,7 @@ func (fpc *FundPolicyCalc) SearchFund(chain, address string) (model.ScanTXRespon
 			}
 			txResp.Nonce = append(txResp.Nonce, nonce)
 		}
-		addrLabel := model.AddressLabel{Label: utils.ScanGenesisAddress}
+		addrLabel := AddressLabel{Label: utils.ScanGenesisAddress}
 		if address != utils.ScanGenesisAddress && address != "" {
 			if err = addrLabel.GetLabel(chain, address); err != nil {
 				return txResp, fmt.Errorf("get address %s label is err: %v", address, err)
@@ -162,6 +162,6 @@ func (fpc *FundPolicyCalc) SearchFund(chain, address string) (model.ScanTXRespon
 	return txResp, nil
 }
 
-func (fpc *FundPolicyCalc) Filter(tx *model.SkyEyeTransaction) bool {
+func (fpc *FundPolicyCalc) Filter(tx *SkyEyeTransaction) bool {
 	return false
 }

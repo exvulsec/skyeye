@@ -8,11 +8,12 @@ import (
 	"os"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/sirupsen/logrus"
 
-	"go-etl/config"
-	"go-etl/datastore"
+	"github.com/exvulsec/skyeye/config"
+	"github.com/exvulsec/skyeye/datastore"
 )
 
 func GetBlockNumberFromFile(filePath string) uint64 {
@@ -28,9 +29,9 @@ func GetBlockNumberFromFile(filePath string) uint64 {
 	return uint64(lastBlockNumber)
 }
 
-func GetBlockNumberFromDB(chain string) uint64 {
+func GetBlockNumberFromDB() uint64 {
 	var blockNumber uint64
-	tableName := ComposeTableName(chain, datastore.TableTransactions)
+	tableName := ComposeTableName(config.Conf.ETL.Chain, datastore.TableTransactions)
 	err := datastore.DB().Table(tableName).Select("max(blknum)").Row().Scan(&blockNumber)
 	if err != nil {
 		logrus.Errorf("failed to convert int the last block number from db is err: %v", err)
@@ -83,4 +84,21 @@ func CheckHeaderIsGZip(header http.Header) bool {
 
 func IsRetriableError(err error) bool {
 	return strings.Contains(err.Error(), "not found") || errors.Is(err, context.DeadlineExceeded)
+}
+
+func Retry(times int64, element any, retryFunc func(element any) (any, error)) any {
+	for i := range times {
+		item, err := retryFunc(element)
+		if err != nil && !IsRetriableError(err) {
+			logrus.Errorf("get element %v is err: %v", element, err)
+			break
+		}
+		if item != nil {
+			return item
+		}
+		time.Sleep(1 * time.Second)
+		logrus.Infof("retry %d times to get element %v", i+1, element)
+	}
+	logrus.Errorf("get element %d failed, drop it", element)
+	return nil
 }

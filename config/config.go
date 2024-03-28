@@ -2,6 +2,7 @@ package config
 
 import (
 	"fmt"
+	"os"
 	"strings"
 
 	"github.com/sirupsen/logrus"
@@ -62,19 +63,24 @@ type RedisConfig struct {
 }
 
 type ETLConfig struct {
-	ProviderURL               string `mapstructure:"provider_url" yaml:"provider_url"`
-	MCLServer                 string `mapstructure:"mcl_server" yaml:"mcl_server"`
-	Chain                     string `mapstructure:"chain" yaml:"chain"`
-	Worker                    int64  `mapstructure:"worker" yaml:"worker"`
-	PreviousFile              string `mapstructure:"previous_file" yaml:"previous_file"`
-	ScanInterval              int    `mapstructure:"scan_interval" yaml:"scan_interval"`
-	FlashLoanFile             string `mapstructure:"flash_loan_file" yaml:"flash_loan_file"`
-	ScoreAlertThreshold       int    `mapstructure:"score_alert_threshold" yaml:"score_alert_threshold"`
-	DangerScoreAlertThreshold int    `mapstructure:"danger_score_alert_threshold" yaml:"danger_score_alert_threshold"`
-	LogPath                   string `mapstructure:"log_path" yaml:"log_path"`
-	SlackWebHook              string `mapstructure:"slack_webhook" yaml:"slack_webhook"`
-	HeimdallServer            string `mapstructure:"heidmall_server" yaml:"heimdall_server"`
-	CGCAPIKey                 string `mapstructure:"cgc_apikey" yaml:"cgc_apikey"`
+	ProviderURL            string            `mapstructure:"provider_url" yaml:"provider_url"`
+	Chain                  string            `mapstructure:"chain" yaml:"chain"`
+	Worker                 int64             `mapstructure:"worker" yaml:"worker"`
+	PreviousFile           string            `mapstructure:"previous_file" yaml:"previous_file"`
+	FlashLoanFile          string            `mapstructure:"flash_loan_file" yaml:"flash_loan_file"`
+	FilterContracts        string            `mapstructure:"filter_contracts" yaml:"filter_contracts"`
+	ScoreAlertThreshold    int               `mapstructure:"score_alert_threshold" yaml:"score_alert_threshold"`
+	AssetUSDAlertThreshold string            `mapstructure:"asset_usd_alert_threshold" yaml:"asset_usd_alert_threshold"`
+	LogPath                string            `mapstructure:"log_path" yaml:"log_path"`
+	SlackContractWebHook   string            `mapstructure:"slack_contract_webhook" yaml:"slack_contract_webhook"`
+	SlackTransferWebHook   string            `mapstructure:"slack_transfer_webhook" yaml:"slack_transfer_webhook"`
+	HeimdallServer         string            `mapstructure:"heidmall_server" yaml:"heimdall_server"`
+	CGCAPIKey              string            `mapstructure:"cgc_apikey" yaml:"cgc_apikey"`
+	LinkURLs               map[string]string `mapstructure:"link_urls" yaml:"link_urls"`
+}
+
+func init() {
+	SetupConfig(os.Getenv("CONFIG_PATH"))
 }
 
 func SetupConfig(configPath string) {

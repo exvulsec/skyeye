@@ -1,10 +1,8 @@
-package policy
-
-import "go-etl/model"
+package model
 
 type NoncePolicyCalc struct{}
 
-func (npc *NoncePolicyCalc) Calc(tx *model.SkyEyeTransaction) int {
+func (npc *NoncePolicyCalc) Calc(tx *SkyEyeTransaction) int {
 	if tx.Nonce >= 50 {
 		return 0
 	}
@@ -18,6 +16,6 @@ func (npc *NoncePolicyCalc) Name() string {
 	return "Nonce"
 }
 
-func (npc *NoncePolicyCalc) Filter(tx *model.SkyEyeTransaction) bool {
+func (npc *NoncePolicyCalc) Filter(tx *SkyEyeTransaction) bool {
 	return false
 }

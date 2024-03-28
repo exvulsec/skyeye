@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"strings"
 
-	"go-etl/datastore"
-	"go-etl/utils"
+	"github.com/exvulsec/skyeye/datastore"
+	"github.com/exvulsec/skyeye/utils"
 )
 
 const (
