@@ -2,6 +2,6 @@ package executor
 
 type Executor interface {
 	Name() string
-	Execute()
+	Execute(workerID int)
 	GetItemsCh() chan any
 }

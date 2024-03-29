@@ -35,17 +35,21 @@ func (te *transactionExecutor) GetItemsCh() chan any {
 	return te.items
 }
 
-func (te *transactionExecutor) Execute() {
+func (te *transactionExecutor) Execute(workerID int) {
 	for item := range te.items {
 		startTime := time.Now()
+
 		txs, ok := item.(model.Transactions)
+		blockNumber := txs[0].BlockNumber
 		if ok {
 			txs.AnalysisContracts(te.MonitorAddresses)
+			logrus.Infof("thread %d: processed to analysis transactions' contract cost %2.f", workerID, time.Since(startTime).Seconds())
+
+			startTime = time.Now()
 			txs.AnalysisAssertTransfer(te.MonitorAddresses)
+			logrus.Infof("thread %d: processed to analysis transactions' asset transfer cost %2.f", workerID, time.Since(startTime).Seconds())
 		}
-		if len(txs) > 0 {
-			utils.WriteBlockNumberToFile(config.Conf.ETL.PreviousFile, txs[0].BlockNumber)
-		}
-		logrus.Infof("processed the transactions info cost %.2fs", time.Since(startTime).Seconds())
+		utils.WriteBlockNumberToFile(config.Conf.ETL.PreviousFile, blockNumber)
+
 	}
 }
