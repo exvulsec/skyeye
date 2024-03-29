@@ -28,7 +28,7 @@ func NewTransactionExecutor() Executor {
 }
 
 func (te *transactionExecutor) Name() string {
-	return "TransactionExecutor"
+	return "Transaction"
 }
 
 func (te *transactionExecutor) GetItemsCh() chan any {
@@ -37,17 +37,19 @@ func (te *transactionExecutor) GetItemsCh() chan any {
 
 func (te *transactionExecutor) Execute(workerID int) {
 	for item := range te.items {
-		startTime := time.Now()
 
 		txs, ok := item.(model.Transactions)
 		blockNumber := txs[0].BlockNumber
 		if ok {
+			contractStartTime := time.Now()
 			txs.AnalysisContracts(te.MonitorAddresses)
-			logrus.Infof("thread %d: processed to analysis transactions' contract cost %2.f", workerID, time.Since(startTime).Seconds())
+			logrus.Infof("thread %d: processed to analysis transactions' contract on block %d, cost %.2fs",
+				workerID, blockNumber, time.Since(contractStartTime).Seconds())
 
-			startTime = time.Now()
+			assetTransferStartTime = time.Now()
 			txs.AnalysisAssertTransfer(te.MonitorAddresses)
-			logrus.Infof("thread %d: processed to analysis transactions' asset transfer cost %2.f", workerID, time.Since(startTime).Seconds())
+			logrus.Infof("thread %d: processed to analysis transactions' asset transfer on block %d, cost %2.fs",
+				workerID, blockNumber, time.Since(assetTransferStartTime).Seconds())
 		}
 		utils.WriteBlockNumberToFile(config.Conf.ETL.PreviousFile, blockNumber)
 
