@@ -49,6 +49,7 @@ func (te *TransactionExtractor) extractPreviousBlocks() {
 	}
 	previousBlockNumber += 1
 	for previousBlockNumber < latestBlockNumber {
+		logrus.Infof("extract transaction from previous block number %d", previousBlockNumber)
 		te.sendItemsToExporters(te.extractTransactionFromBlock(previousBlockNumber))
 		previousBlockNumber++
 	}
