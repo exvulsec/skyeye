@@ -94,6 +94,7 @@ func Retry(times int64, element any, retryFunc func(element any) (any, error)) a
 			break
 		}
 		if item != nil {
+			logrus.Infof("find the item %v, return item", item)
 			return item
 		}
 		time.Sleep(1 * time.Second)

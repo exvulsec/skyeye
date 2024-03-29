@@ -42,6 +42,6 @@ func (te *transactionExecutor) Execute(workerID int) {
 		if len(txs) > 0 {
 			utils.WriteBlockNumberToFile(config.Conf.ETL.PreviousFile, txs[0].BlockNumber)
 		}
-		logrus.Infof("worker %d processed the transaction info with %.2f", workerID, time.Since(startTime).Seconds())
+		logrus.Infof("worker %d processed the transaction info cost %.2fs", workerID, time.Since(startTime).Seconds())
 	}
 }

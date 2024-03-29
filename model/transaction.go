@@ -100,7 +100,7 @@ func (tx *Transaction) filterAddrs(addrs []string) bool {
 func (tx *Transaction) getTrace() {
 	var trace *TransactionTrace
 	fn := func(element any) (any, error) {
-		ctxWithTimeOut, cancel := context.WithTimeout(context.TODO(), 20*time.Second)
+		ctxWithTimeOut, cancel := context.WithTimeout(context.TODO(), 10*time.Second)
 		defer cancel()
 		err := client.EvmClient().Client().CallContext(ctxWithTimeOut, &trace,
 			"debug_traceTransaction",
@@ -110,10 +110,11 @@ func (tx *Transaction) getTrace() {
 			})
 		return trace, err
 	}
-	trace = utils.Retry(5, trace, fn).(*TransactionTrace)
-
+	trace = utils.Retry(6, trace, fn).(*TransactionTrace)
 	if trace == nil {
+
 		logrus.Infof("get trace with txhash %s failed, drop it", tx.TxHash)
+		return
 	}
 	tx.Trace = trace
 }
@@ -162,18 +163,19 @@ func (tx *Transaction) analysisTrace() {
 	if tx.Receipt == nil {
 		tx.getReceipt()
 	}
-	focusesAddresses := []string{
-		tx.FromAddress,
-	}
 	skyTx := SkyEyeTransaction{}
 	if err := skyTx.GetInfoByContract(config.Conf.ETL.Chain, *tx.ToAddress); err != nil {
 		logrus.Errorf("get skyeye tx info is err %v", err)
+	}
+	focusesAddresses := []string{
+		tx.FromAddress,
 	}
 	skyTx.MultiContracts = strings.Split(skyTx.MultiContractString, ",")
 	for _, contract := range skyTx.MultiContracts {
 		focusesAddresses = append(focusesAddresses, contract)
 	}
 	assetTransfers := AssetTransfers{}
+
 	assetTransfers.compose(tx.Receipt.Logs, *tx.Trace)
 	assets := Assets{
 		BlockNumber:    tx.BlockNumber,
