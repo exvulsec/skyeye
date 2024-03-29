@@ -187,7 +187,6 @@ func (abs *AssetBalances) calcBalance(transfers []AssetTransfer, focuses []strin
 			abs.SetBalanceValue(transfer.To, transfer.Address, transfer.Value)
 		}
 	}
-	logrus.Infof("convert %d asset transfer to %d asset balance", len(transfers), len(*abs))
 	abs.filterBalance(focuses)
 }
 
