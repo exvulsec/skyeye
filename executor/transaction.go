@@ -46,7 +46,7 @@ func (te *transactionExecutor) Execute(workerID int) {
 			logrus.Infof("thread %d: processed to analysis transactions' contract on block %d, cost %.2fs",
 				workerID, blockNumber, time.Since(contractStartTime).Seconds())
 
-			assetTransferStartTime = time.Now()
+			assetTransferStartTime := time.Now()
 			txs.AnalysisAssertTransfer(te.MonitorAddresses)
 			logrus.Infof("thread %d: processed to analysis transactions' asset transfer on block %d, cost %2.fs",
 				workerID, blockNumber, time.Since(assetTransferStartTime).Seconds())
