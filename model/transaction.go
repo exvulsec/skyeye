@@ -68,7 +68,7 @@ func (tx *Transaction) getReceipt() {
 		}
 		return client.EvmClient().TransactionReceipt(ctx, txHash)
 	}
-	receipt := utils.Retry(12, common.HexToHash(tx.TxHash), fn).(*types.Receipt)
+	receipt := utils.Retry(config.Conf.ETL.RetryTimes, common.HexToHash(tx.TxHash), fn).(*types.Receipt)
 	if receipt == nil {
 		logrus.Infof("get receipt with txhash %s failed, drop it", tx.TxHash)
 		return
@@ -110,7 +110,7 @@ func (tx *Transaction) getTrace() {
 			})
 		return trace, err
 	}
-	trace = utils.Retry(10, trace, fn).(*TransactionTrace)
+	trace = utils.Retry(config.Conf.ETL.RetryTimes, trace, fn).(*TransactionTrace)
 	if trace == nil {
 		logrus.Infof("get trace with txhash %s failed, drop it", tx.TxHash)
 		return

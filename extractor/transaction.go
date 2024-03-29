@@ -101,7 +101,7 @@ func (te *TransactionExtractor) extractTransactionFromBlock(blockNumber uint64) 
 		return client.EvmClient().BlockByNumber(retryContextTimeout, big.NewInt(int64(blkNumber)))
 	}
 
-	block := utils.Retry(10, blockNumber, fn).(*types.Block)
+	block := utils.Retry(config.Conf.ETL.RetryTimes, blockNumber, fn).(*types.Block)
 	if block == nil {
 		return nil
 	}
