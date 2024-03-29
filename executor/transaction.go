@@ -27,11 +27,15 @@ func NewTransactionExecutor() Executor {
 	}
 }
 
+func (te *transactionExecutor) Name() string {
+	return "TransactionExecutor"
+}
+
 func (te *transactionExecutor) GetItemsCh() chan any {
 	return te.items
 }
 
-func (te *transactionExecutor) Execute(workerID int) {
+func (te *transactionExecutor) Execute() {
 	for item := range te.items {
 		startTime := time.Now()
 		txs, ok := item.(model.Transactions)
@@ -42,6 +46,6 @@ func (te *transactionExecutor) Execute(workerID int) {
 		if len(txs) > 0 {
 			utils.WriteBlockNumberToFile(config.Conf.ETL.PreviousFile, txs[0].BlockNumber)
 		}
-		logrus.Infof("worker %d processed the transaction info cost %.2fs", workerID, time.Since(startTime).Seconds())
+		logrus.Infof("processed the transactions info cost %.2fs", time.Since(startTime).Seconds())
 	}
 }

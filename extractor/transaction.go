@@ -69,7 +69,7 @@ func (te *TransactionExtractor) subscribeLatestBlocks() {
 	if err != nil {
 		panic(err)
 	}
-	preivousOnce := sync.Once{}
+	perviousOnce := sync.Once{}
 	logrus.Info("subscribe to the latest blocks...")
 	for {
 		select {
@@ -79,7 +79,7 @@ func (te *TransactionExtractor) subscribeLatestBlocks() {
 			close(te.previousDone)
 		case header := <-headers:
 			logrus.Infof("received a new header: %d", header.Number.Uint64())
-			preivousOnce.Do(func() {
+			perviousOnce.Do(func() {
 				te.previousBlockNumber <- header.Number.Uint64()
 				close(te.previousBlockNumber)
 			})
@@ -101,7 +101,7 @@ func (te *TransactionExtractor) extractTransactionFromBlock(blockNumber uint64) 
 		return client.EvmClient().BlockByNumber(retryContextTimeout, big.NewInt(int64(blkNumber)))
 	}
 
-	block := utils.Retry(6, blockNumber, fn).(*types.Block)
+	block := utils.Retry(10, blockNumber, fn).(*types.Block)
 	if block == nil {
 		return nil
 	}
@@ -143,7 +143,8 @@ func (te *TransactionExtractor) convertTransactionFromBlock(block *types.Block) 
 func (te *TransactionExtractor) Run() {
 	for _, exec := range te.executors {
 		for index := range te.workers {
-			go exec.Execute(index + 1)
+			logrus.Infof("thread %d: start %s executor", index+1, exec.Name())
+			go exec.Execute()
 		}
 	}
 	te.extractTransactions()
