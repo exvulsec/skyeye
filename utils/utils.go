@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"net/http"
 	"os"
+	"reflect"
 	"strconv"
 	"strings"
 	"time"
@@ -93,7 +94,7 @@ func Retry(times int64, element any, retryFunc func(element any) (any, error)) a
 			logrus.Errorf("get element %v is err: %v", element, err)
 			break
 		}
-		if item != nil {
+		if !IsNil(item) {
 			logrus.Infof("find the item %v, return item", item)
 			return item
 		}
@@ -102,4 +103,12 @@ func Retry(times int64, element any, retryFunc func(element any) (any, error)) a
 	}
 	logrus.Errorf("get element %d failed, drop it", element)
 	return nil
+}
+
+func IsNil(i any) bool {
+	if i == nil {
+		return true
+	}
+	v := reflect.ValueOf(i)
+	return v.Kind() == reflect.Ptr && v.IsNil()
 }

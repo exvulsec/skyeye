@@ -112,7 +112,6 @@ func (tx *Transaction) getTrace() {
 	}
 	trace = utils.Retry(6, trace, fn).(*TransactionTrace)
 	if trace == nil {
-
 		logrus.Infof("get trace with txhash %s failed, drop it", tx.TxHash)
 		return
 	}
