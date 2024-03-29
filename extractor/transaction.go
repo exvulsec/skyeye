@@ -143,8 +143,9 @@ func (te *TransactionExtractor) convertTransactionFromBlock(block *types.Block) 
 func (te *TransactionExtractor) Run() {
 	for _, exec := range te.executors {
 		for index := range te.workers {
-			logrus.Infof("thread %d: start %s executor", index+1, exec.Name())
-			go exec.Execute()
+			workerID := index + 1
+			logrus.Infof("thread %d: start %s executor", workerID, exec.Name())
+			go exec.Execute(workerID)
 		}
 	}
 	te.extractTransactions()
@@ -152,6 +153,8 @@ func (te *TransactionExtractor) Run() {
 
 func (te *TransactionExtractor) sendItemsToExporters(txs model.Transactions) {
 	for _, exec := range te.executors {
-		exec.GetItemsCh() <- txs
+		if len(txs) > 0 {
+			exec.GetItemsCh() <- txs
+		}
 	}
 }
