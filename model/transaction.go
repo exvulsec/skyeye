@@ -68,7 +68,7 @@ func (tx *Transaction) getReceipt() {
 		}
 		return client.EvmClient().TransactionReceipt(ctx, txHash)
 	}
-	receipt := utils.Retry(10, common.HexToHash(tx.TxHash), fn).(*types.Receipt)
+	receipt := utils.Retry(12, common.HexToHash(tx.TxHash), fn).(*types.Receipt)
 	if receipt == nil {
 		logrus.Infof("get receipt with txhash %s failed, drop it", tx.TxHash)
 		return
@@ -162,31 +162,33 @@ func (tx *Transaction) analysisTrace() {
 	if tx.Receipt == nil {
 		tx.getReceipt()
 	}
-	skyTx := SkyEyeTransaction{}
-	if err := skyTx.GetInfoByContract(config.Conf.ETL.Chain, *tx.ToAddress); err != nil {
-		logrus.Errorf("get skyeye tx info is err %v", err)
-	}
-	focusesAddresses := []string{
-		tx.FromAddress,
-	}
-	skyTx.MultiContracts = strings.Split(skyTx.MultiContractString, ",")
-	for _, contract := range skyTx.MultiContracts {
-		focusesAddresses = append(focusesAddresses, contract)
-	}
-	assetTransfers := AssetTransfers{}
+	if tx.Receipt != nil && tx.Trace != nil {
+		skyTx := SkyEyeTransaction{}
+		if err := skyTx.GetInfoByContract(config.Conf.ETL.Chain, *tx.ToAddress); err != nil {
+			logrus.Errorf("get skyeye tx info is err %v", err)
+		}
+		focusesAddresses := []string{
+			tx.FromAddress,
+		}
+		skyTx.MultiContracts = strings.Split(skyTx.MultiContractString, ",")
+		for _, contract := range skyTx.MultiContracts {
+			focusesAddresses = append(focusesAddresses, contract)
+		}
+		assetTransfers := AssetTransfers{}
 
-	assetTransfers.compose(tx.Receipt.Logs, *tx.Trace)
-	assets := Assets{
-		BlockNumber:    tx.BlockNumber,
-		BlockTimestamp: tx.BlockTimestamp,
-		TxHash:         tx.TxHash,
-		ToAddress:      *tx.ToAddress,
-		Items:          []Asset{},
-		TotalUSD:       decimal.Decimal{},
+		assetTransfers.compose(tx.Receipt.Logs, *tx.Trace)
+		assets := Assets{
+			BlockNumber:    tx.BlockNumber,
+			BlockTimestamp: tx.BlockTimestamp,
+			TxHash:         tx.TxHash,
+			ToAddress:      *tx.ToAddress,
+			Items:          []Asset{},
+			TotalUSD:       decimal.Decimal{},
+		}
+		if err := assets.analysisAssetTransfers(assetTransfers, focusesAddresses); err != nil {
+			logrus.Errorf("analysis asset transfer is err %v", err)
+			return
+		}
+		assets.alert()
 	}
-	if err := assets.analysisAssetTransfers(assetTransfers, focusesAddresses); err != nil {
-		logrus.Errorf("analysis asset transfer is err %v", err)
-		return
-	}
-	assets.alert()
 }
