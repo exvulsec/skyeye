@@ -1,6 +1,7 @@
 package executor
 
 import (
+	"sync"
 	"time"
 
 	"github.com/sirupsen/logrus"
@@ -11,6 +12,7 @@ import (
 )
 
 type transactionExecutor struct {
+	writeFileMutex   sync.RWMutex
 	items            chan any
 	MonitorAddresses model.MonitorAddrs
 }
@@ -22,6 +24,7 @@ func NewTransactionExecutor() Executor {
 	}
 
 	return &transactionExecutor{
+		writeFileMutex:   sync.RWMutex{},
 		items:            make(chan any, 10),
 		MonitorAddresses: monitorAddrs,
 	}
@@ -51,7 +54,9 @@ func (te *transactionExecutor) Execute(workerID int) {
 			logrus.Infof("thread %d: processed to analysis transactions' asset transfer on block %d, cost %2.fs",
 				workerID, blockNumber, time.Since(assetTransferStartTime).Seconds())
 		}
+		te.writeFileMutex.Lock()
 		utils.WriteBlockNumberToFile(config.Conf.ETL.PreviousFile, blockNumber)
+		te.writeFileMutex.Unlock()
 
 	}
 }

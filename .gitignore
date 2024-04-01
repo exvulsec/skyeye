@@ -28,3 +28,5 @@ config/config*.yaml
 
 *.log
 github.com/exvulsec/skyeye
+*.DS_Store
+
