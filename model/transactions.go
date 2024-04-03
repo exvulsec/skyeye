@@ -21,10 +21,14 @@ func (txs *Transactions) AnalysisContracts(addrs MonitorAddrs) {
 			originTxs = append(originTxs, tx)
 		}
 	}
-	needAnalysisTxs.enrichTxs()
-	for _, tx := range needAnalysisTxs {
-		tx.analysisContract(&addrs)
+	if len(needAnalysisTxs) > 0 {
+		logrus.Infof("get %d txs is required to analysis contracts on block %d", len(needAnalysisTxs), needAnalysisTxs[0].BlockNumber)
+		needAnalysisTxs.enrichTxs()
+		for _, tx := range needAnalysisTxs {
+			tx.analysisContract(&addrs)
+		}
 	}
+
 	*txs = append(originTxs, needAnalysisTxs...)
 }
 
@@ -39,9 +43,9 @@ func (txs *Transactions) AnalysisAssertTransfer(addrs MonitorAddrs) {
 		}
 	}
 	if len(needAnalysisTxs) > 0 {
-		logrus.Infof("%d txs is required to analysis contracts on block %d", len(needAnalysisTxs), needAnalysisTxs[0].BlockNumber)
+		logrus.Infof("get %d txs is required to analysis asset transfer on block %d", len(needAnalysisTxs), needAnalysisTxs[0].BlockNumber)
 		for _, tx := range needAnalysisTxs {
-			tx.analysisTrace()
+			tx.analysisAssetTransfer()
 		}
 	}
 
