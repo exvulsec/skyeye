@@ -44,8 +44,9 @@ func WriteBlockNumberToFile(filePath string, blockNumber int64) {
 	blockNumberString := strconv.FormatInt(blockNumber, 10)
 	err := os.WriteFile(filePath, []byte(blockNumberString), 0o777)
 	if err != nil {
-		logrus.Errorf("failed to write blocknumber %d to file, err is %v", blockNumber, err)
+		logrus.Panicf("failed to write blocknumber %d to file, err is %v", blockNumber, err)
 	}
+	logrus.Infof("write block number %d to file", blockNumber)
 }
 
 func checkFileIfNotExist(filePath string) {

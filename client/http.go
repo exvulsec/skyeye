@@ -3,6 +3,7 @@ package client
 import (
 	"net/http"
 	"sync"
+	"time"
 
 	"github.com/sirupsen/logrus"
 
@@ -30,6 +31,7 @@ func initHTTPClient() any {
 	logrus.Infof("init http client")
 	return &http.Client{
 		Transport: transport,
+		Timeout:   10 * time.Second,
 	}
 }
 

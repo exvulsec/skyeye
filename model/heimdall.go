@@ -1,13 +1,11 @@
 package model
 
 import (
-	"context"
 	"encoding/json"
 	"fmt"
 	"io"
 	"net/http"
 	"strings"
-	"time"
 
 	"github.com/sirupsen/logrus"
 	"github.com/status-im/keycard-go/hexutils"
@@ -35,13 +33,12 @@ func (hdl *Heimdall) Get(address string, byteCode []byte) error {
 		"address":  address,
 		"bytecode": hexutils.BytesToHex(byteCode),
 	}
+
 	data, err := json.Marshal(body)
 	if err != nil {
 		return fmt.Errorf("marhsal is data for heimdall is err %v", err)
 	}
 	req, err := http.NewRequest(http.MethodPost, url, strings.NewReader(string(data)))
-	ctx, _ := context.WithTimeout(context.TODO(), time.Second*5)
-	req.WithContext(ctx)
 	if err != nil {
 		return fmt.Errorf("compose request for heimdall is err %v", err)
 	}

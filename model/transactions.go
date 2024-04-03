@@ -38,9 +38,13 @@ func (txs *Transactions) AnalysisAssertTransfer(addrs MonitorAddrs) {
 			originTxs = append(originTxs, tx)
 		}
 	}
-	for _, tx := range needAnalysisTxs {
-		tx.analysisTrace()
+	if len(needAnalysisTxs) > 0 {
+		logrus.Infof("%d txs is required to analysis contracts on block %d", len(needAnalysisTxs), needAnalysisTxs[0].BlockNumber)
+		for _, tx := range needAnalysisTxs {
+			tx.analysisTrace()
+		}
 	}
+
 	*txs = append(originTxs, needAnalysisTxs...)
 }
 
