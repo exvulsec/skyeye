@@ -2,6 +2,7 @@ package model
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"math/big"
 	"strconv"
@@ -20,15 +21,17 @@ import (
 )
 
 const (
-	TransferTopic     = "0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef"
-	WithdrawalTopic   = "0x7fcf532c15f0a6db0bd6d0e038bea71d30d808c7d98cb3bf7268a95bf5081b65"
-	DepositTopic      = "0xe1fffcc4923d04b559f4d29a8bfc6cda04eb5b0d3c460751c2402c5c5cc9109c"
-	TransferABIName   = "Transfer"
-	WithdrawalABIName = "Withdrawal"
-	DepositABIName    = "Deposit"
+	TransferTopic        = "0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef"
+	WithdrawalTopic      = "0x7fcf532c15f0a6db0bd6d0e038bea71d30d808c7d98cb3bf7268a95bf5081b65"
+	DepositTopic         = "0xe1fffcc4923d04b559f4d29a8bfc6cda04eb5b0d3c460751c2402c5c5cc9109c"
+	TransferABIName      = "Transfer"
+	TransferIndexABIName = "TransferIndex"
+	WithdrawalABIName    = "Withdrawal"
+	DepositABIName       = "Deposit"
 
 	ABIs = `[
 		{"anonymous":false,"inputs":[{"indexed":true,"name":"from","type":"address"},{"indexed":true,"name":"to","type":"address"},{"indexed":false,"name":"value","type":"uint256"}],"name":"Transfer","type":"event"},
+		{"anonymous":false,"inputs":[{"indexed":true,"name":"from","type":"address"},{"indexed":true,"name":"to","type":"address"},{"indexed":true,"name":"value","type":"uint256"}],"name":"TransferIndex","type":"event"},
 		{"anonymous":false,"inputs":[{"indexed":true,"name":"src","type":"address"},{"indexed":false,"name":"wad","type":"uint256"}],"name":"Withdrawal","type":"event"},
 		{"anonymous":false,"inputs":[{"indexed":true,"name":"dst","type":"address"},{"indexed":false,"name":"wad","type":"uint256"}],"name":"Deposit","type":"event"}
 	]`
@@ -98,11 +101,16 @@ func (a *AssetTransfer) Decode(log types.Log) error {
 	if abiName == "" {
 		return nil
 	}
+	if abiName == TransferABIName {
+		if len(log.Topics) == 4 {
+			abiName = TransferIndexABIName
+		}
+	}
 
 	event := map[string]interface{}{}
 	err = eventAbi.UnpackIntoMap(event, abiName, log.Data)
 	if err != nil {
-		return err
+		return errors.New("unpack abi is err: " + err.Error() + "on tx: " + log.TxHash.String())
 	}
 	a.DecodeEvent(topic, event, log)
 
@@ -140,7 +148,13 @@ func (a *AssetTransfer) DecodeTransfer(event Event, log types.Log) {
 		a.From = convertAddress(log.Topics[1].String())
 		a.To = convertAddress(log.Topics[2].String())
 	}
-	a.Value = decimal.NewFromBigInt(event["value"].(*big.Int), 0)
+	if event.mapKeyExist("value") {
+		a.Value = decimal.NewFromBigInt(event["value"].(*big.Int), 0)
+	} else {
+		value, _ := (&big.Int{}).SetString(utils.RemoveLeadingZeroDigits(log.Topics[3].String()), 16)
+		a.Value = decimal.NewFromBigInt(value, 0)
+	}
+
 	a.Address = strings.ToLower(log.Address.String())
 }
 

@@ -112,3 +112,12 @@ func IsNil(i any) bool {
 	v := reflect.ValueOf(i)
 	return v.Kind() == reflect.Ptr && v.IsNil()
 }
+
+func RemoveLeadingZeroDigits(hex string) string {
+	for index := range len(hex[2:]) {
+		if hex[2+index] != '0' {
+			return hex[2+index:]
+		}
+	}
+	return ""
+}
