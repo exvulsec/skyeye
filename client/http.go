@@ -31,7 +31,7 @@ func initHTTPClient() any {
 	logrus.Infof("init http client")
 	return &http.Client{
 		Transport: transport,
-		Timeout:   10 * time.Second,
+		Timeout:   30 * time.Second,
 	}
 }
 
