@@ -160,6 +160,7 @@ func (st *SkyEyeTransaction) analysis() {
 		return
 	}
 	st.SplitScores = strings.Join(st.Scores, ",")
+	st.alert()
 }
 
 func (st *SkyEyeTransaction) alert() {

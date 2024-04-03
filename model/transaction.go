@@ -151,11 +151,10 @@ func (tx *Transaction) analysisContract(addrs *MonitorAddrs) {
 			MultiContractString: skyTx.MultiContractString,
 		}
 		contractTX.analysis()
-		contractTX.alert()
 	}
 }
 
-func (tx *Transaction) analysisTrace() {
+func (tx *Transaction) analysisAssetTransfer() {
 	if tx.Trace == nil {
 		tx.getTrace()
 	}
