@@ -267,12 +267,8 @@ func (st *SkyEyeTransaction) ComposeSlackAction() []slack.AttachmentAction {
 				continue
 			}
 			actionURL = fmt.Sprintf(url, dedaubMD5String)
-		case "Scan_Contract":
-			actionURL = fmt.Sprintf(url, st.ContractAddress)
-		case "MCL":
-			urlPattern := "contract"
-			urlKey := st.ContractAddress
-			actionURL = fmt.Sprintf(url, urlPattern, urlKey)
+		case "Phalcon":
+			actionURL = fmt.Sprintf(url, utils.ConvertChainToBlockSecChainID(config.Conf.ETL.Chain), st.TxHash)
 		}
 		actions = append(actions, slack.AttachmentAction{
 			Name: key,

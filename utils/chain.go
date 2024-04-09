@@ -30,7 +30,7 @@ func GetSupportChain(chain string) string {
 	}
 }
 
-func ConvertChainToMetaDock(chain string) string {
+func ConvertChainToBlockSecChainID(chain string) string {
 	switch chain {
 	case ChainEthereum, ChainEth:
 		return ChainEth
@@ -38,6 +38,7 @@ func ConvertChainToMetaDock(chain string) string {
 		return ChainBSC
 	case ChainArbitrum, ChainArb:
 		return ChainArbitrum
+
 	default:
 		return ChainEth
 	}
