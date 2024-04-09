@@ -1,11 +1,11 @@
 version: '3'
 services:
-  openapi:
-    image: etl:5adbccd
+  skyeye:
+    image: skyeye:5adbccd
     ports:
       - "8088:8088"
     volumes:
       - ./config/config.dev.yaml:/app/config.dev.yaml
       - ./config/flashloan.txt:/app/flashloan.txt
       - /mnt/dedaub:/app/dedaub
-    command: /app/etl http -c /app
+    command: /app/skyeye http
