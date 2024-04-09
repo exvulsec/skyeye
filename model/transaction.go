@@ -9,6 +9,7 @@ import (
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
+	"github.com/ethereum/go-ethereum/ethclient"
 	"github.com/shopspring/decimal"
 	"github.com/sirupsen/logrus"
 
@@ -58,15 +59,21 @@ func (tx *Transaction) GetLatestRecord(chain string) error {
 	return datastore.DB().Table(tableName).Order("id DESC").Limit(1).Find(tx).Error
 }
 
-func (tx *Transaction) getReceipt() {
+func (tx *Transaction) getReceipt(chain string, isHTTP bool) {
 	fn := func(element any) (any, error) {
 		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 		defer cancel()
 		txHash, ok := element.(common.Hash)
 		if !ok {
-			return nil, fmt.Errorf("element type is required  tx hash")
+			return nil, fmt.Errorf("element type is required tx hash")
 		}
-		return client.EvmClient().TransactionReceipt(ctx, txHash)
+		var c *ethclient.Client
+		if !isHTTP {
+			c = client.EvmClient()
+		} else {
+			c = client.MultiEvmClient()[chain]
+		}
+		return c.TransactionReceipt(ctx, txHash)
 	}
 	receipt := utils.Retry(common.HexToHash(tx.TxHash), fn).(*types.Receipt)
 	if receipt == nil {
@@ -76,8 +83,8 @@ func (tx *Transaction) getReceipt() {
 	tx.Receipt = receipt
 }
 
-func (tx *Transaction) enrichReceipt() {
-	tx.getReceipt()
+func (tx *Transaction) EnrichReceipt(chain string, isHTTP bool) {
+	tx.getReceipt(chain, isHTTP)
 	if tx.Receipt != nil {
 		if tx.ContractAddress != utils.ZeroAddress {
 			tx.ContractAddress = strings.ToLower(tx.Receipt.ContractAddress.String())
@@ -97,17 +104,24 @@ func (tx *Transaction) filterAddrs(addrs []string) bool {
 	return false
 }
 
-func (tx *Transaction) getTrace() {
+func (tx *Transaction) GetTrace(chain string, isHTTP bool) {
 	var trace *TransactionTrace
 	fn := func(element any) (any, error) {
 		ctxWithTimeOut, cancel := context.WithTimeout(context.TODO(), 10*time.Second)
 		defer cancel()
-		err := client.EvmClient().Client().CallContext(ctxWithTimeOut, &trace,
+		var c *ethclient.Client
+		if !isHTTP {
+			c = client.EvmClient()
+		} else {
+			c = client.MultiEvmClient()[chain]
+		}
+		err := c.Client().CallContext(ctxWithTimeOut, &trace,
 			"debug_traceTransaction",
 			common.HexToHash(tx.TxHash),
 			map[string]string{
 				"tracer": "callTracer",
 			})
+
 		return trace, err
 	}
 	trace = utils.Retry(trace, fn).(*TransactionTrace)
@@ -118,7 +132,7 @@ func (tx *Transaction) getTrace() {
 	tx.Trace = trace
 }
 
-func (tx *Transaction) analysisContract(addrs *MonitorAddrs) {
+func (tx *Transaction) AnalysisContract(addrs *MonitorAddrs) {
 	policies := []PolicyCalc{
 		&MultiContractCalc{},
 		&FundPolicyCalc{NeedFund: true},
@@ -150,16 +164,19 @@ func (tx *Transaction) analysisContract(addrs *MonitorAddrs) {
 			MonitorAddrs:        addrs,
 			MultiContractString: skyTx.MultiContractString,
 		}
-		contractTX.analysis()
+		contractTX.Analysis("", false)
+		if !contractTX.Skip {
+			contractTX.alert()
+		}
 	}
 }
 
 func (tx *Transaction) analysisAssetTransfer() {
 	if tx.Trace == nil {
-		tx.getTrace()
+		tx.GetTrace("", false)
 	}
 	if tx.Receipt == nil {
-		tx.getReceipt()
+		tx.getReceipt("", false)
 	}
 	if tx.Receipt != nil && tx.Trace != nil {
 		skyTx := SkyEyeTransaction{}

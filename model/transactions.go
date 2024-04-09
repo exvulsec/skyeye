@@ -25,7 +25,7 @@ func (txs *Transactions) AnalysisContracts(addrs MonitorAddrs) {
 		logrus.Infof("get %d txs is required to analysis contracts on block %d", len(needAnalysisTxs), needAnalysisTxs[0].BlockNumber)
 		needAnalysisTxs.enrichTxs()
 		for _, tx := range needAnalysisTxs {
-			tx.analysisContract(&addrs)
+			tx.AnalysisContract(&addrs)
 		}
 	}
 
@@ -54,8 +54,8 @@ func (txs *Transactions) AnalysisAssertTransfer(addrs MonitorAddrs) {
 
 func (txs *Transactions) enrichTxs() {
 	for index, tx := range *txs {
-		tx.enrichReceipt()
-		tx.getTrace()
+		tx.EnrichReceipt("", false)
+		tx.GetTrace("", false)
 		(*txs)[index] = tx
 	}
 }
