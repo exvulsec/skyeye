@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/ethclient"
 	"github.com/sirupsen/logrus"
 	"github.com/slack-go/slack"
 
@@ -42,8 +43,9 @@ type SkyEyeTransaction struct {
 	Push20Args          []string          `json:"-" gorm:"-"`
 	Push32Args          []string          `json:"-" gorm:"-"`
 	PushStringLogs      []string          `json:"-" gorm:"-"`
-	Fund                string            `json:"-" gorm:"-"`
+	Fund                string            `json:"fund" gorm:"-"`
 	MonitorAddrs        *MonitorAddrs     `json:"-" gorm:"-"`
+	Skip                bool              `json:"-" gorm:"-"`
 }
 
 func (st *SkyEyeTransaction) ConvertFromTransaction(tx Transaction) {
@@ -149,18 +151,25 @@ func (st *SkyEyeTransaction) GetInfoByContract(chain, contract string) error {
 	return datastore.DB().Table(skyEyeTableName).Where("chain = ? AND contract_address = ?", chain, contract).Find(st).Error
 }
 
-func (st *SkyEyeTransaction) analysis() {
-	code, err := client.EvmClient().CodeAt(context.Background(), common.HexToAddress(st.ContractAddress), big.NewInt(st.BlockNumber))
+func (st *SkyEyeTransaction) Analysis(chain string, isHTTP bool) {
+	var c *ethclient.Client
+	if isHTTP {
+		c = client.MultiEvmClient()[chain]
+	} else {
+		c = client.EvmClient()
+	}
+
+	code, err := c.CodeAt(context.Background(), common.HexToAddress(st.ContractAddress), big.NewInt(st.BlockNumber))
 	if err != nil {
 		logrus.Errorf("get contract %s's bytecode is err %v ", st.ContractAddress, err)
 		return
 	}
+
 	st.ByteCode = code
 	if st.analysisContractByPolicies() {
-		return
+		st.Skip = true
 	}
 	st.SplitScores = strings.Join(st.Scores, ",")
-	st.alert()
 }
 
 func (st *SkyEyeTransaction) alert() {
@@ -201,15 +210,17 @@ func (st *SkyEyeTransaction) analysisContractByPolicies() bool {
 }
 
 func (st *SkyEyeTransaction) MonitorContractAddress() error {
-	monitorAddr := MonitorAddr{
-		Chain:       strings.ToLower(config.Conf.ETL.Chain),
-		Address:     strings.ToLower(st.ContractAddress),
-		Description: "SkyEye Monitor",
+	if st.MonitorAddrs != nil {
+		monitorAddr := MonitorAddr{
+			Chain:       strings.ToLower(config.Conf.ETL.Chain),
+			Address:     strings.ToLower(st.ContractAddress),
+			Description: "SkyEye Monitor",
+		}
+		if err := monitorAddr.Create(); err != nil {
+			return fmt.Errorf("create monitor address chain %s address %s is err %v", config.Conf.ETL.Chain, st.ContractAddress, err)
+		}
+		*st.MonitorAddrs = append(*st.MonitorAddrs, monitorAddr)
 	}
-	if err := monitorAddr.Create(); err != nil {
-		return fmt.Errorf("create monitor address chain %s address %s is err %v", config.Conf.ETL.Chain, st.ContractAddress, err)
-	}
-	*st.MonitorAddrs = append(*st.MonitorAddrs, monitorAddr)
 	return nil
 }
 
