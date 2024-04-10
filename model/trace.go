@@ -49,17 +49,17 @@ func (q *Queue) IsEmpty() bool {
 	return len(*q) == 0
 }
 
-func (trace *TransactionTrace) GetContractAddress() string {
+func (trace *TransactionTrace) GetContractAddress() (string, bool) {
 	if trace.CallType == "CREATE" || trace.CallType == "CREATE2" {
 		if trace.FilterAddress(trace.TransactionTraceBase.From) {
-			return ""
+			return "", true
 		}
-		return trace.TransactionTraceBase.To
+		return trace.TransactionTraceBase.To, false
 	}
-	return ""
+	return "", false
 }
 
-func (trace *TransactionTrace) ListContracts() []string {
+func (trace *TransactionTrace) ListContracts() ([]string, bool) {
 	queue := Queue{}
 	queue.Push(*trace)
 	contracts := []string{}
@@ -68,7 +68,10 @@ func (trace *TransactionTrace) ListContracts() []string {
 			break
 		}
 		txTrace := queue.Pop()
-		address := txTrace.GetContractAddress()
+		address, skip := txTrace.GetContractAddress()
+		if skip {
+			return contracts, true
+		}
 		if address != "" {
 			contracts = append(contracts, address)
 		}
@@ -78,7 +81,7 @@ func (trace *TransactionTrace) ListContracts() []string {
 			queue.Push(call)
 		}
 	}
-	return contracts
+	return contracts, false
 }
 
 func (trace *TransactionTrace) ListTransferEvent() []AssetTransfer {
