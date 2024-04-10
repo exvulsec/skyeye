@@ -22,6 +22,11 @@ import (
 
 var skyEyeTableName = utils.ComposeTableName(datastore.SchemaPublic, datastore.TableSkyEyeTransaction)
 
+const (
+	Dedaub  = "Dedaub"
+	Phalcon = "Phalcon"
+)
+
 type SkyEyeTransaction struct {
 	Chain               string            `json:"chain" gorm:"column:chain"`
 	BlockTimestamp      int64             `json:"block_timestamp" gorm:"column:block_timestamp"`
@@ -168,6 +173,7 @@ func (st *SkyEyeTransaction) Analysis(chain string, isHTTP bool) {
 	st.ByteCode = code
 	if st.analysisContractByPolicies() {
 		st.Skip = true
+		return
 	}
 	st.SplitScores = strings.Join(st.Scores, ",")
 }
@@ -258,8 +264,8 @@ func (st *SkyEyeTransaction) ComposeSlackAction() []slack.AttachmentAction {
 	actions := []slack.AttachmentAction{}
 	var actionURL string
 	for key, url := range config.Conf.ETL.LinkURLs {
-		switch key {
-		case "Dedaub":
+		switch {
+		case strings.EqualFold(key, Dedaub):
 			var dedaubMD5String DeDaubResponseString
 			err := dedaubMD5String.GetCodeMD5(st.ByteCode)
 			if err != nil {
@@ -267,12 +273,12 @@ func (st *SkyEyeTransaction) ComposeSlackAction() []slack.AttachmentAction {
 				continue
 			}
 			actionURL = fmt.Sprintf(url, dedaubMD5String)
-		case "Phalcon":
+		case strings.EqualFold(key, Phalcon):
 			actionURL = fmt.Sprintf(url, utils.ConvertChainToBlockSecChainID(config.Conf.ETL.Chain), st.TxHash)
 		}
 		actions = append(actions, slack.AttachmentAction{
-			Name: key,
-			Text: key,
+			Name: utils.FirstUpper(key),
+			Text: utils.FirstUpper(key),
 			Type: "button",
 			URL:  actionURL,
 		})
