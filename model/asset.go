@@ -272,47 +272,59 @@ func (as *Assets) analysisAssetTransfers(assetTransfers AssetTransfers, focuses 
 		return err
 	}
 	for address, tokens := range balances {
-		asset := Asset{Address: address, TotalUSD: decimal.Decimal{}}
+		asset := Asset{Address: address, TotalUSD: decimal.NewFromInt(0)}
 		assetTokens := []Token{}
 		for tokenAddr, value := range tokens {
 			token := tokensWithPrice[tokenAddr]
 			token.Value = token.GetValueWithDecimals(value)
+			token.ValueWithUnit = fmt.Sprintf("%s %s", token.Value, token.Symbol)
 			assetTokens = append(assetTokens, token)
 			if token.Price != nil {
-				asset.TotalUSD.Add(token.Value.Mul(*token.Price))
+				asset.TotalUSD = asset.TotalUSD.Add(token.Value.Mul(*token.Price))
 			}
 		}
+		asset.Tokens = assetTokens
 		as.Items = append(as.Items, asset)
 	}
 	return nil
 }
 
-func (as *Assets) composeMsg() string {
-	for _, asset := range as.Items {
-		as.TotalUSD.Add(asset.TotalUSD)
-	}
+func (as *Assets) composeMsg(tx SkyEyeTransaction) string {
 	chain := config.Conf.ETL.Chain
 	scanURL := utils.GetScanURL(chain)
-	items, _ := json.Marshal(as.Items)
+	items, _ := json.MarshalIndent(as.Items, "", "\t")
 	text := fmt.Sprintf("*Chain:* `%s`\n", strings.ToUpper(chain))
 	text += fmt.Sprintf("*Block:* `%d`\n", as.BlockNumber)
 	text += fmt.Sprintf("*DateTime:* `%s UTC`\n", time.Unix(as.BlockTimestamp, 0).Format(time.DateTime))
 	text += fmt.Sprintf("*TXhash:* <%s|%s>\n", fmt.Sprintf("%s/tx/%s", scanURL, as.TxHash), as.TxHash)
 	text += fmt.Sprintf("*Contract:* <%s|%s>\n", fmt.Sprintf("%s/address/%s", utils.GetScanURL(chain), as.ToAddress), as.ToAddress)
-	text += fmt.Sprintf("*Assets:* %s\n\n", items)
-	text += fmt.Sprintf("*Value USD:* %s\n\n", as.TotalUSD)
+	text += fmt.Sprintf("*Assets:* ```%s```\n\n", items)
+	text += fmt.Sprintf("*Value USD:* `%s`\n\n", as.TotalUSD)
+	text += fmt.Sprintf("*Split Score:* `%s`\n", tx.SplitScores)
+
+	input := tx.Input[:10]
+	texts, err := GetSignatures([]string{tx.Input[:10]})
+	if err != nil {
+		logrus.Errorf("get signature is err %v", err)
+	}
+	if len(texts) > 0 {
+		input = texts[0]
+	}
+	text += fmt.Sprintf("*Input:* `%s`", input)
 	return text
 }
 
-func (as *Assets) SendMessageToSlack() error {
-	summary := fmt.Sprintf("⚠️Detected asset {asset_string} transfer on %s⚠️\n", config.Conf.ETL.Chain)
+func (as *Assets) SendMessageToSlack(tx SkyEyeTransaction) error {
+	tx.TxHash = as.TxHash
+	summary := fmt.Sprintf("⚠️Detected asset transfer on %s⚠️\n", config.Conf.ETL.Chain)
 	attachment := slack.Attachment{
 		Color:      "warning",
 		AuthorName: "EXVul",
 		Fallback:   summary,
-		Text:       summary + as.composeMsg(),
+		Text:       summary + as.composeMsg(tx),
 		Footer:     fmt.Sprintf("skyeye-on-%s", config.Conf.ETL.Chain),
 		Ts:         json.Number(strconv.FormatInt(time.Now().Unix(), 10)),
+		Actions:    tx.ComposeSlackAction(),
 	}
 	msg := slack.WebhookMessage{
 		Attachments: []slack.Attachment{attachment},
@@ -320,11 +332,14 @@ func (as *Assets) SendMessageToSlack() error {
 	return slack.PostWebhook(config.Conf.ETL.SlackTransferWebHook, &msg)
 }
 
-func (as *Assets) alert() {
+func (as *Assets) alert(tx SkyEyeTransaction) {
+	for _, asset := range as.Items {
+		as.TotalUSD = as.TotalUSD.Add(asset.TotalUSD)
+	}
 	if as.TotalUSD.Cmp(Threshold) >= 0 {
 		stTime := time.Now()
 		logrus.Infof("start to send asset alert msg to slack")
-		if err := as.SendMessageToSlack(); err != nil {
+		if err := as.SendMessageToSlack(tx); err != nil {
 			logrus.Errorf("send txhash %s's contract %s message to slack is err %v", as.TxHash, as.ToAddress, err)
 		}
 		logrus.Infof("send asset alert msg to slack is finished, cost %2.f", time.Since(stTime).Seconds())

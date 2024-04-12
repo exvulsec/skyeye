@@ -27,14 +27,15 @@ const (
 )
 
 type Token struct {
-	ID        *int64           `json:"-" gorm:"column:id"`
-	Address   string           `json:"-" gorm:"column:address"`
-	Name      string           `json:"-" gorm:"column:name"`
-	Symbol    string           `json:"-" gorm:"column:symbol"`
-	Decimals  int64            `json:"-" gorm:"column:decimals"`
-	Value     decimal.Decimal  `json:"value" gorm:"-"`
-	Price     *decimal.Decimal `json:"-" gorm:"column:price"`
-	UpdatedAt time.Time        `json:"-" gorm:"column:updated_at"`
+	ID            *int64           `json:"-" gorm:"column:id"`
+	Address       string           `json:"-" gorm:"column:address"`
+	Name          string           `json:"-" gorm:"column:name"`
+	Symbol        string           `json:"-" gorm:"column:symbol"`
+	Decimals      int64            `json:"-" gorm:"column:decimals"`
+	Value         decimal.Decimal  `json:"-" gorm:"-"`
+	ValueWithUnit string           `json:"value" gorm:"-"`
+	Price         *decimal.Decimal `json:"-" gorm:"column:price"`
+	UpdatedAt     time.Time        `json:"-" gorm:"column:updated_at"`
 }
 
 type Tokens []Token

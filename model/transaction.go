@@ -179,16 +179,20 @@ func (tx *Transaction) analysisAssetTransfer() {
 		tx.getReceipt("", false)
 	}
 	if tx.Receipt != nil && tx.Trace != nil {
-		skyTx := SkyEyeTransaction{}
+		skyTx := SkyEyeTransaction{Input: tx.Input}
 		if err := skyTx.GetInfoByContract(config.Conf.ETL.Chain, *tx.ToAddress); err != nil {
 			logrus.Errorf("get skyeye tx info is err %v", err)
 		}
 		focusesAddresses := []string{
 			tx.FromAddress,
 		}
-		skyTx.MultiContracts = strings.Split(skyTx.MultiContractString, ",")
-		for _, contract := range skyTx.MultiContracts {
-			focusesAddresses = append(focusesAddresses, contract)
+		if skyTx.MultiContractString != "" {
+			skyTx.MultiContracts = strings.Split(skyTx.MultiContractString, ",")
+			for _, contract := range skyTx.MultiContracts {
+				focusesAddresses = append(focusesAddresses, contract)
+			}
+		} else {
+			focusesAddresses = append(focusesAddresses, *tx.ToAddress)
 		}
 		assetTransfers := AssetTransfers{}
 
@@ -199,12 +203,12 @@ func (tx *Transaction) analysisAssetTransfer() {
 			TxHash:         tx.TxHash,
 			ToAddress:      *tx.ToAddress,
 			Items:          []Asset{},
-			TotalUSD:       decimal.Decimal{},
+			TotalUSD:       decimal.NewFromInt(0),
 		}
 		if err := assets.analysisAssetTransfers(assetTransfers, focusesAddresses); err != nil {
 			logrus.Errorf("analysis asset transfer is err %v", err)
 			return
 		}
-		assets.alert()
+		assets.alert(skyTx)
 	}
 }

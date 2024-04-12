@@ -51,6 +51,7 @@ type SkyEyeTransaction struct {
 	Fund                string            `json:"fund" gorm:"-"`
 	MonitorAddrs        *MonitorAddrs     `json:"-" gorm:"-"`
 	Skip                bool              `json:"-" gorm:"-"`
+	Input               string            `json:"input" gorm:"-"`
 }
 
 func (st *SkyEyeTransaction) ConvertFromTransaction(tx Transaction) {
