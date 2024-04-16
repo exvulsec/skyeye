@@ -78,11 +78,9 @@ func (hdpc *HeimdallPolicyCalc) Name() string {
 
 func (hdpc *HeimdallPolicyCalc) GetPolicy(tx *SkyEyeTransaction) bool {
 	for _, metadata := range hdpc.Heimdall.MetaData {
-		if metadata.View {
-			for _, statement := range metadata.ControlStatements {
-				if statement == "if (msg.sender == (address(storage[0]))) { .. }" {
-					return true
-				}
+		for _, statement := range metadata.ControlStatements {
+			if statement == "if (msg.sender == (address(storage[0]))) { .. }" {
+				return true
 			}
 		}
 	}
