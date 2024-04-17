@@ -39,9 +39,8 @@ type EvmClientConfig struct {
 }
 
 type ScanInfoConfig struct {
-	APIKeyString          string   `mapstructure:"apikeys" yaml:"apikeys"`
-	APIKeys               []string `mapstructure:"-" yaml:"-"`
-	AddressNonceThreshold uint64   `mapstructure:"address_nonce_threshold" yaml:"address_nonce_threshold"`
+	APIKeyString string   `mapstructure:"apikeys" yaml:"apikeys"`
+	APIKeys      []string `mapstructure:"-" yaml:"-"`
 }
 
 type PostgresqlConfig struct {

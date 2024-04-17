@@ -40,6 +40,7 @@ func (te *transactionExecutor) GetItemsCh() chan any {
 
 func (te *transactionExecutor) Execute(workerID int) {
 	for item := range te.items {
+		startTime := time.Now()
 		txs, ok := item.(model.Transactions)
 		blockNumber := txs[0].BlockNumber
 		if ok {
@@ -50,7 +51,7 @@ func (te *transactionExecutor) Execute(workerID int) {
 
 			assetTransferStartTime := time.Now()
 			txs.AnalysisAssertTransfer(te.MonitorAddresses)
-			logrus.Infof("thread %d: processed to analysis transactions' asset transfer on block %d, cost %2.fs",
+			logrus.Infof("thread %d: processed to analysis transactions' asset transfer on block %d, cost %.2fs",
 				workerID, blockNumber, time.Since(assetTransferStartTime).Seconds())
 		}
 
@@ -58,6 +59,8 @@ func (te *transactionExecutor) Execute(workerID int) {
 			te.writeFileMutex.Lock()
 			defer te.writeFileMutex.Unlock()
 			utils.WriteBlockNumberToFile(config.Conf.ETL.PreviousFile, blockNumber)
+			logrus.Infof("thread %d: processed %d transactions on block %d, cost %.2fs",
+				workerID, len(txs), blockNumber, time.Since(startTime).Seconds())
 		}()
 
 	}
