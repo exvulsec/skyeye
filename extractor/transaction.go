@@ -124,7 +124,6 @@ func (te *TransactionExtractor) convertTransactionFromBlock(block *types.Block) 
 		go func(index int) {
 			defer func() {
 				wg.Done()
-				rwMutex.Unlock()
 			}()
 			t := model.Transaction{}
 			t.ConvertFromBlock(transaction)
@@ -132,6 +131,7 @@ func (te *TransactionExtractor) convertTransactionFromBlock(block *types.Block) 
 			t.BlockTimestamp = int64(block.Time())
 			rwMutex.Lock()
 			txs = append(txs, t)
+			rwMutex.Unlock()
 		}(index)
 	}
 	wg.Wait()

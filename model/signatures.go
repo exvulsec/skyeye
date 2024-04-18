@@ -57,7 +57,6 @@ func GetSignatures(byteSigns []string) ([]string, error) {
 		go func(byteSign string) {
 			defer func() {
 				wg.Done()
-				rwMutex.Unlock()
 			}()
 			s := Signature{
 				ByteSign: byteSign,
@@ -72,6 +71,7 @@ func GetSignatures(byteSigns []string) ([]string, error) {
 			} else {
 				httpByteSignatures = append(httpByteSignatures, s.ByteSign)
 			}
+			rwMutex.Unlock()
 		}(byteSign)
 	}
 	wg.Wait()
