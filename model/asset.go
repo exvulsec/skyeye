@@ -7,6 +7,7 @@ import (
 	"math/big"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	mapset "github.com/deckarep/golang-set/v2"
@@ -75,16 +76,32 @@ func init() {
 }
 
 func (ats *AssetTransfers) compose(logs []*types.Log, trace TransactionTrace) {
+	mutex := sync.RWMutex{}
+	workers := make(chan int, 5)
+	wg := sync.WaitGroup{}
+
 	for _, l := range logs {
-		assetTransfer := AssetTransfer{}
-		err := assetTransfer.Decode(*l)
-		if err != nil {
-			logrus.Error(err)
-			return
-		}
-		if assetTransfer.Address != "" {
-			*ats = append(*ats, assetTransfer)
-		}
+		workers <- 1
+		wg.Add(1)
+		go func() {
+			defer func() {
+				<-workers
+				wg.Done()
+				mutex.Unlock()
+			}()
+
+			assetTransfer := AssetTransfer{}
+			err := assetTransfer.Decode(*l)
+			if err != nil {
+				logrus.Error(err)
+				return
+			}
+
+			if assetTransfer.Address != "" {
+				mutex.Lock()
+				*ats = append(*ats, assetTransfer)
+			}
+		}()
 	}
 	*ats = append(*ats, trace.ListTransferEvent()...)
 }
@@ -189,12 +206,26 @@ func (abs *AssetBalances) SetBalanceValue(address, token string, value decimal.D
 }
 
 func (abs *AssetBalances) calcBalance(transfers []AssetTransfer, focuses []string) {
+	workers := make(chan int, 5)
+	wg := &sync.WaitGroup{}
+	mutex := &sync.Mutex{}
 	for _, transfer := range transfers {
-		if !transfer.Value.Equal(decimal.Decimal{}) {
-			abs.SetBalanceValue(transfer.From, transfer.Address, transfer.Value.Mul(decimal.NewFromInt(-1)))
-			abs.SetBalanceValue(transfer.To, transfer.Address, transfer.Value)
-		}
+		wg.Add(1)
+		workers <- 1
+		go func() {
+			defer func() {
+				<-workers
+				wg.Done()
+				mutex.Unlock()
+			}()
+			if !transfer.Value.Equal(decimal.Decimal{}) {
+				mutex.Lock()
+				abs.SetBalanceValue(transfer.From, transfer.Address, transfer.Value.Mul(decimal.NewFromInt(-1)))
+				abs.SetBalanceValue(transfer.To, transfer.Address, transfer.Value)
+			}
+		}()
 	}
+	wg.Wait()
 	abs.filterBalance(focuses)
 }
 
@@ -265,20 +296,33 @@ func (as *Assets) analysisAssetTransfers(assetTransfers AssetTransfers, focuses 
 	if err != nil {
 		return err
 	}
+	workers := make(chan int, 5)
+	wg := sync.WaitGroup{}
+	mutex := sync.RWMutex{}
 	for address, tokens := range balances {
-		asset := Asset{Address: address, TotalUSD: decimal.NewFromInt(0)}
-		assetTokens := []Token{}
-		for tokenAddr, value := range tokens {
-			token := tokensWithPrice[tokenAddr]
-			token.Value = token.GetValueWithDecimals(value)
-			token.ValueWithUnit = fmt.Sprintf("%s %s", token.Value, token.Symbol)
-			assetTokens = append(assetTokens, token)
-			if token.Price != nil {
-				asset.TotalUSD = asset.TotalUSD.Add(token.Value.Mul(*token.Price))
+		workers <- 1
+		wg.Add(1)
+		go func() {
+			defer func() {
+				wg.Done()
+				<-workers
+				mutex.Unlock()
+			}()
+			asset := Asset{Address: address, TotalUSD: decimal.NewFromInt(0)}
+			assetTokens := []Token{}
+			for tokenAddr, value := range tokens {
+				token := tokensWithPrice[tokenAddr]
+				token.Value = token.GetValueWithDecimals(value)
+				token.ValueWithUnit = fmt.Sprintf("%s %s", token.Value, token.Symbol)
+				assetTokens = append(assetTokens, token)
+				if token.Price != nil {
+					asset.TotalUSD = asset.TotalUSD.Add(token.Value.Mul(*token.Price))
+				}
 			}
-		}
-		asset.Tokens = assetTokens
-		as.Items = append(as.Items, asset)
+			asset.Tokens = assetTokens
+			mutex.Lock()
+			as.Items = append(as.Items, asset)
+		}()
 	}
 	return nil
 }
