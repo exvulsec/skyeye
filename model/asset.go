@@ -103,6 +103,7 @@ func (ats *AssetTransfers) compose(logs []*types.Log, trace TransactionTrace) {
 			}
 		}()
 	}
+	wg.Wait()
 	*ats = append(*ats, trace.ListTransferEvent()...)
 }
 
