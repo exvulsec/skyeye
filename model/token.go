@@ -6,6 +6,7 @@ import (
 	"io"
 	"net/http"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/ethereum/go-ethereum/common"
@@ -108,21 +109,34 @@ func (t *Token) Update(chain string) error {
 func UpdateTokensPrice(chain string, tokenAddrs []string) (Tokens, error) {
 	tokens := Tokens{}
 	updateTokens := Tokens{}
-
+	workers := make(chan int, 5)
+	wg := sync.WaitGroup{}
+	mutex := sync.RWMutex{}
 	for _, addr := range tokenAddrs {
-		token := Token{}
-		if !token.IsExisted(chain, addr) {
-			if err := token.GetMetadataOnChain(chain, addr); err != nil {
-				return nil, err
+		wg.Add(1)
+		workers <- 1
+		go func() {
+			defer func() {
+				wg.Done()
+				<-workers
+				mutex.Unlock()
+			}()
+			token := Token{}
+			if !token.IsExisted(chain, addr) {
+				if err := token.GetMetadataOnChain(chain, addr); err != nil {
+					logrus.Error(err)
+					return
+				}
 			}
-		}
-		if token.Price == nil || time.Since(token.UpdatedAt) > time.Hour {
-			updateTokens = append(updateTokens, token)
-		} else {
-			tokens = append(tokens, token)
-		}
+			mutex.Lock()
+			if token.Price == nil || time.Since(token.UpdatedAt) > time.Hour {
+				updateTokens = append(updateTokens, token)
+			} else {
+				tokens = append(tokens, token)
+			}
+		}()
 	}
-
+	wg.Wait()
 	if len(updateTokens) > 0 {
 		prices, err := updateTokens.GetCoinGeCkoPrices()
 		if err != nil {
