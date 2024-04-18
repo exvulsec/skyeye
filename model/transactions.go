@@ -2,6 +2,7 @@ package model
 
 import (
 	"context"
+	"sync"
 
 	pgx "github.com/jackc/pgx/v5"
 	"github.com/sirupsen/logrus"
@@ -11,16 +12,43 @@ import (
 
 type Transactions []Transaction
 
-func (txs *Transactions) AnalysisContracts(addrs MonitorAddrs) {
+func (txs *Transactions) multiProcess(condition func(tx Transaction) bool) (Transactions, Transactions) {
 	originTxs := Transactions{}
 	needAnalysisTxs := Transactions{}
-	for _, tx := range *txs {
-		if tx.ToAddress == nil {
-			needAnalysisTxs = append(needAnalysisTxs, tx)
-		} else {
-			originTxs = append(originTxs, tx)
-		}
+	mutex := sync.RWMutex{}
+	workers := make(chan int, 5)
+	wg := sync.WaitGroup{}
+
+	cleanFunc := func() {
+		wg.Done()
+		<-workers
+		mutex.Unlock()
 	}
+
+	for _, tx := range *txs {
+		workers <- 1
+		wg.Add(1)
+		go func() {
+			defer cleanFunc()
+			mutex.Lock()
+			if condition(tx) {
+				needAnalysisTxs = append(needAnalysisTxs, tx)
+			} else {
+				originTxs = append(originTxs, tx)
+			}
+		}()
+	}
+	wg.Wait()
+	return originTxs, needAnalysisTxs
+}
+
+func (txs *Transactions) AnalysisContracts(addrs MonitorAddrs) {
+	conditionFunc := func(tx Transaction) bool {
+		return tx.ToAddress == nil
+	}
+
+	originTxs, needAnalysisTxs := txs.multiProcess(conditionFunc)
+
 	if len(needAnalysisTxs) > 0 {
 		logrus.Infof("get %d txs is required to analysis contracts on block %d", len(needAnalysisTxs), needAnalysisTxs[0].BlockNumber)
 		needAnalysisTxs.enrichTxs()
@@ -33,15 +61,11 @@ func (txs *Transactions) AnalysisContracts(addrs MonitorAddrs) {
 }
 
 func (txs *Transactions) AnalysisAssertTransfer(addrs MonitorAddrs) {
-	originTxs := Transactions{}
-	needAnalysisTxs := Transactions{}
-	for _, tx := range *txs {
-		if addrs.Existed(*tx.ToAddress) {
-			needAnalysisTxs = append(needAnalysisTxs, tx)
-		} else {
-			originTxs = append(originTxs, tx)
-		}
+	conditionFunc := func(tx Transaction) bool {
+		return addrs.Existed(*tx.ToAddress)
 	}
+
+	originTxs, needAnalysisTxs := txs.multiProcess(conditionFunc)
 	if len(needAnalysisTxs) > 0 {
 		logrus.Infof("get %d txs is required to analysis asset transfer on block %d", len(needAnalysisTxs), needAnalysisTxs[0].BlockNumber)
 		for _, tx := range needAnalysisTxs {

@@ -59,6 +59,7 @@ func (te *transactionExecutor) Execute(workerID int) {
 			te.writeFileMutex.Lock()
 			defer te.writeFileMutex.Unlock()
 			utils.WriteBlockNumberToFile(config.Conf.ETL.PreviousFile, blockNumber)
+			logrus.Infof("thread %d: write block number %d to file", workerID, blockNumber)
 			logrus.Infof("thread %d: processed %d transactions on block %d, cost %.2fs",
 				workerID, len(txs), blockNumber, time.Since(startTime).Seconds())
 		}()

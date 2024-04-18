@@ -107,9 +107,9 @@ func (trace *TransactionTrace) ListTransferEvent() []AssetTransfer {
 					Value:   newValue,
 				})
 			}
-		}
-		for _, call := range trace.Calls {
-			queue.Push(call)
+			for _, call := range trace.Calls {
+				queue.Push(call)
+			}
 		}
 	}
 	return assetTransfers
