@@ -87,7 +87,6 @@ func (ats *AssetTransfers) compose(logs []*types.Log, trace TransactionTrace) {
 			defer func() {
 				<-workers
 				wg.Done()
-				mutex.Unlock()
 			}()
 
 			assetTransfer := AssetTransfer{}
@@ -100,6 +99,7 @@ func (ats *AssetTransfers) compose(logs []*types.Log, trace TransactionTrace) {
 			if assetTransfer.Address != "" {
 				*ats = append(*ats, assetTransfer)
 			}
+			mutex.Unlock()
 		}()
 	}
 	wg.Wait()
@@ -216,12 +216,12 @@ func (abs *AssetBalances) calcBalance(transfers []AssetTransfer, focuses []strin
 			defer func() {
 				<-workers
 				wg.Done()
-				mutex.Unlock()
 			}()
 			if !transfer.Value.Equal(decimal.Decimal{}) {
 				mutex.Lock()
 				abs.SetBalanceValue(transfer.From, transfer.Address, transfer.Value.Mul(decimal.NewFromInt(-1)))
 				abs.SetBalanceValue(transfer.To, transfer.Address, transfer.Value)
+				mutex.Unlock()
 			}
 		}()
 	}
@@ -306,7 +306,6 @@ func (as *Assets) analysisAssetTransfers(assetTransfers AssetTransfers, focuses 
 			defer func() {
 				wg.Done()
 				<-workers
-				mutex.Unlock()
 			}()
 			asset := Asset{Address: address, TotalUSD: decimal.NewFromInt(0)}
 			assetTokens := []Token{}
@@ -320,8 +319,10 @@ func (as *Assets) analysisAssetTransfers(assetTransfers AssetTransfers, focuses 
 				}
 			}
 			asset.Tokens = assetTokens
+
 			mutex.Lock()
 			as.Items = append(as.Items, asset)
+			mutex.Unlock()
 		}()
 	}
 	return nil

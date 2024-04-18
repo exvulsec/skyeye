@@ -22,7 +22,6 @@ func (txs *Transactions) multiProcess(condition func(tx Transaction) bool) (Tran
 	cleanFunc := func() {
 		wg.Done()
 		<-workers
-		mutex.Unlock()
 	}
 
 	for _, tx := range *txs {
@@ -36,6 +35,7 @@ func (txs *Transactions) multiProcess(condition func(tx Transaction) bool) (Tran
 			} else {
 				originTxs = append(originTxs, tx)
 			}
+			mutex.Unlock()
 		}()
 	}
 	wg.Wait()
