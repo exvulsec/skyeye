@@ -96,9 +96,8 @@ func (ats *AssetTransfers) compose(logs []*types.Log, trace TransactionTrace) {
 				logrus.Error(err)
 				return
 			}
-
+			mutex.Lock()
 			if assetTransfer.Address != "" {
-				mutex.Lock()
 				*ats = append(*ats, assetTransfer)
 			}
 		}()
