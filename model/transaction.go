@@ -135,7 +135,7 @@ func (tx *Transaction) GetTrace(chain string, isHTTP bool) {
 func (tx *Transaction) AnalysisContract(addrs *MonitorAddrs) {
 	policies := []PolicyCalc{
 		&MultiContractCalc{},
-		&FundPolicyCalc{NeedFund: true},
+		&FundPolicyCalc{Chain: config.Conf.ETL.Chain, NeedFund: true},
 		&NoncePolicyCalc{},
 	}
 	skyTx := SkyEyeTransaction{}

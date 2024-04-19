@@ -71,7 +71,7 @@ func (tc *TXController) Reviewed(c *gin.Context) {
 
 	policies := []model.PolicyCalc{
 		&model.MultiContractCalc{},
-		&model.FundPolicyCalc{NeedFund: searchFund},
+		&model.FundPolicyCalc{Chain: chain, NeedFund: searchFund},
 		&model.NoncePolicyCalc{},
 	}
 	results := []model.SkyEyeTransaction{}
