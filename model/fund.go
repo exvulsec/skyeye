@@ -19,16 +19,16 @@ import (
 
 type FundPolicyCalc struct {
 	NeedFund bool
+	Chain    string
 }
 
 func (fpc *FundPolicyCalc) Calc(tx *SkyEyeTransaction) int {
-	chain := config.Conf.ETL.Chain
 	if fpc.NeedFund {
 		var fund string
-		if chain == utils.ChainAvalanche {
+		if fpc.Chain == utils.ChainAvalanche {
 			return 0
 		}
-		scanTxResp, err := fpc.SearchFund(chain, tx.FromAddress)
+		scanTxResp, err := fpc.SearchFund(fpc.Chain, tx.FromAddress)
 		if err != nil {
 			logrus.Errorf("get contract %s's fund is err: %v", tx.ContractAddress, err)
 		}
