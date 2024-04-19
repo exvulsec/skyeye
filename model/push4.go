@@ -1,5 +1,7 @@
 package model
 
+import "strings"
+
 type Push4PolicyCalc struct {
 	FlashLoanFuncNames []string
 }
@@ -20,5 +22,11 @@ func (p4pc *Push4PolicyCalc) Name() string {
 }
 
 func (p4pc *Push4PolicyCalc) Filter(tx *SkyEyeTransaction) bool {
+	for _, funcName := range tx.Push20Args {
+		if strings.EqualFold(funcName, "UPGRADE_INTERFACE_VERSION") {
+			return true
+		}
+	}
+
 	return false
 }

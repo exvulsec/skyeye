@@ -119,7 +119,6 @@ func UpdateTokensPrice(chain string, tokenAddrs []string) (Tokens, error) {
 			defer func() {
 				wg.Done()
 				<-workers
-				mutex.Unlock()
 			}()
 			token := Token{}
 			if !token.IsExisted(chain, addr) {
@@ -134,6 +133,7 @@ func UpdateTokensPrice(chain string, tokenAddrs []string) (Tokens, error) {
 			} else {
 				tokens = append(tokens, token)
 			}
+			mutex.Unlock()
 		}()
 	}
 	wg.Wait()
