@@ -109,7 +109,7 @@ func (t *Token) Update(chain string) error {
 func UpdateTokensPrice(chain string, tokenAddrs []string) (Tokens, error) {
 	tokens := Tokens{}
 	updateTokens := Tokens{}
-	workers := make(chan int, 5)
+	workers := make(chan int, 3)
 	wg := sync.WaitGroup{}
 	mutex := sync.RWMutex{}
 	for _, addr := range tokenAddrs {
