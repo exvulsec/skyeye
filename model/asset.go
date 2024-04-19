@@ -77,7 +77,7 @@ func init() {
 
 func (ats *AssetTransfers) compose(logs []*types.Log, trace TransactionTrace) {
 	mutex := sync.RWMutex{}
-	workers := make(chan int, 5)
+	workers := make(chan int, 3)
 	wg := sync.WaitGroup{}
 
 	for _, l := range logs {
@@ -107,10 +107,6 @@ func (ats *AssetTransfers) compose(logs []*types.Log, trace TransactionTrace) {
 }
 
 func (a *AssetTransfer) Decode(log types.Log) error {
-	eventAbi, err := abi.JSON(strings.NewReader(ABIs))
-	if err != nil {
-		return err
-	}
 	topic := log.Topics[0].String()
 
 	abiName := decodeWithTopic(topic)
@@ -118,11 +114,29 @@ func (a *AssetTransfer) Decode(log types.Log) error {
 		return nil
 	}
 
-	event := map[string]interface{}{}
-	err = eventAbi.UnpackIntoMap(event, abiName, log.Data)
+	eventAbi, err := abi.JSON(strings.NewReader(ABIs))
 	if err != nil {
-		return errors.New("unpack abi is err: " + err.Error() + "on tx: " + log.TxHash.String())
+		return err
 	}
+	event := map[string]interface{}{}
+
+	indexed := []abi.Argument{}
+	for _, input := range eventAbi.Events[abiName].Inputs {
+		if input.Indexed {
+			indexed = append(indexed, input)
+		}
+	}
+	if err := abi.ParseTopicsIntoMap(event, indexed, log.Topics[1:]); err != nil {
+		return errors.New("unpack abi's topics is err: " + err.Error() + " on tx: " + log.TxHash.String())
+	}
+
+	if len(log.Data) > 0 && len(log.Topics) != 4 {
+		err = eventAbi.UnpackIntoMap(event, abiName, log.Data)
+		if err != nil {
+			return errors.New("unpack abi's data is err: " + err.Error() + " on tx: " + log.TxHash.String())
+		}
+	}
+
 	a.DecodeEvent(topic, event, log)
 
 	return nil
@@ -152,39 +166,20 @@ func (a *AssetTransfer) DecodeEvent(topic string, event map[string]any, log type
 }
 
 func (a *AssetTransfer) DecodeTransfer(event Event, log types.Log) {
-	if event.mapKeyExist("from") && event.mapKeyExist("to") {
-		a.From = convertAddress(event["from"].(common.Address).String())
-		a.To = convertAddress(event["to"].(common.Address).String())
-	} else {
-		a.From = convertAddress(log.Topics[1].String())
-		a.To = convertAddress(log.Topics[2].String())
-	}
-	if event.mapKeyExist("value") {
-		a.Value = decimal.NewFromBigInt(event["value"].(*big.Int), 0)
-	} else {
-		value, _ := (&big.Int{}).SetString(utils.RemoveLeadingZeroDigits(log.Topics[3].String()), 16)
-		a.Value = decimal.NewFromBigInt(value, 0)
-	}
-
+	a.From = convertAddress(event["from"].(common.Address).String())
+	a.To = convertAddress(event["to"].(common.Address).String())
+	a.Value = decimal.NewFromBigInt(event["value"].(*big.Int), 0)
 	a.Address = strings.ToLower(log.Address.String())
 }
 
 func (a *AssetTransfer) DecodeWithdrawal(event Event, log types.Log) {
-	if event.mapKeyExist("src") {
-		a.From = convertAddress(event["src"].(common.Address).String())
-	} else {
-		a.From = convertAddress(log.Topics[1].String())
-	}
+	a.From = convertAddress(event["src"].(common.Address).String())
 	a.Value = decimal.NewFromBigInt(event["wad"].(*big.Int), 0)
 	a.Address = strings.ToLower(log.Address.String())
 }
 
 func (a *AssetTransfer) DecodeDeposit(event Event, log types.Log) {
-	if event.mapKeyExist("dst") {
-		a.To = convertAddress(event["dst"].(common.Address).String())
-	} else {
-		a.To = convertAddress(log.Topics[1].String())
-	}
+	a.To = convertAddress(event["dst"].(common.Address).String())
 	a.Value = decimal.NewFromBigInt(event["wad"].(*big.Int), 0)
 	a.Address = strings.ToLower(log.Address.String())
 }
@@ -206,7 +201,7 @@ func (abs *AssetBalances) SetBalanceValue(address, token string, value decimal.D
 }
 
 func (abs *AssetBalances) calcBalance(transfers []AssetTransfer, focuses []string) {
-	workers := make(chan int, 5)
+	workers := make(chan int, 3)
 	wg := &sync.WaitGroup{}
 	mutex := &sync.Mutex{}
 	for _, transfer := range transfers {
@@ -296,7 +291,7 @@ func (as *Assets) analysisAssetTransfers(assetTransfers AssetTransfers, focuses 
 	if err != nil {
 		return err
 	}
-	workers := make(chan int, 5)
+	workers := make(chan int, 3)
 	wg := sync.WaitGroup{}
 	mutex := sync.RWMutex{}
 	for address, tokens := range balances {

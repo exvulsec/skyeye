@@ -16,7 +16,7 @@ func (txs *Transactions) multiProcess(condition func(tx Transaction) bool) (Tran
 	originTxs := Transactions{}
 	needAnalysisTxs := Transactions{}
 	mutex := sync.RWMutex{}
-	workers := make(chan int, 5)
+	workers := make(chan int, 3)
 	wg := sync.WaitGroup{}
 
 	cleanFunc := func() {
