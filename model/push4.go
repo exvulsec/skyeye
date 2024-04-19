@@ -22,9 +22,18 @@ func (p4pc *Push4PolicyCalc) Name() string {
 }
 
 func (p4pc *Push4PolicyCalc) Filter(tx *SkyEyeTransaction) bool {
+	filterFuncNames := []string{
+		"UPGRADE_INTERFACE_VERSION",
+		"changeProxyAdmin",
+		"changeAdmin",
+		"transferOwnership",
+	}
+
 	for _, funcName := range tx.Push20Args {
-		if strings.EqualFold(funcName, "UPGRADE_INTERFACE_VERSION") {
-			return true
+		for _, filterFuncName := range filterFuncNames {
+			if strings.EqualFold(funcName, filterFuncName) {
+				return true
+			}
 		}
 	}
 
