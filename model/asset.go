@@ -23,17 +23,23 @@ import (
 )
 
 const (
-	TransferTopic     = "0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef"
-	WithdrawalTopic   = "0x7fcf532c15f0a6db0bd6d0e038bea71d30d808c7d98cb3bf7268a95bf5081b65"
-	DepositTopic      = "0xe1fffcc4923d04b559f4d29a8bfc6cda04eb5b0d3c460751c2402c5c5cc9109c"
-	TransferABIName   = "Transfer"
-	WithdrawalABIName = "Withdrawal"
-	DepositABIName    = "Deposit"
+	TransferTopic          = "0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef"
+	WithdrawalTopic        = "0x7fcf532c15f0a6db0bd6d0e038bea71d30d808c7d98cb3bf7268a95bf5081b65"
+	DepositTopic           = "0xe1fffcc4923d04b559f4d29a8bfc6cda04eb5b0d3c460751c2402c5c5cc9109c"
+	TransferABIName        = "Transfer"
+	WithdrawalABIName      = "Withdrawal"
+	DepositABIName         = "Deposit"
+	TransferIndexABIName   = "TransferIndex"
+	WithdrawalIndexABIName = "WithdrawalIndex"
+	DepositIndexABIName    = "DepositIndex"
 
 	ABIs = `[
-		{"anonymous":false,"inputs":[{"indexed":true,"name":"from","type":"address"},{"indexed":true,"name":"to","type":"address"},{"indexed":true,"name":"value","type":"uint256"},{"indexed":false,"name":"value","type":"uint256"}],"name":"Transfer","type":"event"},
-		{"anonymous":false,"inputs":[{"indexed":true,"name":"src","type":"address"},{"indexed":false,"name":"src","type":"address"},{"indexed":false,"name":"wad","type":"uint256"}],"name":"Withdrawal","type":"event"},
-		{"anonymous":false,"inputs":[{"indexed":true,"name":"dst","type":"address"},{"indexed":false,"name":"dst","type":"address"},{"indexed":false,"name":"wad","type":"uint256"}],"name":"Deposit","type":"event"}
+		{"anonymous":false,"inputs":[{"indexed":true,"name":"from","type":"address"},{"indexed":true,"name":"to","type":"address"},{"indexed":true,"name":"value","type":"uint256"}],"name":"TransferIndex","type":"event"},
+		{"anonymous":false,"inputs":[{"indexed":true,"name":"src","type":"address"},{"indexed":false,"name":"wad","type":"uint256"}],"name":"WithdrawalIndex","type":"event"},
+		{"anonymous":false,"inputs":[{"indexed":true,"name":"dst","type":"address"},{"indexed":false,"name":"wad","type":"uint256"}],"name":"DepositIndex","type":"event"},
+		{"anonymous":false,"inputs":[{"indexed":true,"name":"from","type":"address"},{"indexed":true,"name":"to","type":"address"},{"indexed":false,"name":"value","type":"uint256"}],"name":"Transfer","type":"event"},
+		{"anonymous":false,"inputs":[{"indexed":false,"name":"src","type":"address"},{"indexed":false,"name":"wad","type":"uint256"}],"name":"Withdrawal","type":"event"},
+		{"anonymous":false,"inputs":[{"indexed":false,"name":"dst","type":"address"},{"indexed":false,"name":"wad","type":"uint256"}],"name":"Deposit","type":"event"}
 	]`
 )
 
@@ -107,9 +113,7 @@ func (ats *AssetTransfers) compose(logs []*types.Log, trace TransactionTrace) {
 }
 
 func (a *AssetTransfer) Decode(log types.Log) error {
-	topic := log.Topics[0].String()
-
-	abiName := decodeWithTopic(topic)
+	abiName := decodeWithTopic(log)
 	if abiName == "" {
 		return nil
 	}
@@ -129,26 +133,34 @@ func (a *AssetTransfer) Decode(log types.Log) error {
 	if err := abi.ParseTopicsIntoMap(event, indexed, log.Topics[1:]); err != nil {
 		return errors.New("unpack abi's topics is err: " + err.Error() + " on tx: " + log.TxHash.String())
 	}
-
-	if len(log.Data) > 0 && len(log.Topics) != 4 {
+	if len(log.Data) > 0 {
 		err = eventAbi.UnpackIntoMap(event, abiName, log.Data)
 		if err != nil {
 			return errors.New("unpack abi's data is err: " + err.Error() + " on tx: " + log.TxHash.String())
 		}
 	}
 
-	a.DecodeEvent(topic, event, log)
+	a.DecodeEvent(log.Topics[0].String(), event, log)
 
 	return nil
 }
 
-func decodeWithTopic(topic string) string {
-	switch strings.ToLower(topic) {
+func decodeWithTopic(log types.Log) string {
+	switch strings.ToLower(log.Topics[0].String()) {
 	case TransferTopic:
+		if len(log.Topics) == 4 {
+			return TransferIndexABIName
+		}
 		return TransferABIName
 	case WithdrawalTopic:
+		if len(log.Topics) == 2 {
+			return WithdrawalIndexABIName
+		}
 		return WithdrawalABIName
 	case DepositTopic:
+		if len(log.Topics) == 2 {
+			return DepositIndexABIName
+		}
 		return DepositABIName
 	}
 	return ""
