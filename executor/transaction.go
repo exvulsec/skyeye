@@ -21,10 +21,11 @@ type transactionExecutor struct {
 	executors []Executor
 }
 
-func NewTransactionExtractor(workers int) Executor {
+func NewTransactionExtractor(workers int, latestBlockNumberCh chan int64) Executor {
 	return &transactionExecutor{
 		items:     make(chan any),
-		executors: []Executor{NewContractExecutor(workers)},
+		workers:   workers,
+		executors: []Executor{NewContractExecutor(workers, latestBlockNumberCh)},
 	}
 }
 
@@ -40,14 +41,18 @@ func (te *transactionExecutor) Execute() {
 	for _, exec := range te.executors {
 		go exec.Execute()
 	}
-	for item := range te.items {
-		blockNumber, ok := item.(uint64)
-		if ok {
-			txs := te.extractTransactionFromBlock(blockNumber)
-			for _, executor := range te.executors {
-				executor.GetItemsCh() <- txs
+	for range te.workers {
+		go func() {
+			for item := range te.items {
+				blockNumber, ok := item.(uint64)
+				if ok {
+					txs := te.extractTransactionFromBlock(blockNumber)
+					for _, executor := range te.executors {
+						executor.GetItemsCh() <- txs
+					}
+				}
 			}
-		}
+		}()
 	}
 }
 

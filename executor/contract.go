@@ -13,7 +13,7 @@ type contractExecutor struct {
 	MonitorAddresses model.MonitorAddrs
 }
 
-func NewContractExecutor(workers int) Executor {
+func NewContractExecutor(workers int, latestBlockNumberCh chan int64) Executor {
 	monitorAddrs := model.MonitorAddrs{}
 	if err := monitorAddrs.List(); err != nil {
 		logrus.Panicf("list monitor addr is err %v", err)
@@ -23,7 +23,7 @@ func NewContractExecutor(workers int) Executor {
 		items:            make(chan any, 10),
 		workers:          workers,
 		MonitorAddresses: monitorAddrs,
-		executors:        []Executor{NewAssetExecutor()},
+		executors:        []Executor{NewAssetExecutor(workers, latestBlockNumberCh)},
 	}
 }
 
@@ -36,11 +36,11 @@ func (ce *contractExecutor) GetItemsCh() chan any {
 }
 
 func (ce *contractExecutor) Execute() {
+	for _, e := range ce.executors {
+		go e.Execute()
+	}
 	for range ce.workers {
 		go func() {
-			for _, e := range ce.executors {
-				go e.Execute()
-			}
 			for item := range ce.items {
 				txs, ok := item.(model.Transactions)
 				if ok {
