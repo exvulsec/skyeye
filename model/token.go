@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"math/rand"
 	"net/http"
 	"strings"
 	"sync"
@@ -148,7 +149,7 @@ func UpdateTokensPrice(chain string, tokenAddrs []string) (Tokens, error) {
 				token.Price = &usdPrice
 				updateTokens[index] = token
 				if err := token.Update(chain); err != nil {
-					logrus.Errorf("update token %s to db is err %v", token.Address, err)
+					logrus.Errorf("update token %s to db is err: %v", token.Address, err)
 					continue
 				}
 			}
@@ -169,7 +170,10 @@ func (ts *Tokens) GetCoinGeCkoPrices() (map[string]map[string]decimal.Decimal, e
 	url := fmt.Sprintf(baseURL, utils.ConvertChainToCGCID(config.Conf.ETL.Chain), strings.Join(tokenAddrs, ","))
 	req, _ := http.NewRequest("GET", url, nil)
 
-	req.Header.Add("x-cg-demo-api-key", config.Conf.ETL.CGCAPIKey)
+	r := rand.New(rand.NewSource(time.Now().UnixNano()))
+	cgcAPIKeys := strings.Split(config.Conf.ETL.CGCAPIKey, ",")
+
+	req.Header.Add("x-cg-demo-api-key", cgcAPIKeys[r.Intn(len(cgcAPIKeys))])
 	resp, err := client.HTTPClient().Do(req)
 	if err != nil {
 		return nil, fmt.Errorf("get cgc response is err: %v", err)
@@ -178,7 +182,7 @@ func (ts *Tokens) GetCoinGeCkoPrices() (map[string]map[string]decimal.Decimal, e
 	body, _ := io.ReadAll(resp.Body)
 	priceMaps := map[string]map[string]decimal.Decimal{}
 	if err := json.Unmarshal(body, &priceMaps); err != nil {
-		return nil, fmt.Errorf("unmarshal price map is err %v", err)
+		return nil, fmt.Errorf("unmarshal price map is err: %v", err)
 	}
 	return priceMaps, nil
 }

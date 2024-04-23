@@ -314,7 +314,7 @@ func (as *Assets) analysisAssetTransfers(assetTransfers AssetTransfers, focuses 
 				wg.Done()
 				<-workers
 			}()
-			asset := Asset{Address: address, TotalUSD: decimal.NewFromInt(0)}
+			asset := Asset{Address: address, TotalUSD: decimal.Decimal{}}
 			assetTokens := []Token{}
 			for tokenAddr, value := range tokens {
 				token := tokensWithPrice[tokenAddr]

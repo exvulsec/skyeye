@@ -9,7 +9,7 @@ require (
 	github.com/jackc/pgx/v5 v5.3.1
 	github.com/magiconair/properties v1.8.7
 	github.com/redis/go-redis/v9 v9.0.3
-	github.com/shopspring/decimal v1.3.1
+	github.com/shopspring/decimal v1.4.0
 	github.com/sirupsen/logrus v1.9.0
 	github.com/slack-go/slack v0.12.3
 	github.com/spf13/cobra v1.6.1

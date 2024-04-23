@@ -30,25 +30,6 @@ type TransactionTrace struct {
 	Depth []int
 }
 
-type Queue []TransactionTrace
-
-func (q *Queue) Push(trace TransactionTrace) {
-	*q = append(*q, trace)
-}
-
-func (q *Queue) Pop() *TransactionTrace {
-	if !q.IsEmpty() {
-		top := (*q)[0]
-		*q = (*q)[1:]
-		return &top
-	}
-	return nil
-}
-
-func (q *Queue) IsEmpty() bool {
-	return len(*q) == 0
-}
-
 func (trace *TransactionTrace) GetContractAddress() (string, bool) {
 	if trace.CallType == "CREATE" || trace.CallType == "CREATE2" {
 		if trace.FilterAddress(trace.TransactionTraceBase.From) {
@@ -60,8 +41,8 @@ func (trace *TransactionTrace) GetContractAddress() (string, bool) {
 }
 
 func (trace *TransactionTrace) ListContracts() ([]string, bool) {
-	queue := Queue{}
-	queue.Push(*trace)
+	queue := Queue[*TransactionTrace]{}
+	queue.Push(trace)
 	contracts := []string{}
 	for {
 		if queue.IsEmpty() {
@@ -78,7 +59,7 @@ func (trace *TransactionTrace) ListContracts() ([]string, bool) {
 		for index := range txTrace.Calls {
 			call := txTrace.Calls[index]
 			call.Depth = append(txTrace.Depth, index)
-			queue.Push(call)
+			queue.Push(&call)
 		}
 	}
 	return contracts, false
@@ -86,8 +67,8 @@ func (trace *TransactionTrace) ListContracts() ([]string, bool) {
 
 func (trace *TransactionTrace) ListTransferEvent() []AssetTransfer {
 	assetTransfers := []AssetTransfer{}
-	queue := Queue{}
-	queue.Push(*trace)
+	queue := Queue[*TransactionTrace]{}
+	queue.Push(trace)
 	for {
 		if queue.IsEmpty() {
 			break
@@ -108,7 +89,7 @@ func (trace *TransactionTrace) ListTransferEvent() []AssetTransfer {
 				})
 			}
 			for _, call := range trace.Calls {
-				queue.Push(call)
+				queue.Push(&call)
 			}
 		}
 	}

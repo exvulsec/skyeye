@@ -3,6 +3,7 @@ package model
 import (
 	"context"
 	"sync"
+	"time"
 
 	pgx "github.com/jackc/pgx/v5"
 	"github.com/sirupsen/logrus"
@@ -43,6 +44,7 @@ func (txs *Transactions) multiProcess(condition func(tx Transaction) bool) (Tran
 }
 
 func (txs *Transactions) AnalysisContracts(addrs MonitorAddrs) {
+	startTime := time.Now()
 	conditionFunc := func(tx Transaction) bool {
 		return tx.ToAddress == nil
 	}
@@ -50,27 +52,30 @@ func (txs *Transactions) AnalysisContracts(addrs MonitorAddrs) {
 	originTxs, needAnalysisTxs := txs.multiProcess(conditionFunc)
 
 	if len(needAnalysisTxs) > 0 {
-		logrus.Infof("get %d txs is required to analysis contracts on block %d", len(needAnalysisTxs), needAnalysisTxs[0].BlockNumber)
 		needAnalysisTxs.enrichTxs()
 		for _, tx := range needAnalysisTxs {
 			tx.AnalysisContract(&addrs)
 		}
+		logrus.Infof("processed to analysis %d transactions' contract on block %d, cost %.2fs",
+			len(needAnalysisTxs), needAnalysisTxs[0].BlockNumber, time.Since(startTime).Seconds())
 	}
 
 	*txs = append(originTxs, needAnalysisTxs...)
 }
 
 func (txs *Transactions) AnalysisAssertTransfer(addrs MonitorAddrs) {
+	startTime := time.Now()
 	conditionFunc := func(tx Transaction) bool {
 		return addrs.Existed(*tx.ToAddress)
 	}
 
 	originTxs, needAnalysisTxs := txs.multiProcess(conditionFunc)
 	if len(needAnalysisTxs) > 0 {
-		logrus.Infof("get %d txs is required to analysis asset transfer on block %d", len(needAnalysisTxs), needAnalysisTxs[0].BlockNumber)
 		for _, tx := range needAnalysisTxs {
 			tx.analysisAssetTransfer()
 		}
+		logrus.Infof("processed to analysis %d transactions' asset transfer on block %d, cost %.2fs",
+			len(needAnalysisTxs), needAnalysisTxs[0].BlockNumber, time.Since(startTime).Seconds())
 	}
 
 	*txs = append(originTxs, needAnalysisTxs...)
