@@ -40,14 +40,6 @@ func GetBlockNumberFromDB() uint64 {
 	return blockNumber
 }
 
-func WriteBlockNumberToFile(filePath string, blockNumber int64) {
-	blockNumberString := strconv.FormatInt(blockNumber, 10)
-	err := os.WriteFile(filePath, []byte(blockNumberString), 0o777)
-	if err != nil {
-		logrus.Panicf("failed to write blocknumber %d to file, err is %v", blockNumber, err)
-	}
-}
-
 func checkFileIfNotExist(filePath string) {
 	_, err := os.Stat(filePath)
 	if err == nil {

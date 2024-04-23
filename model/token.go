@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"math/rand"
 	"net/http"
 	"strings"
 	"sync"
@@ -169,7 +170,10 @@ func (ts *Tokens) GetCoinGeCkoPrices() (map[string]map[string]decimal.Decimal, e
 	url := fmt.Sprintf(baseURL, utils.ConvertChainToCGCID(config.Conf.ETL.Chain), strings.Join(tokenAddrs, ","))
 	req, _ := http.NewRequest("GET", url, nil)
 
-	req.Header.Add("x-cg-demo-api-key", config.Conf.ETL.CGCAPIKey)
+	r := rand.New(rand.NewSource(time.Now().UnixNano()))
+	cgcAPIKeys := strings.Split(config.Conf.ETL.CGCAPIKey, ",")
+
+	req.Header.Add("x-cg-demo-api-key", cgcAPIKeys[r.Intn(len(cgcAPIKeys))])
 	resp, err := client.HTTPClient().Do(req)
 	if err != nil {
 		return nil, fmt.Errorf("get cgc response is err: %v", err)

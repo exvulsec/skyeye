@@ -7,7 +7,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/exvulsec/skyeye/config"
-	"github.com/exvulsec/skyeye/extractor"
+	"github.com/exvulsec/skyeye/executor"
 	"github.com/exvulsec/skyeye/log"
 )
 
@@ -23,10 +23,8 @@ var extractCMD = &cobra.Command{
 		}
 		log.InitLog(config.Conf.ETL.LogPath)
 
-		workers, _ := cmd.Flags().GetInt("workers")
-
-		executor := extractor.NewTransactionExtractor(workers)
-		executor.Run()
+		executor := executor.NewBlockExecutor()
+		executor.Execute()
 	},
 }
 

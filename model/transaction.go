@@ -75,12 +75,10 @@ func (tx *Transaction) getReceipt(chain string, isHTTP bool) {
 		}
 		return c.TransactionReceipt(ctx, txHash)
 	}
-	receipt := utils.Retry(common.HexToHash(tx.TxHash), fn).(*types.Receipt)
-	if receipt == nil {
-		logrus.Infof("get receipt with txhash %s failed, drop it", tx.TxHash)
-		return
+	receipt, ok := utils.Retry(common.HexToHash(tx.TxHash), fn).(*types.Receipt)
+	if ok {
+		tx.Receipt = receipt
 	}
-	tx.Receipt = receipt
 }
 
 func (tx *Transaction) EnrichReceipt(chain string, isHTTP bool) {
@@ -124,12 +122,10 @@ func (tx *Transaction) GetTrace(chain string, isHTTP bool) {
 
 		return trace, err
 	}
-	trace = utils.Retry(trace, fn).(*TransactionTrace)
-	if trace == nil {
-		logrus.Infof("get trace with txhash %s failed, drop it", tx.TxHash)
-		return
+	trace, ok := utils.Retry(trace, fn).(*TransactionTrace)
+	if ok {
+		tx.Trace = trace
 	}
-	tx.Trace = trace
 }
 
 func (tx *Transaction) AnalysisContract(addrs *MonitorAddrs) {
