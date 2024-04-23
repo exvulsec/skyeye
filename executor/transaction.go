@@ -17,13 +17,14 @@ import (
 
 type transactionExecutor struct {
 	items     chan any
+	workers   int
 	executors []Executor
 }
 
-func NewTransactionExtractor() Executor {
+func NewTransactionExtractor(workers int) Executor {
 	return &transactionExecutor{
 		items:     make(chan any),
-		executors: []Executor{NewContractExecutor()},
+		executors: []Executor{NewContractExecutor(workers)},
 	}
 }
 
@@ -36,6 +37,9 @@ func (te *transactionExecutor) GetItemsCh() chan any {
 }
 
 func (te *transactionExecutor) Execute() {
+	for _, exec := range te.executors {
+		go exec.Execute()
+	}
 	for item := range te.items {
 		blockNumber, ok := item.(uint64)
 		if ok {
@@ -44,10 +48,6 @@ func (te *transactionExecutor) Execute() {
 				executor.GetItemsCh() <- txs
 			}
 		}
-	}
-
-	for _, exec := range te.executors {
-		go exec.Execute()
 	}
 }
 

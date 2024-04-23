@@ -1,8 +1,6 @@
 package executor
 
 import (
-	"time"
-
 	"github.com/sirupsen/logrus"
 
 	"github.com/exvulsec/skyeye/model"
@@ -23,6 +21,7 @@ func NewAssetExecutor() Executor {
 	return &assetExecutor{
 		items:            make(chan any, 10),
 		MonitorAddresses: monitorAddrs,
+		executors:        []Executor{NewFileExecutor()},
 	}
 }
 
@@ -35,14 +34,17 @@ func (ae *assetExecutor) GetItemsCh() chan any {
 }
 
 func (ae *assetExecutor) Execute() {
+	for _, e := range ae.executors {
+		go e.Execute()
+	}
 	for item := range ae.items {
 		txs, ok := item.(model.Transactions)
 		blockNumber := txs[0].BlockNumber
 		if ok {
-			assetTransferStartTime := time.Now()
 			txs.AnalysisAssertTransfer(ae.MonitorAddresses)
-			logrus.Infof("processed to analysis transactions' asset transfer on block %d, cost %.2fs",
-				blockNumber, time.Since(assetTransferStartTime).Seconds())
+			for _, e := range ae.executors {
+				e.GetItemsCh() <- blockNumber
+			}
 		}
 	}
 }

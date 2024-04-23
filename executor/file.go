@@ -8,6 +8,7 @@ import (
 	"github.com/sirupsen/logrus"
 
 	"github.com/exvulsec/skyeye/config"
+	"github.com/exvulsec/skyeye/utils"
 )
 
 type fileExecutor struct {
@@ -19,9 +20,10 @@ type fileExecutor struct {
 
 func NewFileExecutor() Executor {
 	return &fileExecutor{
-		items:    make(chan any, 10),
-		filePath: config.Conf.ETL.PreviousFile,
-		waitList: []int64{},
+		items:             make(chan any, 10),
+		filePath:          config.Conf.ETL.PreviousFile,
+		waitList:          []int64{},
+		latestBlockNumber: int64(utils.GetBlockNumberFromFile(config.Conf.ETL.PreviousFile)),
 	}
 }
 

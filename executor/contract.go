@@ -1,8 +1,6 @@
 package executor
 
 import (
-	"time"
-
 	"github.com/sirupsen/logrus"
 
 	"github.com/exvulsec/skyeye/model"
@@ -10,11 +8,12 @@ import (
 
 type contractExecutor struct {
 	items            chan any
+	workers          int
 	executors        []Executor
 	MonitorAddresses model.MonitorAddrs
 }
 
-func NewContractExecutor() Executor {
+func NewContractExecutor(workers int) Executor {
 	monitorAddrs := model.MonitorAddrs{}
 	if err := monitorAddrs.List(); err != nil {
 		logrus.Panicf("list monitor addr is err %v", err)
@@ -22,6 +21,7 @@ func NewContractExecutor() Executor {
 
 	return &contractExecutor{
 		items:            make(chan any, 10),
+		workers:          workers,
 		MonitorAddresses: monitorAddrs,
 		executors:        []Executor{NewAssetExecutor()},
 	}
@@ -36,21 +36,20 @@ func (ce *contractExecutor) GetItemsCh() chan any {
 }
 
 func (ce *contractExecutor) Execute() {
-	for _, e := range ce.executors {
-		go e.Execute()
-	}
-	for item := range ce.items {
-		txs, ok := item.(model.Transactions)
-		blockNumber := txs[0].BlockNumber
-		if ok {
-			contractStartTime := time.Now()
-			txs.AnalysisContracts(ce.MonitorAddresses)
-			logrus.Infof("processed to analysis transactions' contract on block %d, cost %.2fs",
-				blockNumber, time.Since(contractStartTime).Seconds())
-
+	for range ce.workers {
+		go func() {
 			for _, e := range ce.executors {
-				e.GetItemsCh() <- item
+				go e.Execute()
 			}
-		}
+			for item := range ce.items {
+				txs, ok := item.(model.Transactions)
+				if ok {
+					txs.AnalysisContracts(ce.MonitorAddresses)
+					for _, e := range ce.executors {
+						e.GetItemsCh() <- txs
+					}
+				}
+			}
+		}()
 	}
 }

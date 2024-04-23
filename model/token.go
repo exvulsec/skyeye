@@ -149,7 +149,7 @@ func UpdateTokensPrice(chain string, tokenAddrs []string) (Tokens, error) {
 				token.Price = &usdPrice
 				updateTokens[index] = token
 				if err := token.Update(chain); err != nil {
-					logrus.Errorf("update token %s to db is err %v", token.Address, err)
+					logrus.Errorf("update token %s to db is err: %v", token.Address, err)
 					continue
 				}
 			}
@@ -182,7 +182,7 @@ func (ts *Tokens) GetCoinGeCkoPrices() (map[string]map[string]decimal.Decimal, e
 	body, _ := io.ReadAll(resp.Body)
 	priceMaps := map[string]map[string]decimal.Decimal{}
 	if err := json.Unmarshal(body, &priceMaps); err != nil {
-		return nil, fmt.Errorf("unmarshal price map is err %v", err)
+		return nil, fmt.Errorf("unmarshal price map is err: %v", err)
 	}
 	return priceMaps, nil
 }

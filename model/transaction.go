@@ -199,10 +199,10 @@ func (tx *Transaction) analysisAssetTransfer() {
 			TxHash:         tx.TxHash,
 			ToAddress:      *tx.ToAddress,
 			Items:          []Asset{},
-			TotalUSD:       decimal.NewFromInt(0),
+			TotalUSD:       decimal.Decimal{},
 		}
 		if err := assets.analysisAssetTransfers(assetTransfers, focusesAddresses); err != nil {
-			logrus.Errorf("analysis asset transfer is err %v", err)
+			logrus.Errorf("analysis asset transfer is err: %v", err)
 			return
 		}
 		assets.alert(skyTx)

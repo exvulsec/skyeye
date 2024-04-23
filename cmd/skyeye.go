@@ -22,8 +22,8 @@ var extractCMD = &cobra.Command{
 			}
 		}
 		log.InitLog(config.Conf.ETL.LogPath)
-
-		executor := executor.NewBlockExecutor()
+		workers, _ := cmd.Flags().GetInt("workers")
+		executor := executor.NewBlockExecutor(workers)
 		executor.Execute()
 	},
 }

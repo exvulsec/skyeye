@@ -13,18 +13,17 @@ import (
 
 type blockExecutor struct {
 	items              chan any
-	latestBlock        *types.Header
+	latestBlock        *uint64
 	previousDone       chan bool
 	latestBlockNumbers chan uint64
 	executors          []Executor
 }
 
-func NewBlockExecutor() Executor {
+func NewBlockExecutor(workers int) Executor {
 	return &blockExecutor{
-		latestBlock:        &types.Header{},
 		previousDone:       make(chan bool, 1),
 		latestBlockNumbers: make(chan uint64, 100),
-		executors:          []Executor{NewTransactionExtractor()},
+		executors:          []Executor{NewTransactionExtractor(workers)},
 	}
 }
 
@@ -37,29 +36,33 @@ func (be *blockExecutor) GetItemsCh() chan any {
 }
 
 func (be *blockExecutor) Execute() {
+	for _, exec := range be.executors {
+		go exec.Execute()
+	}
 	startPrevious := make(chan bool, 1)
 	go be.extractPreviousBlocks(startPrevious)
 	be.subscribeLatestBlocks(startPrevious)
 }
 
 func (be *blockExecutor) extractPreviousBlocks(startPrevious chan bool) {
-	<-startPrevious
-	previousBlockNumber := utils.GetBlockNumberFromFile(config.Conf.ETL.PreviousFile)
-	latestBlockNumber := be.latestBlock.Number.Uint64()
-	if previousBlockNumber == 0 {
-		previousBlockNumber = latestBlockNumber - 1
+	select {
+	case <-startPrevious:
+		previousBlockNumber := utils.GetBlockNumberFromFile(config.Conf.ETL.PreviousFile)
+		latestBlockNumber := *be.latestBlock
+		if previousBlockNumber == 0 {
+			previousBlockNumber = latestBlockNumber - 1
+		}
+		previousBlockNumber += 1
+		for blockNumber := previousBlockNumber; blockNumber < latestBlockNumber; blockNumber++ {
+			logrus.Infof("extract transaction from block number %d", blockNumber)
+			be.sendItemsToExecutors(blockNumber)
+		}
+		be.previousDone <- true
 	}
-	previousBlockNumber += 1
-	for blockNumber := previousBlockNumber; blockNumber < latestBlockNumber; blockNumber++ {
-		logrus.Infof("extract transaction from block number %d", blockNumber)
-		be.sendItemsToExecutors(blockNumber)
-	}
-	be.previousDone <- true
 }
 
 func (be *blockExecutor) extractLatestBlocks() {
 	for blockNumber := range be.latestBlockNumbers {
-		logrus.Infof("received a new block from header: %d", blockNumber)
 		be.sendItemsToExecutors(blockNumber)
 	}
 }
@@ -79,11 +82,13 @@ func (be *blockExecutor) subscribeLatestBlocks(startPrevious chan bool) {
 			logrus.Fatalf("subscription block is error: %v", err)
 			close(be.previousDone)
 		case header := <-headers:
+			blockNumber := header.Number.Uint64()
+			logrus.Infof("received a new block from header: %d", blockNumber)
 			if be.latestBlock == nil {
 				startPrevious <- true
-				be.latestBlock = header
+				be.latestBlock = &blockNumber
 			}
-			be.latestBlockNumbers <- header.Number.Uint64()
+			be.latestBlockNumbers <- blockNumber
 		case <-be.previousDone:
 			go be.extractLatestBlocks()
 		}
