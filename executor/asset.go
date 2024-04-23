@@ -43,12 +43,14 @@ func (ae *assetExecutor) Execute() {
 		go func() {
 			for item := range ae.items {
 				txs, ok := item.(model.Transactions)
+				if !ok || len(txs) == 0 {
+					continue
+				}
+
 				blockNumber := txs[0].BlockNumber
-				if ok {
-					txs.AnalysisAssertTransfer(ae.MonitorAddresses)
-					for _, e := range ae.executors {
-						e.GetItemsCh() <- blockNumber
-					}
+				txs.AnalysisAssertTransfer(ae.MonitorAddresses)
+				for _, e := range ae.executors {
+					e.GetItemsCh() <- blockNumber
 				}
 			}
 		}()
