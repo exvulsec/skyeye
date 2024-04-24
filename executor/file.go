@@ -41,30 +41,37 @@ func (fe *fileExecutor) Execute() {
 		fe.latestBlockNumber = v
 		for item := range fe.items {
 			blockNumber := item.(int64)
-			if fe.writeBlock(blockNumber) {
-				for index, waitBlock := range fe.waitList {
-					if !fe.writeBlock(waitBlock) {
-						fe.waitList = fe.waitList[index:]
-						break
-					}
-				}
+			if fe.isLatestBlock(blockNumber) {
+				fe.WriteBlockNumberToFile(blockNumber)
+				fe.latestBlockNumber = blockNumber
 			} else {
 				fe.waitList = append(fe.waitList, blockNumber)
 				sort.SliceStable(fe.waitList, func(i, j int) bool {
 					return fe.waitList[i] < fe.waitList[j]
 				})
+				fe.writeBlockFromWaitList()
 			}
+
 		}
 	}
 }
 
-func (fe *fileExecutor) writeBlock(blockNumber int64) bool {
-	if fe.latestBlockNumber+1 == blockNumber {
-		fe.WriteBlockNumberToFile(blockNumber)
-		fe.latestBlockNumber = blockNumber
-		return true
+func (fe *fileExecutor) writeBlockFromWaitList() {
+	var index int
+	for index < len(fe.waitList) {
+		waitBlock := fe.waitList[index]
+		if !fe.isLatestBlock(waitBlock) {
+			break
+		}
+		fe.WriteBlockNumberToFile(waitBlock)
+		fe.latestBlockNumber = waitBlock
+		index += 1
 	}
-	return false
+	fe.waitList = fe.waitList[index:]
+}
+
+func (fe *fileExecutor) isLatestBlock(blockNumber int64) bool {
+	return fe.latestBlockNumber+1 == blockNumber
 }
 
 func (fe *fileExecutor) WriteBlockNumberToFile(blockNumber int64) {
