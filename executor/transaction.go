@@ -70,7 +70,6 @@ func (te *transactionExecutor) extractTransactionFromBlock(blockNumber uint64) m
 
 	block, ok := utils.Retry(blockNumber, fn).(*types.Block)
 	if ok {
-		logrus.Infof("start to extract %d transactions from block %d", block.Transactions().Len(), blockNumber)
 		return te.convertTransactionFromBlock(block)
 	}
 	return model.Transactions{}
