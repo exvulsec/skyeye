@@ -11,6 +11,7 @@ import (
 	"github.com/sirupsen/logrus"
 
 	"github.com/exvulsec/skyeye/client"
+	"github.com/exvulsec/skyeye/config"
 	"github.com/exvulsec/skyeye/model"
 	"github.com/exvulsec/skyeye/utils"
 )
@@ -64,7 +65,7 @@ func (te *transactionExecutor) extractTransactionFromBlock(blockNumber uint64) m
 		if !ok {
 			return nil, errors.New("block number's type is not uint64")
 		}
-		return client.EvmClient().BlockByNumber(retryContextTimeout, big.NewInt(int64(blkNumber)))
+		return client.MultiEvmClient()[config.Conf.ETL.Chain].BlockByNumber(retryContextTimeout, big.NewInt(int64(blkNumber)))
 	}
 
 	block, ok := utils.Retry(blockNumber, fn).(*types.Block)

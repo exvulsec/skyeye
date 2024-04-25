@@ -8,6 +8,7 @@ import (
 	pgx "github.com/jackc/pgx/v5"
 	"github.com/sirupsen/logrus"
 
+	"github.com/exvulsec/skyeye/config"
 	"github.com/exvulsec/skyeye/datastore"
 )
 
@@ -83,8 +84,8 @@ func (txs *Transactions) AnalysisAssertTransfer(addrs MonitorAddrs) {
 
 func (txs *Transactions) enrichTxs() {
 	for index, tx := range *txs {
-		tx.EnrichReceipt("", false)
-		tx.GetTrace("", false)
+		tx.EnrichReceipt(config.Conf.ETL.Chain)
+		tx.GetTrace(config.Conf.ETL.Chain)
 		(*txs)[index] = tx
 	}
 }
