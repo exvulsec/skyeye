@@ -84,8 +84,8 @@ func (be *blockExecutor) subscribeLatestBlocks(startPrevious chan bool) {
 		select {
 		case err = <-sub.Err():
 			sub.Unsubscribe()
-			logrus.Fatalf("subscription block is error: %v", err)
 			close(be.previousDone)
+			logrus.Fatalf("subscription block is error: %v", err)
 		case header := <-headers:
 			blockNumber := header.Number.Uint64()
 			logrus.Infof("received a new block from header: %d", blockNumber)

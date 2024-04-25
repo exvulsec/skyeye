@@ -60,8 +60,8 @@ func (tc *TXController) Reviewed(c *gin.Context) {
 
 	tx := model.Transaction{}
 	tx.ConvertFromBlock(ethTX)
-	tx.EnrichReceipt(chain, true)
-	tx.GetTrace(chain, true)
+	tx.EnrichReceipt(chain)
+	tx.GetTrace(chain)
 
 	block, err := ethClient.BlockByHash(c, tx.Receipt.BlockHash)
 	if err != nil {
