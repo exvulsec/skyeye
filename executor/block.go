@@ -25,7 +25,7 @@ func NewBlockExecutor(workers int) Executor {
 	fileLatestChan := make(chan int64, 1)
 	return &blockExecutor{
 		previousDone:              make(chan bool, 1),
-		latestBlockNumbers:        make(chan uint64, 10000),
+		latestBlockNumbers:        make(chan uint64, 100000),
 		fileLatestBlockNumberChan: fileLatestChan,
 		executors:                 []Executor{NewTransactionExtractor(workers, fileLatestChan)},
 	}
@@ -68,6 +68,7 @@ func (be *blockExecutor) extractPreviousBlocks(startPrevious chan bool) {
 }
 
 func (be *blockExecutor) extractLatestBlocks(startPrevious chan bool) {
+	logrus.Infof("waiting to process the latest blocks")
 	select {
 	case <-be.previousDone:
 		logrus.Infof("start to process the latest blocks")
