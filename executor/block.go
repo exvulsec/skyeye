@@ -25,7 +25,7 @@ func NewBlockExecutor(workers int) Executor {
 	fileLatestChan := make(chan int64, 1)
 	return &blockExecutor{
 		previousDone:              make(chan bool, 1),
-		latestBlockNumbers:        make(chan uint64, 100),
+		latestBlockNumbers:        make(chan uint64, 10000),
 		fileLatestBlockNumberChan: fileLatestChan,
 		executors:                 []Executor{NewTransactionExtractor(workers, fileLatestChan)},
 	}
@@ -45,6 +45,7 @@ func (be *blockExecutor) Execute() {
 	}
 	startPrevious := make(chan bool, 1)
 	go be.extractPreviousBlocks(startPrevious)
+	go be.extractLatestBlocks(startPrevious)
 	be.subscribeLatestBlocks(startPrevious)
 }
 
@@ -59,16 +60,21 @@ func (be *blockExecutor) extractPreviousBlocks(startPrevious chan bool) {
 		be.fileLatestBlockNumberChan <- int64(previousBlockNumber)
 		previousBlockNumber += 1
 		for blockNumber := previousBlockNumber; blockNumber < latestBlockNumber; blockNumber++ {
-			logrus.Infof("extract transaction from block number %d", blockNumber)
 			be.sendItemsToExecutors(blockNumber)
 		}
 		be.previousDone <- true
+		logrus.Infof("processed the previous blocks")
 	}
 }
 
-func (be *blockExecutor) extractLatestBlocks() {
-	for blockNumber := range be.latestBlockNumbers {
-		be.sendItemsToExecutors(blockNumber)
+func (be *blockExecutor) extractLatestBlocks(startPrevious chan bool) {
+	select {
+	case <-be.previousDone:
+		logrus.Infof("start to process the latest blocks")
+		close(startPrevious)
+		for blockNumber := range be.latestBlockNumbers {
+			be.sendItemsToExecutors(blockNumber)
+		}
 	}
 }
 
@@ -94,8 +100,6 @@ func (be *blockExecutor) subscribeLatestBlocks(startPrevious chan bool) {
 				be.latestBlock = &blockNumber
 			}
 			be.latestBlockNumbers <- blockNumber
-		case <-be.previousDone:
-			go be.extractLatestBlocks()
 		}
 	}
 }
