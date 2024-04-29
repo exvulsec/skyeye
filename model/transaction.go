@@ -166,6 +166,9 @@ func (tx *Transaction) analysisAssetTransfer() {
 		if err := skyTx.GetInfoByContract(config.Conf.ETL.Chain, *tx.ToAddress); err != nil {
 			logrus.Errorf("get skyeye tx info is err %v", err)
 		}
+		if skyTx.ID == nil {
+			return
+		}
 		focusesAddresses := []string{
 			tx.FromAddress,
 		}

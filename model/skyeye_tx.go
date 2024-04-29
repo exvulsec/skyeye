@@ -28,6 +28,7 @@ const (
 )
 
 type SkyEyeTransaction struct {
+	ID                  *int64            `json:"id" gorm:"column:id"`
 	Chain               string            `json:"chain" gorm:"column:chain"`
 	BlockTimestamp      int64             `json:"block_timestamp" gorm:"column:block_timestamp"`
 	BlockNumber         int64             `json:"block_number" gorm:"column:blknum"`
