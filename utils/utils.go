@@ -94,7 +94,7 @@ func Retry(element any, retryFunc func(element any) (any, error)) any {
 			return item
 		}
 		time.Sleep(5 * time.Second)
-		logrus.Infof("retry %d times to get element", retryTime+1)
+		logrus.Infof("retry %d times to get element %v", retryTime+1, element)
 		retryTime++
 	}
 	logrus.Errorf("get element %v failed, drop it", element)
