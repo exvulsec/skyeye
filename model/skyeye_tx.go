@@ -10,7 +10,6 @@ import (
 	"time"
 
 	"github.com/ethereum/go-ethereum/common"
-	"github.com/ethereum/go-ethereum/ethclient"
 	"github.com/sirupsen/logrus"
 	"github.com/slack-go/slack"
 
@@ -158,21 +157,17 @@ func (st *SkyEyeTransaction) GetInfoByContract(chain, contract string) error {
 	return datastore.DB().Table(skyEyeTableName).Where("chain = ? AND contract_address = ?", chain, contract).Find(st).Error
 }
 
-func (st *SkyEyeTransaction) Analysis(chain string, isHTTP bool) {
-	var c *ethclient.Client
-	if isHTTP {
-		c = client.MultiEvmClient()[chain]
-	} else {
-		c = client.EvmClient()
+func (st *SkyEyeTransaction) Analysis(chain string) {
+	fn := func(element any) (any, error) {
+		retryContextTimeout, retryCancel := context.WithTimeout(context.Background(), 5*time.Second)
+		defer retryCancel()
+		return client.MultiEvmClient()[chain].CodeAt(retryContextTimeout, common.HexToAddress(st.ContractAddress), big.NewInt(st.BlockNumber))
 	}
 
-	code, err := c.CodeAt(context.Background(), common.HexToAddress(st.ContractAddress), big.NewInt(st.BlockNumber))
-	if err != nil {
-		logrus.Errorf("get contract %s's bytecode is err %v ", st.ContractAddress, err)
-		return
+	code, ok := utils.Retry(nil, fn).([]byte)
+	if ok {
+		st.ByteCode = code
 	}
-
-	st.ByteCode = code
 	if st.analysisContractByPolicies() {
 		st.Skip = true
 		return

@@ -105,7 +105,7 @@ func (tc *TXController) Reviewed(c *gin.Context) {
 			Fund:                skyTx.Fund,
 			MultiContractString: skyTx.MultiContractString,
 		}
-		contractTX.Analysis(chain, true)
+		contractTX.Analysis(chain)
 		contractTX.ComposeSkyEyeTXValues()
 		results = append(results, contractTX)
 	}

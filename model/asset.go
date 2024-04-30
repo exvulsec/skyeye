@@ -296,7 +296,7 @@ func convertAddress(origin string) string {
 	return origin
 }
 
-func (as *Assets) analysisAssetTransfers(assetTransfers AssetTransfers, focuses []string) error {
+func (as *Assets) AnalysisAssetTransfers(assetTransfers AssetTransfers, focuses []string) error {
 	balances := AssetBalances{}
 	balances.calcBalance(assetTransfers, focuses)
 	tokensWithPrice, err := balances.ListPrices()
