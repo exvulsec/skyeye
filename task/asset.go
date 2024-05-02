@@ -6,6 +6,7 @@ import (
 	"github.com/sirupsen/logrus"
 
 	"github.com/exvulsec/skyeye/model"
+	"github.com/exvulsec/skyeye/utils"
 )
 
 type assetTask struct {
@@ -15,7 +16,7 @@ type assetTask struct {
 
 func NewAssetSubTask(monitorAddrs model.MonitorAddrs) Task {
 	return &assetTask{
-		done:             make(chan bool),
+		done:             make(chan bool, 1),
 		monitorAddresses: monitorAddrs,
 	}
 }
@@ -48,8 +49,8 @@ func (at *assetTask) AnalysisAssetTransfer(txs model.Transactions) model.Transac
 		for _, tx := range needAnalysisTxs {
 			tx.ComposeAssetsAndAlert()
 		}
-		logrus.Infof("processed to analysis %d transactions' asset transfer on block %d, cost %.2fs",
-			len(needAnalysisTxs), needAnalysisTxs[0].BlockNumber, time.Since(startTime).Seconds())
+		logrus.Infof("block: %d, analysis transactions: %d's asset transfer, elapsed: %s",
+			needAnalysisTxs[0].BlockNumber, len(needAnalysisTxs), utils.ElapsedTime(startTime))
 	}
 
 	return append(originTxs, needAnalysisTxs...)

@@ -39,19 +39,19 @@ func (be *blockExtractor) Run() {
 
 func (be *blockExtractor) subLatestBlocks() {
 	headers := make(chan *types.Header)
+	logrus.Info("subscribing the latest blocks...")
 	sub, err := client.EvmClient().SubscribeNewHead(context.Background(), headers)
 	defer sub.Unsubscribe()
 	if err != nil {
 		logrus.Fatalf("failed to subscribe to new blocks: %v", err)
 	}
-	logrus.Info("subscribe to the latest blocks...")
 	for {
 		select {
 		case err = <-sub.Err():
 			logrus.Fatalf("subscription block is error: %v", err)
 		case header := <-headers:
 			blockNumber := header.Number.Uint64()
-			logrus.Infof("received a new block from header: %d", blockNumber)
+			logrus.Infof("block: %d, is received from header", blockNumber)
 			be.Extract(header)
 		}
 	}

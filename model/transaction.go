@@ -115,7 +115,7 @@ func (tx *Transaction) GetTrace(chain string) {
 	}
 }
 
-func (tx *Transaction) AnalysisContract(addrs *MonitorAddrs) {
+func (tx *Transaction) ComposeContractAndAlert(addrs *MonitorAddrs) {
 	policies := []PolicyCalc{
 		&MultiContractCalc{},
 		&FundPolicyCalc{Chain: config.Conf.ETL.Chain, NeedFund: true},

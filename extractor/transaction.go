@@ -51,21 +51,33 @@ func (te *transactionExtractor) Run() {
 }
 
 func (te *transactionExtractor) ProcessTasks() {
+	concurrency := make(chan struct{}, te.workers)
 	for txsCh := range te.transactionCh {
-		te.ExecuteTransaction(txsCh.blocks, txsCh.transactions)
+		concurrency <- struct{}{}
+		go func() {
+			defer func() { <-concurrency }()
+			te.ExecuteTransaction(txsCh.blocks, txsCh.transactions)
+		}()
+
 	}
 }
 
 func (te *transactionExtractor) ExtractLatestBlocks() {
+	concurrency := make(chan struct{}, te.workers)
 	for blockNumber := range te.blocks {
-		te.transactionCh <- transactionChan{transactions: te.extractTransactionFromBlock(blockNumber), blocks: blockNumber}
+		concurrency <- struct{}{}
+		go func() {
+			defer func() { <-concurrency }()
+			te.transactionCh <- transactionChan{transactions: te.extractTransactionFromBlock(blockNumber), blocks: blockNumber}
+		}()
 	}
 }
 
 func (te *transactionExtractor) ExecuteTransaction(blockNumber uint64, txs model.Transactions) {
 	tasks := []task.Task{task.NewContractTask(te.monitorAddrs), task.NewAssetSubTask(te.monitorAddrs)}
+	var data any = txs
 	for _, t := range tasks {
-		t.Do(txs)
+		data = t.Do(data)
 	}
 	for _, e := range te.exporters {
 		e.Export(blockNumber)
@@ -73,8 +85,9 @@ func (te *transactionExtractor) ExecuteTransaction(blockNumber uint64, txs model
 }
 
 func (te *transactionExtractor) Extract(data any) {
-	block, ok := data.(uint64)
+	header, ok := data.(*types.Header)
 	if ok {
+		block := header.Number.Uint64()
 		if te.latestBlock == nil {
 			te.latestBlock = &block
 			go te.extractPreviousBlocks()
@@ -93,43 +106,54 @@ func (te *transactionExtractor) extractTransactionFromBlock(blockNumber uint64) 
 		}
 		return client.MultiEvmClient()[config.Conf.ETL.Chain].BlockByNumber(retryContextTimeout, big.NewInt(int64(blkNumber)))
 	}
-
+	startTime := time.Now()
 	block, ok := utils.Retry(blockNumber, fn).(*types.Block)
 	if ok {
-		return te.convertTransactionFromBlock(block)
+		txs := te.convertTransactionFromBlock(block)
+		logrus.Infof("block: %d, extract transactions: %d, elapsed: %s",
+			block.Number(),
+			len(block.Transactions()),
+			utils.ElapsedTime(startTime))
+		return txs
 	}
+
 	return model.Transactions{}
 }
 
 func (te *transactionExtractor) extractPreviousBlocks() {
-	previousBlockNumber := utils.GetBlockNumberFromFile(config.Conf.ETL.PreviousFile)
-	latestBlockNumber := *te.latestBlock
-	if previousBlockNumber == 0 {
-		previousBlockNumber = latestBlockNumber - 1
+	startBlock := utils.GetBlockNumberFromFile(config.Conf.ETL.PreviousFile)
+	endBlock := *te.latestBlock
+	if startBlock == 0 {
+		startBlock = endBlock - 1
+	} else if endBlock-config.Conf.ETL.PreviousBlockThreshold-1 > startBlock {
+		startBlock = endBlock - config.Conf.ETL.PreviousBlockThreshold - 1
 	}
-	te.exporters = append(te.exporters, exporter.NewBlockToFileExporter(previousBlockNumber))
-	previousBlockNumber += 1
-	for blockNumber := previousBlockNumber; blockNumber < latestBlockNumber; blockNumber++ {
-		te.transactionCh <- transactionChan{transactions: te.extractTransactionFromBlock(blockNumber), blocks: blockNumber}
+	te.exporters = append(te.exporters, exporter.NewBlockToFileExporter(startBlock))
+	startBlock += 1
+
+	logrus.Infof("process the previous blocks from %d to %d", startBlock, endBlock)
+	for blockNumber := startBlock; blockNumber < endBlock; blockNumber++ {
+		te.blocks <- blockNumber
 	}
-	logrus.Infof("processed the previous blocks")
+	logrus.Infof("process the previous blocks is finished.")
 }
 
 func (te *transactionExtractor) convertTransactionFromBlock(block *types.Block) model.Transactions {
-	startTimestamp := time.Now()
 	txs := model.Transactions{}
 	rwMutex := sync.RWMutex{}
 	wg := sync.WaitGroup{}
-
-	for index, tx := range block.Transactions() {
+	concurrency := make(chan struct{}, te.workers)
+	for _, tx := range block.Transactions() {
 		if tx == nil {
 			continue
 		}
 		transaction := tx
 		wg.Add(1)
-		go func(index int) {
+		concurrency <- struct{}{}
+		go func() {
 			defer func() {
 				wg.Done()
+				<-concurrency
 			}()
 			t := model.Transaction{}
 			t.ConvertFromBlock(transaction)
@@ -138,12 +162,8 @@ func (te *transactionExtractor) convertTransactionFromBlock(block *types.Block) 
 			rwMutex.Lock()
 			txs = append(txs, t)
 			rwMutex.Unlock()
-		}(index)
+		}()
 	}
 	wg.Wait()
-	logrus.Infof("extract %d transactions from block %d cost %.2fs",
-		len(block.Transactions()),
-		block.Number(),
-		time.Since(startTimestamp).Seconds())
 	return txs
 }
