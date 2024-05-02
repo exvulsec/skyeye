@@ -115,7 +115,7 @@ func (tx *Transaction) GetTrace(chain string) {
 	}
 }
 
-func (tx *Transaction) AnalysisContract(addrs *MonitorAddrs) {
+func (tx *Transaction) ComposeContractAndAlert(addrs *MonitorAddrs) {
 	policies := []PolicyCalc{
 		&MultiContractCalc{},
 		&FundPolicyCalc{Chain: config.Conf.ETL.Chain, NeedFund: true},
@@ -147,14 +147,22 @@ func (tx *Transaction) AnalysisContract(addrs *MonitorAddrs) {
 			MonitorAddrs:        addrs,
 			MultiContractString: skyTx.MultiContractString,
 		}
-		contractTX.Analysis("", false)
+		contractTX.Analysis(config.Conf.ETL.Chain)
 		if !contractTX.Skip {
 			contractTX.alert()
 		}
 	}
 }
 
-func (tx *Transaction) analysisAssetTransfer() {
+func (tx *Transaction) ComposeAssetsAndAlert() {
+	assets := Assets{
+		BlockNumber:    tx.BlockNumber,
+		BlockTimestamp: tx.BlockTimestamp,
+		TxHash:         tx.TxHash,
+		ToAddress:      *tx.ToAddress,
+		Items:          []Asset{},
+		TotalUSD:       decimal.Decimal{},
+	}
 	if tx.Trace == nil {
 		tx.GetTrace(config.Conf.ETL.Chain)
 	}
@@ -183,18 +191,12 @@ func (tx *Transaction) analysisAssetTransfer() {
 		assetTransfers := AssetTransfers{}
 
 		assetTransfers.compose(tx.Receipt.Logs, *tx.Trace)
-		assets := Assets{
-			BlockNumber:    tx.BlockNumber,
-			BlockTimestamp: tx.BlockTimestamp,
-			TxHash:         tx.TxHash,
-			ToAddress:      *tx.ToAddress,
-			Items:          []Asset{},
-			TotalUSD:       decimal.Decimal{},
-		}
-		if err := assets.analysisAssetTransfers(assetTransfers, focusesAddresses); err != nil {
+		if err := assets.AnalysisAssetTransfers(assetTransfers, focusesAddresses); err != nil {
 			logrus.Errorf("analysis asset transfer is err: %v", err)
 			return
 		}
-		assets.alert(skyTx)
+		if len(assets.Items) > 0 {
+			assets.alert(skyTx)
+		}
 	}
 }

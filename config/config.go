@@ -76,6 +76,7 @@ type ETLConfig struct {
 	HeimdallServer         string            `mapstructure:"heidmall_server" yaml:"heimdall_server"`
 	CGCAPIKey              string            `mapstructure:"cgc_apikey" yaml:"cgc_apikey"`
 	LinkURLs               map[string]string `mapstructure:"link_urls" yaml:"link_urls"`
+	PreviousBlockThreshold uint64            `mapstructure:"previous_block_threshold" yaml:"previous_block_threshold"`
 }
 
 func init() {

@@ -3,7 +3,6 @@ package model
 import (
 	"context"
 	"sync"
-	"time"
 
 	pgx "github.com/jackc/pgx/v5"
 	"github.com/sirupsen/logrus"
@@ -14,7 +13,7 @@ import (
 
 type Transactions []Transaction
 
-func (txs *Transactions) multiProcess(condition func(tx Transaction) bool) (Transactions, Transactions) {
+func (txs *Transactions) MultiProcess(condition func(tx Transaction) bool) (Transactions, Transactions) {
 	originTxs := Transactions{}
 	needAnalysisTxs := Transactions{}
 	mutex := sync.RWMutex{}
@@ -44,45 +43,7 @@ func (txs *Transactions) multiProcess(condition func(tx Transaction) bool) (Tran
 	return originTxs, needAnalysisTxs
 }
 
-func (txs *Transactions) AnalysisContracts(addrs MonitorAddrs) {
-	startTime := time.Now()
-	conditionFunc := func(tx Transaction) bool {
-		return tx.ToAddress == nil
-	}
-
-	originTxs, needAnalysisTxs := txs.multiProcess(conditionFunc)
-
-	if len(needAnalysisTxs) > 0 {
-		needAnalysisTxs.enrichTxs()
-		for _, tx := range needAnalysisTxs {
-			tx.AnalysisContract(&addrs)
-		}
-		logrus.Infof("processed to analysis %d transactions' contract on block %d, cost %.2fs",
-			len(needAnalysisTxs), needAnalysisTxs[0].BlockNumber, time.Since(startTime).Seconds())
-	}
-
-	*txs = append(originTxs, needAnalysisTxs...)
-}
-
-func (txs *Transactions) AnalysisAssertTransfer(addrs MonitorAddrs) {
-	startTime := time.Now()
-	conditionFunc := func(tx Transaction) bool {
-		return addrs.Existed(*tx.ToAddress)
-	}
-
-	originTxs, needAnalysisTxs := txs.multiProcess(conditionFunc)
-	if len(needAnalysisTxs) > 0 {
-		for _, tx := range needAnalysisTxs {
-			tx.analysisAssetTransfer()
-		}
-		logrus.Infof("processed to analysis %d transactions' asset transfer on block %d, cost %.2fs",
-			len(needAnalysisTxs), needAnalysisTxs[0].BlockNumber, time.Since(startTime).Seconds())
-	}
-
-	*txs = append(originTxs, needAnalysisTxs...)
-}
-
-func (txs *Transactions) enrichTxs() {
+func (txs *Transactions) EnrichTxs() {
 	for index, tx := range *txs {
 		tx.EnrichReceipt(config.Conf.ETL.Chain)
 		tx.GetTrace(config.Conf.ETL.Chain)
