@@ -79,25 +79,25 @@ func IsRetriableError(err error) bool {
 	return strings.Contains(err.Error(), "not found") || errors.Is(err, context.DeadlineExceeded)
 }
 
-func Retry(element any, retryFunc func(element any) (any, error)) any {
-	var retryTime int64 = 0
-	for {
-		if retryTime == config.Conf.ETL.RetryTimes && config.Conf.ETL.RetryTimes != 0 {
-			break
-		}
-		item, err := retryFunc(element)
+func Retry(retryFunc func() (any, error)) any {
+	const retryInterval = 5 * time.Second
+	var retryTime int
+	for retryTime < config.Conf.ETL.RetryTimes || config.Conf.ETL.RetryTimes == 0 {
+		item, err := retryFunc()
 		if err != nil && !IsRetriableError(err) {
-			logrus.Errorf("get element %v is err: %v", element, err)
+			logrus.Errorf("failed to retrieve element: %v", err)
 			break
 		}
 		if !IsNil(item) {
 			return item
 		}
-		time.Sleep(5 * time.Second)
-		logrus.Infof("retry %d times to get element %v", retryTime+1, element)
-		retryTime++
+		select {
+		case <-time.After(retryInterval):
+			logrus.Infof("retry %d times to get element %v", retryTime+1, item)
+			retryTime++
+		}
 	}
-	logrus.Errorf("get element %v failed, drop it", element)
+	logrus.Errorf("failed to retrieve element after %d retries, dropping it", retryTime)
 	return nil
 }
 

@@ -64,7 +64,7 @@ type RedisConfig struct {
 type ETLConfig struct {
 	ProviderURL            string            `mapstructure:"provider_url" yaml:"provider_url"`
 	Chain                  string            `mapstructure:"chain" yaml:"chain"`
-	RetryTimes             int64             `mapstructure:"retry_times" yaml:"retry_times"`
+	RetryTimes             int               `mapstructure:"retry_times" yaml:"retry_times"`
 	PreviousFile           string            `mapstructure:"previous_file" yaml:"previous_file"`
 	FlashLoanFile          string            `mapstructure:"flash_loan_file" yaml:"flash_loan_file"`
 	FilterContracts        string            `mapstructure:"filter_contracts" yaml:"filter_contracts"`

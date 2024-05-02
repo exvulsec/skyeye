@@ -2,7 +2,6 @@ package extractor
 
 import (
 	"context"
-	"errors"
 	"math/big"
 	"sync"
 	"time"
@@ -97,17 +96,14 @@ func (te *transactionExtractor) Extract(data any) {
 }
 
 func (te *transactionExtractor) extractTransactionFromBlock(blockNumber uint64) model.Transactions {
-	fn := func(element any) (any, error) {
+	startTime := time.Now()
+
+	block, ok := utils.Retry(func() (any, error) {
 		retryContextTimeout, retryCancel := context.WithTimeout(context.Background(), 5*time.Second)
 		defer retryCancel()
-		blkNumber, ok := element.(uint64)
-		if !ok {
-			return nil, errors.New("block number's type is not uint64")
-		}
-		return client.MultiEvmClient()[config.Conf.ETL.Chain].BlockByNumber(retryContextTimeout, big.NewInt(int64(blkNumber)))
-	}
-	startTime := time.Now()
-	block, ok := utils.Retry(blockNumber, fn).(*types.Block)
+		return client.MultiEvmClient()[config.Conf.ETL.Chain].BlockByNumber(retryContextTimeout, big.NewInt(int64(blockNumber)))
+	}).(*types.Block)
+
 	if ok {
 		txs := te.convertTransactionFromBlock(block)
 		logrus.Infof("block: %d, extract transactions: %d, elapsed: %s",

@@ -59,16 +59,11 @@ func (tx *Transaction) GetLatestRecord(chain string) error {
 }
 
 func (tx *Transaction) getReceipt(chain string) {
-	fn := func(element any) (any, error) {
+	receipt, ok := utils.Retry(func() (any, error) {
 		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 		defer cancel()
-		txHash, ok := element.(common.Hash)
-		if !ok {
-			return nil, fmt.Errorf("element type is required tx hash")
-		}
-		return client.MultiEvmClient()[chain].TransactionReceipt(ctx, txHash)
-	}
-	receipt, ok := utils.Retry(common.HexToHash(tx.TxHash), fn).(*types.Receipt)
+		return client.MultiEvmClient()[chain].TransactionReceipt(ctx, common.HexToHash(tx.TxHash))
+	}).(*types.Receipt)
 	if ok {
 		tx.Receipt = receipt
 	}
@@ -97,7 +92,7 @@ func (tx *Transaction) filterAddrs(addrs []string) bool {
 
 func (tx *Transaction) GetTrace(chain string) {
 	var trace *TransactionTrace
-	fn := func(element any) (any, error) {
+	trace, ok := utils.Retry(func() (any, error) {
 		ctxWithTimeOut, cancel := context.WithTimeout(context.TODO(), 10*time.Second)
 		defer cancel()
 		err := client.MultiEvmClient()[chain].Client().CallContext(ctxWithTimeOut, &trace,
@@ -108,8 +103,7 @@ func (tx *Transaction) GetTrace(chain string) {
 			})
 
 		return trace, err
-	}
-	trace, ok := utils.Retry(trace, fn).(*TransactionTrace)
+	}).(*TransactionTrace)
 	if ok {
 		tx.Trace = trace
 	}

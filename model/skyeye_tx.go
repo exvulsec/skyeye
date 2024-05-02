@@ -158,13 +158,13 @@ func (st *SkyEyeTransaction) GetInfoByContract(chain, contract string) error {
 }
 
 func (st *SkyEyeTransaction) Analysis(chain string) {
-	fn := func(element any) (any, error) {
+	fn := func() (any, error) {
 		retryContextTimeout, retryCancel := context.WithTimeout(context.Background(), 5*time.Second)
 		defer retryCancel()
 		return client.MultiEvmClient()[chain].CodeAt(retryContextTimeout, common.HexToAddress(st.ContractAddress), big.NewInt(st.BlockNumber))
 	}
 
-	code, ok := utils.Retry(nil, fn).([]byte)
+	code, ok := utils.Retry(fn).([]byte)
 	if ok {
 		st.ByteCode = code
 	}
