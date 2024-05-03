@@ -77,6 +77,7 @@ type ETLConfig struct {
 	CGCAPIKey              string            `mapstructure:"cgc_apikey" yaml:"cgc_apikey"`
 	LinkURLs               map[string]string `mapstructure:"link_urls" yaml:"link_urls"`
 	PreviousBlockThreshold uint64            `mapstructure:"previous_block_threshold" yaml:"previous_block_threshold"`
+	LogHashes              string            `mapstructure:"log_hashes" yaml:"log_hashes"`
 }
 
 func init() {

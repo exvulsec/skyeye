@@ -28,7 +28,7 @@ type transactionExtractor struct {
 
 type transactionChan struct {
 	transactions model.Transactions
-	blocks       uint64
+	block        uint64
 }
 
 func NewTransactionExtractor(workers int) Extractor {
@@ -46,7 +46,7 @@ func NewTransactionExtractor(workers int) Extractor {
 
 func (te *transactionExtractor) Run() {
 	go te.ProcessTasks()
-	te.ExtractLatestBlocks()
+	te.ExtractBlocks()
 }
 
 func (te *transactionExtractor) ProcessTasks() {
@@ -55,31 +55,31 @@ func (te *transactionExtractor) ProcessTasks() {
 		concurrency <- struct{}{}
 		go func() {
 			defer func() { <-concurrency }()
-			te.ExecuteTransaction(txsCh.blocks, txsCh.transactions)
+			te.ExecuteTask(txsCh)
 		}()
 
 	}
 }
 
-func (te *transactionExtractor) ExtractLatestBlocks() {
+func (te *transactionExtractor) ExtractBlocks() {
 	concurrency := make(chan struct{}, te.workers)
 	for blockNumber := range te.blocks {
 		concurrency <- struct{}{}
 		go func() {
 			defer func() { <-concurrency }()
-			te.transactionCh <- transactionChan{transactions: te.extractTransactionFromBlock(blockNumber), blocks: blockNumber}
+			te.extractTransactionFromBlock(blockNumber)
 		}()
 	}
 }
 
-func (te *transactionExtractor) ExecuteTransaction(blockNumber uint64, txs model.Transactions) {
+func (te *transactionExtractor) ExecuteTask(txCh transactionChan) {
 	tasks := []task.Task{task.NewContractTask(te.monitorAddrs), task.NewAssetSubTask(te.monitorAddrs)}
-	var data any = txs
+	var data any = txCh.transactions
 	for _, t := range tasks {
 		data = t.Do(data)
 	}
 	for _, e := range te.exporters {
-		e.Export(blockNumber)
+		e.Export(txCh.block)
 	}
 }
 
@@ -95,7 +95,7 @@ func (te *transactionExtractor) Extract(data any) {
 	}
 }
 
-func (te *transactionExtractor) extractTransactionFromBlock(blockNumber uint64) model.Transactions {
+func (te *transactionExtractor) extractTransactionFromBlock(blockNumber uint64) {
 	startTime := time.Now()
 
 	block, ok := utils.Retry(func() (any, error) {
@@ -105,15 +105,13 @@ func (te *transactionExtractor) extractTransactionFromBlock(blockNumber uint64) 
 	}).(*types.Block)
 
 	if ok {
-		txs := te.convertTransactionFromBlock(block)
+		te.transactionCh <- transactionChan{transactions: te.convertTransactionFromBlock(block), block: blockNumber}
+
 		logrus.Infof("block: %d, extract transactions: %d, elapsed: %s",
 			block.Number(),
 			len(block.Transactions()),
 			utils.ElapsedTime(startTime))
-		return txs
 	}
-
-	return model.Transactions{}
 }
 
 func (te *transactionExtractor) extractPreviousBlocks() {
