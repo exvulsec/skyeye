@@ -2,7 +2,6 @@ package model
 
 import (
 	"encoding/json"
-	"errors"
 	"fmt"
 	"math/big"
 	"strconv"
@@ -11,7 +10,6 @@ import (
 	"time"
 
 	mapset "github.com/deckarep/golang-set/v2"
-	"github.com/ethereum/go-ethereum/accounts/abi"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/shopspring/decimal"
@@ -20,27 +18,6 @@ import (
 
 	"github.com/exvulsec/skyeye/config"
 	"github.com/exvulsec/skyeye/utils"
-)
-
-const (
-	TransferTopic          = "0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef"
-	WithdrawalTopic        = "0x7fcf532c15f0a6db0bd6d0e038bea71d30d808c7d98cb3bf7268a95bf5081b65"
-	DepositTopic           = "0xe1fffcc4923d04b559f4d29a8bfc6cda04eb5b0d3c460751c2402c5c5cc9109c"
-	TransferABIName        = "Transfer"
-	WithdrawalABIName      = "Withdrawal"
-	DepositABIName         = "Deposit"
-	TransferIndexABIName   = "TransferIndex"
-	WithdrawalIndexABIName = "WithdrawalIndex"
-	DepositIndexABIName    = "DepositIndex"
-
-	ABIs = `[
-		{"anonymous":false,"inputs":[{"indexed":true,"name":"from","type":"address"},{"indexed":true,"name":"to","type":"address"},{"indexed":true,"name":"value","type":"uint256"}],"name":"TransferIndex","type":"event"},
-		{"anonymous":false,"inputs":[{"indexed":true,"name":"src","type":"address"},{"indexed":false,"name":"wad","type":"uint256"}],"name":"WithdrawalIndex","type":"event"},
-		{"anonymous":false,"inputs":[{"indexed":true,"name":"dst","type":"address"},{"indexed":false,"name":"wad","type":"uint256"}],"name":"DepositIndex","type":"event"},
-		{"anonymous":false,"inputs":[{"indexed":true,"name":"from","type":"address"},{"indexed":true,"name":"to","type":"address"},{"indexed":false,"name":"value","type":"uint256"}],"name":"Transfer","type":"event"},
-		{"anonymous":false,"inputs":[{"indexed":false,"name":"src","type":"address"},{"indexed":false,"name":"wad","type":"uint256"}],"name":"Withdrawal","type":"event"},
-		{"anonymous":false,"inputs":[{"indexed":false,"name":"dst","type":"address"},{"indexed":false,"name":"wad","type":"uint256"}],"name":"Deposit","type":"event"}
-	]`
 )
 
 type AssetBalances map[string]map[string]decimal.Decimal
@@ -96,83 +73,34 @@ func (ats *AssetTransfers) compose(logs []*types.Log, trace TransactionTrace) {
 			}()
 
 			assetTransfer := AssetTransfer{}
-			err := assetTransfer.Decode(*l)
+
+			event, err := utils.Decode(*l)
 			if err != nil {
 				logrus.Error(err)
 				return
 			}
-			mutex.Lock()
-			if assetTransfer.Address != "" {
-				*ats = append(*ats, assetTransfer)
+			if len(event) > 0 {
+				assetTransfer.DecodeEvent(event, *l)
+				mutex.Lock()
+				if assetTransfer.Address != "" {
+					*ats = append(*ats, assetTransfer)
+				}
+				mutex.Unlock()
 			}
-			mutex.Unlock()
 		}()
 	}
 	wg.Wait()
 	*ats = append(*ats, trace.ListTransferEvent()...)
 }
 
-func (a *AssetTransfer) Decode(log types.Log) error {
-	abiName := decodeWithTopic(log)
-	if abiName == "" {
-		return nil
-	}
-
-	eventAbi, err := abi.JSON(strings.NewReader(ABIs))
-	if err != nil {
-		return err
-	}
-	event := map[string]interface{}{}
-
-	indexed := []abi.Argument{}
-	for _, input := range eventAbi.Events[abiName].Inputs {
-		if input.Indexed {
-			indexed = append(indexed, input)
-		}
-	}
-	if err := abi.ParseTopicsIntoMap(event, indexed, log.Topics[1:]); err != nil {
-		return errors.New("unpack abi's topics is err: " + err.Error() + " on tx: " + log.TxHash.String())
-	}
-	if len(log.Data) > 0 {
-		err = eventAbi.UnpackIntoMap(event, abiName, log.Data)
-		if err != nil {
-			return errors.New("unpack abi's data is err: " + err.Error() + " on tx: " + log.TxHash.String())
-		}
-	}
-
-	a.DecodeEvent(log.Topics[0].String(), event, log)
-
-	return nil
-}
-
-func decodeWithTopic(log types.Log) string {
-	switch strings.ToLower(log.Topics[0].String()) {
-	case TransferTopic:
-		if len(log.Topics) == 4 {
-			return TransferIndexABIName
-		}
-		return TransferABIName
-	case WithdrawalTopic:
-		if len(log.Topics) == 2 {
-			return WithdrawalIndexABIName
-		}
-		return WithdrawalABIName
-	case DepositTopic:
-		if len(log.Topics) == 2 {
-			return DepositIndexABIName
-		}
-		return DepositABIName
-	}
-	return ""
-}
-
-func (a *AssetTransfer) DecodeEvent(topic string, event map[string]any, log types.Log) {
-	switch strings.ToLower(topic) {
-	case TransferTopic:
+func (a *AssetTransfer) DecodeEvent(event map[string]any, log types.Log) {
+	topic0 := strings.ToLower(log.Topics[0].String())
+	switch strings.ToLower(topic0) {
+	case utils.TransferTopic:
 		a.DecodeTransfer(event, log)
-	case WithdrawalTopic:
+	case utils.WithdrawalTopic:
 		a.DecodeWithdrawal(event, log)
-	case DepositTopic:
+	case utils.DepositTopic:
 		a.DecodeDeposit(event, log)
 	}
 }

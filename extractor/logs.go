@@ -13,7 +13,6 @@ import (
 
 	"github.com/exvulsec/skyeye/client"
 	"github.com/exvulsec/skyeye/config"
-	"github.com/exvulsec/skyeye/exporter"
 	"github.com/exvulsec/skyeye/model"
 	"github.com/exvulsec/skyeye/task"
 	"github.com/exvulsec/skyeye/utils"
@@ -24,7 +23,6 @@ type logsExtractor struct {
 	logCh       chan logChan
 	latestBlock *uint64
 	workers     int
-	exporters   []exporter.Exporter
 	topics      []common.Hash
 }
 
@@ -47,6 +45,8 @@ func NewLogsExtractor(workers int) Extractor {
 }
 
 func (le *logsExtractor) Run() {
+	go le.ProcessTasks()
+	le.ExtractBlocks()
 }
 
 func (le *logsExtractor) getFilterQuery(blockNumber uint64) ethereum.FilterQuery {
@@ -116,8 +116,6 @@ func (le *logsExtractor) extractPreviousBlocks() {
 	endBlock := *le.latestBlock
 	if startBlock == 0 {
 		startBlock = endBlock - 1
-	} else if endBlock-config.Conf.ETL.PreviousBlockThreshold-1 > startBlock {
-		startBlock = endBlock - config.Conf.ETL.PreviousBlockThreshold - 1
 	}
 
 	startBlock += 1
@@ -142,9 +140,9 @@ func (le *logsExtractor) ProcessTasks() {
 }
 
 func (le *logsExtractor) ExecuteTask(logCh logChan) {
-	tasks := []task.Task{}
+	tasks := []task.Task{task.NewApprovalTask()}
 	var data any = logCh.logs
 	for _, t := range tasks {
-		go t.Do(data)
+		t.Run(data)
 	}
 }

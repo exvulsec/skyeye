@@ -10,32 +10,21 @@ import (
 )
 
 type contractTask struct {
-	done             chan bool
 	monitorAddresses model.MonitorAddrs
 }
 
 func NewContractTask(monitorAddrs model.MonitorAddrs) Task {
 	return &contractTask{
-		done:             make(chan bool, 1),
 		monitorAddresses: monitorAddrs,
 	}
 }
 
-func (ce *contractTask) Do(data any) any {
-	defer ce.setDone()
+func (ce *contractTask) Run(data any) any {
 	txs, ok := data.(model.Transactions)
 	if !ok || len(txs) == 0 {
 		return nil
 	}
 	return ce.AnalysisContracts(txs)
-}
-
-func (ce *contractTask) setDone() {
-	ce.done <- true
-}
-
-func (ce *contractTask) Done() bool {
-	return <-ce.done
 }
 
 func (ce *contractTask) AnalysisContracts(txs model.Transactions) model.Transactions {

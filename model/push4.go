@@ -26,7 +26,6 @@ func (p4pc *Push4PolicyCalc) Filter(tx *SkyEyeTransaction) bool {
 		"UPGRADE_INTERFACE_VERSION",
 		"changeProxyAdmin",
 		"changeAdmin",
-		"transferOwnership",
 		"admin",
 	}
 

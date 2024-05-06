@@ -10,32 +10,21 @@ import (
 )
 
 type assetTask struct {
-	done             chan bool
 	monitorAddresses model.MonitorAddrs
 }
 
-func NewAssetSubTask(monitorAddrs model.MonitorAddrs) Task {
+func NewAssetTask(monitorAddrs model.MonitorAddrs) Task {
 	return &assetTask{
-		done:             make(chan bool, 1),
 		monitorAddresses: monitorAddrs,
 	}
 }
 
-func (at *assetTask) Do(data any) any {
+func (at *assetTask) Run(data any) any {
 	txs, ok := data.(model.Transactions)
-	defer at.setDone()
 	if !ok || len(txs) == 0 {
 		return nil
 	}
 	return at.AnalysisAssetTransfer(txs)
-}
-
-func (at *assetTask) setDone() {
-	at.done <- true
-}
-
-func (at *assetTask) Done() bool {
-	return <-at.done
 }
 
 func (at *assetTask) AnalysisAssetTransfer(txs model.Transactions) model.Transactions {
