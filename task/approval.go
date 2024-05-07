@@ -62,7 +62,7 @@ func (at *approvalTask) DecodeTopic(logs []types.Log) {
 				a.DecodeFromEvent(event, l)
 			}
 		}
-		logrus.Infof("block: %d, decode logs: %d's asset transfer, elapsed: %s",
+		logrus.Infof("block: %d, decode approval logs: %d, elapsed: %s",
 			approvalLogs[0].BlockNumber, len(approvalLogs), utils.ElapsedTime(startTime))
 	}
 }

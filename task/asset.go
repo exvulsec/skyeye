@@ -38,7 +38,7 @@ func (at *assetTask) AnalysisAssetTransfer(txs model.Transactions) model.Transac
 		for _, tx := range needAnalysisTxs {
 			tx.ComposeAssetsAndAlert()
 		}
-		logrus.Infof("block: %d, analysis transactions: %d's asset transfer, elapsed: %s",
+		logrus.Infof("block: %d, analysis transactions: %d asset transfer, elapsed: %s",
 			needAnalysisTxs[0].BlockNumber, len(needAnalysisTxs), utils.ElapsedTime(startTime))
 	}
 

@@ -24,20 +24,22 @@ const (
 	WithdrawalName      = "Withdrawal"
 	DepositName         = "Deposit"
 	ApprovalName        = "Approval"
+	ApprovalIndexName   = "ApprovalIndex"
 	ApprovalForAllName  = "ApprovalForAll"
 	TransferIndexName   = "TransferIndex"
 	WithdrawalIndexName = "WithdrawalIndex"
 	DepositIndexName    = "DepositIndex"
 
 	ABIs = `[
-		{"anonymous":false,"inputs":[{"indexed":true,"name":"from","type":"address"},{"indexed":true,"name":"to","type":"address"},{"indexed":true,"name":"value","type":"uint256"}],"name":"TransferIndex","type":"event"},
-		{"anonymous":false,"inputs":[{"indexed":true,"name":"src","type":"address"},{"indexed":false,"name":"wad","type":"uint256"}],"name":"WithdrawalIndex","type":"event"},
-		{"anonymous":false,"inputs":[{"indexed":true,"name":"dst","type":"address"},{"indexed":false,"name":"wad","type":"uint256"}],"name":"DepositIndex","type":"event"},
 		{"anonymous":false,"inputs":[{"indexed":true,"name":"from","type":"address"},{"indexed":true,"name":"to","type":"address"},{"indexed":false,"name":"value","type":"uint256"}],"name":"Transfer","type":"event"},
 		{"anonymous":false,"inputs":[{"indexed":false,"name":"src","type":"address"},{"indexed":false,"name":"wad","type":"uint256"}],"name":"Withdrawal","type":"event"},
 		{"anonymous":false,"inputs":[{"indexed":false,"name":"dst","type":"address"},{"indexed":false,"name":"wad","type":"uint256"}],"name":"Deposit","type":"event"},
 		{"anonymous":false,"inputs":[{"indexed":true,"name":"owner","type":"address"},{"indexed":true,"name":"spender","type":"address"},{"indexed":false,"name":"value","type":"uint256"}],"name":"Approval","type":"event"},
-		{"anonymous":false,"inputs":[{"indexed":true,"name":"owner","type":"address"},{"indexed":true,"name":"spender","type":"address"},{"indexed":false,"name":"approved","type":"bool"}],"name":"ApprovalForAll","type":"event"}
+		{"anonymous":false,"inputs":[{"indexed":true,"name":"owner","type":"address"},{"indexed":true,"name":"spender","type":"address"},{"indexed":true,"name":"value","type":"uint256"}],"name":"ApprovalIndex","type":"event"},
+		{"anonymous":false,"inputs":[{"indexed":true,"name":"owner","type":"address"},{"indexed":true,"name":"spender","type":"address"},{"indexed":false,"name":"approved","type":"bool"}],"name":"ApprovalForAll","type":"event"},
+		{"anonymous":false,"inputs":[{"indexed":true,"name":"from","type":"address"},{"indexed":true,"name":"to","type":"address"},{"indexed":true,"name":"value","type":"uint256"}],"name":"TransferIndex","type":"event"},
+		{"anonymous":false,"inputs":[{"indexed":true,"name":"src","type":"address"},{"indexed":false,"name":"wad","type":"uint256"}],"name":"WithdrawalIndex","type":"event"},
+		{"anonymous":false,"inputs":[{"indexed":true,"name":"dst","type":"address"},{"indexed":false,"name":"wad","type":"uint256"}],"name":"DepositIndex","type":"event"}
 	]`
 )
 
@@ -51,6 +53,9 @@ func Decode(log types.Log) (map[string]any, error) {
 	eventAbi, err := abi.JSON(strings.NewReader(ABIs))
 	if err != nil {
 		return event, err
+	}
+	if _, ok := eventAbi.Events[abiName]; !ok {
+		return event, errors.New("abi not found")
 	}
 
 	indexed := []abi.Argument{}
@@ -89,9 +94,9 @@ func decodeWithTopic(log types.Log) string {
 		if len(log.Topics) == 2 {
 			return DepositIndexName
 		}
-	case ApprovalName, ApprovalForAllName:
-		if len(log.Topics) > 3 {
-			return ""
+	case ApprovalName:
+		if len(log.Topics) == 4 {
+			return ApprovalIndexName
 		}
 	}
 	return topicName

@@ -57,9 +57,12 @@ func (a *Approval) Upsert(chain string, amount decimal.Decimal, blockNumber uint
 	a.Amount = amount
 	a.BlockNumber = int64(blockNumber)
 	if existed {
+		if amount.Equal(decimal.Decimal{}) || a.Spender == "0x0000000000000000000000000000000000000000" {
+			return a.Delete(chain)
+		}
 		return a.Update(chain)
 	}
-	if !a.Amount.Equal(decimal.Decimal{}) {
+	if !amount.Equal(decimal.Decimal{}) && a.Spender != "0x0000000000000000000000000000000000000000" {
 		return a.Create(chain)
 	}
 	return nil
@@ -71,6 +74,10 @@ func (a *Approval) Update(chain string) error {
 
 func (a *Approval) Create(chain string) error {
 	return datastore.DB().Table(a.TableName(chain)).Create(a).Error
+}
+
+func (a *Approval) Delete(chain string) error {
+	return datastore.DB().Table(a.TableName(chain)).Delete(a).Where("id = ?", a.ID).Error
 }
 
 func (a *Approval) TableName(chain string) string {

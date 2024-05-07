@@ -40,7 +40,7 @@ func (ce *contractTask) AnalysisContracts(txs model.Transactions) model.Transact
 		for _, tx := range needAnalysisTxs {
 			tx.ComposeContractAndAlert(&ce.monitorAddresses)
 		}
-		logrus.Infof("block: %d, analysis transactions: %d's contract creation, elapsed: %s",
+		logrus.Infof("block: %d, analysis transactions: %d contract creation, elapsed: %s",
 			needAnalysisTxs[0].BlockNumber, len(needAnalysisTxs), utils.ElapsedTime(startTime))
 	}
 

@@ -15,7 +15,9 @@ type blockExtractor struct {
 }
 
 func NewBlockExtractor(workers int) Extractor {
-	extractors := []Extractor{NewTransactionExtractor(workers)}
+	extractors := []Extractor{
+		NewTransactionExtractor(workers),
+	}
 	if config.Conf.ETL.LogHashes != "" {
 		extractors = append(extractors, NewLogsExtractor(workers))
 	}
