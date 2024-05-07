@@ -23,6 +23,7 @@ var extractCMD = &cobra.Command{
 		}
 		log.InitLog(config.Conf.ETL.LogPath)
 		workers, _ := cmd.Flags().GetInt("workers")
+
 		blockExtractors := extractor.NewBlockExtractor(workers)
 		blockExtractors.Run()
 		defer func() {

@@ -7,6 +7,7 @@ import (
 	"github.com/sirupsen/logrus"
 
 	"github.com/exvulsec/skyeye/client"
+	"github.com/exvulsec/skyeye/config"
 )
 
 type blockExtractor struct {
@@ -14,8 +15,15 @@ type blockExtractor struct {
 }
 
 func NewBlockExtractor(workers int) Extractor {
+	extractors := []Extractor{
+		NewTransactionExtractor(workers),
+	}
+	if config.Conf.ETL.LogHashes != "" {
+		extractors = append(extractors, NewLogsExtractor(workers))
+	}
+
 	return &blockExtractor{
-		extractors: []Extractor{NewTransactionExtractor(workers)},
+		extractors: extractors,
 	}
 }
 

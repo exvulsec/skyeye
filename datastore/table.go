@@ -8,6 +8,7 @@ const (
 	TableSignatures        = "signatures"
 	TableSkyEyeTransaction = "skyeye_txs"
 	TableMonitorAddrs      = "monitor_addrs"
+	TableApprovals         = "approvals"
 )
 
 const (
