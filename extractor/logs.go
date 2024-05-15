@@ -37,8 +37,8 @@ func NewLogsExtractor(workers int) Extractor {
 		topics = append(topics, common.HexToHash(hash))
 	}
 	return &logsExtractor{
-		blocks:  make(chan uint64, 10),
-		logCh:   make(chan logChan, 100),
+		blocks:  make(chan uint64, 1000),
+		logCh:   make(chan logChan, 10000),
 		workers: workers,
 		topics:  topics,
 	}

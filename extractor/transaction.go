@@ -37,8 +37,8 @@ func NewTransactionExtractor(workers int) Extractor {
 		logrus.Panicf("list monitor addr is err %v", err)
 	}
 	return &transactionExtractor{
-		blocks:        make(chan uint64, 10),
-		transactionCh: make(chan transactionChan, 100),
+		blocks:        make(chan uint64, 100),
+		transactionCh: make(chan transactionChan, 1000),
 		workers:       workers,
 		monitorAddrs:  monitorAddrs,
 	}
