@@ -219,9 +219,9 @@ func convertAddress(origin string) string {
 	end := len(origin)
 	start := end - 40
 	if len(origin) > 42 {
-		return "0x" + origin[start:end]
+		return strings.ToLower("0x" + origin[start:end])
 	}
-	return origin
+	return strings.ToLower(origin)
 }
 
 func (as *Assets) AnalysisAssetTransfers(assetTransfers AssetTransfers, focuses []string) error {
@@ -310,6 +310,7 @@ func (as *Assets) alert(tx SkyEyeTransaction) {
 	for _, asset := range as.Items {
 		as.TotalUSD = as.TotalUSD.Add(asset.TotalUSD)
 	}
+	logrus.Infof("block: %d, tx hash: %s, asset transfer total usd: %s", as.BlockNumber, as.TxHash, as.TotalUSD)
 	if as.TotalUSD.Cmp(Threshold) >= 0 {
 		stTime := time.Now()
 		logrus.Infof("start to send asset alert msg to slack")
