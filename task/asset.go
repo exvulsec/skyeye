@@ -30,7 +30,7 @@ func (at *assetTask) Run(data any) any {
 func (at *assetTask) AnalysisAssetTransfer(txs model.Transactions) model.Transactions {
 	startTime := time.Now()
 	conditionFunc := func(tx model.Transaction) bool {
-		if at.monitorAddresses.Existed([]string{*tx.ToAddress}) {
+		if tx.ToAddress != nil && at.monitorAddresses.Existed([]string{*tx.ToAddress}) {
 			return true
 		}
 		if tx.MultiContracts != nil {
