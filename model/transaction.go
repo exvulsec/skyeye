@@ -158,7 +158,6 @@ func (tx *Transaction) ComposeAssetsAndAlert() {
 		BlockNumber:    tx.BlockNumber,
 		BlockTimestamp: tx.BlockTimestamp,
 		TxHash:         tx.TxHash,
-		ToAddress:      *tx.ToAddress,
 		Items:          []Asset{},
 		TotalUSD:       decimal.Decimal{},
 	}
@@ -175,6 +174,7 @@ func (tx *Transaction) ComposeAssetsAndAlert() {
 		}
 		if tx.ToAddress != nil {
 			focusesAddresses = append(focusesAddresses, *tx.ToAddress)
+			assets.ToAddress = *tx.ToAddress
 		}
 
 		if tx.MultiContracts == nil {
