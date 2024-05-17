@@ -45,8 +45,8 @@ func (txs *Transactions) MultiProcess(condition func(tx Transaction) bool) (Tran
 
 func (txs *Transactions) EnrichTxs() {
 	for index, tx := range *txs {
-		tx.EnrichReceipt(config.Conf.ETL.Chain)
 		tx.GetTrace(config.Conf.ETL.Chain)
+		tx.EnrichReceipt(config.Conf.ETL.Chain)
 		(*txs)[index] = tx
 	}
 }

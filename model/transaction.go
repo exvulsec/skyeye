@@ -33,6 +33,7 @@ type Transaction struct {
 	Nonce           uint64            `json:"nonce" gorm:"column:nonce"`
 	Receipt         *types.Receipt    `json:"receipt" gorm:"-"`
 	Trace           *TransactionTrace `json:"trace" gorm:"-"`
+	MultiContracts  []string          `json:"-" gorm:"-"`
 }
 
 func (tx *Transaction) ConvertFromBlock(transaction *types.Transaction) {
@@ -72,10 +73,6 @@ func (tx *Transaction) getReceipt(chain string) {
 func (tx *Transaction) EnrichReceipt(chain string) {
 	tx.getReceipt(chain)
 	if tx.Receipt != nil {
-		if tx.ContractAddress != utils.ZeroAddress {
-			tx.ContractAddress = strings.ToLower(tx.Receipt.ContractAddress.String())
-			tx.ToAddress = &tx.ContractAddress
-		}
 		tx.TxPos = int64(tx.Receipt.TransactionIndex)
 		tx.TxStatus = int64(tx.Receipt.Status)
 	}
@@ -111,12 +108,20 @@ func (tx *Transaction) GetTrace(chain string) {
 
 func (tx *Transaction) ComposeContractAndAlert(addrs *MonitorAddrs) {
 	policies := []PolicyCalc{
-		&MultiContractCalc{},
 		&FundPolicyCalc{Chain: config.Conf.ETL.Chain, NeedFund: true},
 		&NoncePolicyCalc{},
 	}
 	skyTx := SkyEyeTransaction{}
 	skyTx.ConvertFromTransaction(*tx)
+
+	contracts, skip := tx.Trace.ListContracts()
+	if skip {
+		return
+	}
+	tx.MultiContracts = contracts
+	skyTx.MultiContracts = contracts
+	skyTx.MultiContractString = strings.Join(skyTx.MultiContracts, ",")
+
 	for _, p := range policies {
 		if p.Filter(&skyTx) {
 			return
@@ -165,22 +170,30 @@ func (tx *Transaction) ComposeAssetsAndAlert() {
 	}
 	if tx.Receipt != nil && tx.Trace != nil {
 		skyTx := SkyEyeTransaction{Input: tx.Input}
-		if err := skyTx.GetInfoByContract(config.Conf.ETL.Chain, *tx.ToAddress); err != nil {
-			logrus.Errorf("get skyeye tx info is err %v", err)
-		}
-		if skyTx.ID == nil {
-			return
-		}
 		focusesAddresses := []string{
 			tx.FromAddress,
 		}
-		if skyTx.MultiContractString != "" {
-			skyTx.MultiContracts = strings.Split(skyTx.MultiContractString, ",")
-			for _, contract := range skyTx.MultiContracts {
-				focusesAddresses = append(focusesAddresses, contract)
+		if tx.ToAddress != nil {
+			focusesAddresses = append(focusesAddresses, *tx.ToAddress)
+		}
+
+		if tx.MultiContracts == nil {
+			if err := skyTx.GetInfoByContract(config.Conf.ETL.Chain, *tx.ToAddress); err != nil {
+				logrus.Errorf("get skyeye tx info is err %v", err)
+			}
+			if skyTx.ID == nil {
+				return
+			}
+			if skyTx.MultiContractString != "" {
+				skyTx.MultiContracts = strings.Split(skyTx.MultiContractString, ",")
 			}
 		} else {
-			focusesAddresses = append(focusesAddresses, *tx.ToAddress)
+			skyTx.MultiContracts = tx.MultiContracts
+		}
+		for _, contract := range skyTx.MultiContracts {
+			if tx.ToAddress != nil && contract != *tx.ToAddress {
+				focusesAddresses = append(focusesAddresses, contract)
+			}
 		}
 		assetTransfers := AssetTransfers{}
 

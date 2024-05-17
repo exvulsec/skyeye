@@ -94,7 +94,7 @@ func (hdpc *HeimdallPolicyCalc) Filter(tx *SkyEyeTransaction) bool {
 		return false
 	}
 
-	if hdl.FunctionCount > 10 {
+	if hdl.FunctionCount > 15 {
 		return true
 	}
 
