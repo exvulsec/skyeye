@@ -260,6 +260,7 @@ func (as *Assets) AnalysisAssetTransfers(assetTransfers AssetTransfers, focuses 
 			mutex.Unlock()
 		}()
 	}
+	wg.Wait()
 	return nil
 }
 
@@ -317,6 +318,6 @@ func (as *Assets) alert(tx SkyEyeTransaction) {
 		if err := as.SendMessageToSlack(tx); err != nil {
 			logrus.Errorf("send txhash %s's contract %s message to slack is err %v", as.TxHash, as.ToAddress, err)
 		}
-		logrus.Infof("send asset alert msg to slack is finished, cost %2.f", time.Since(stTime).Seconds())
+		logrus.Infof("send asset alert message to slack channel, elapsed: %s", utils.ElapsedTime(stTime))
 	}
 }
