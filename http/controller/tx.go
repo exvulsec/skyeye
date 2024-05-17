@@ -70,7 +70,6 @@ func (tc *TXController) Reviewed(c *gin.Context) {
 	}
 
 	policies := []model.PolicyCalc{
-		&model.MultiContractCalc{},
 		&model.FundPolicyCalc{Chain: chain, NeedFund: searchFund},
 		&model.NoncePolicyCalc{},
 	}
@@ -92,7 +91,7 @@ func (tc *TXController) Reviewed(c *gin.Context) {
 
 	for _, contract := range skyTx.MultiContracts {
 		contractTX := model.SkyEyeTransaction{
-			Chain:               skyTx.Chain,
+			Chain:               chain,
 			BlockTimestamp:      skyTx.BlockTimestamp,
 			BlockNumber:         skyTx.BlockNumber,
 			TxHash:              skyTx.TxHash,

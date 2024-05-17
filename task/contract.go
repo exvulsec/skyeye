@@ -1,6 +1,7 @@
 package task
 
 import (
+	"strings"
 	"time"
 
 	"github.com/sirupsen/logrus"
@@ -10,10 +11,10 @@ import (
 )
 
 type contractTask struct {
-	monitorAddresses model.MonitorAddrs
+	monitorAddresses *model.MonitorAddrs
 }
 
-func NewContractTask(monitorAddrs model.MonitorAddrs) Task {
+func NewContractTask(monitorAddrs *model.MonitorAddrs) Task {
 	return &contractTask{
 		monitorAddresses: monitorAddrs,
 	}
@@ -30,15 +31,16 @@ func (ce *contractTask) Run(data any) any {
 func (ce *contractTask) AnalysisContracts(txs model.Transactions) model.Transactions {
 	startTime := time.Now()
 	conditionFunc := func(tx model.Transaction) bool {
-		return tx.ToAddress == nil
+		return strings.Contains(tx.Input, "60806040")
 	}
 
 	originTxs, needAnalysisTxs := txs.MultiProcess(conditionFunc)
 
 	if len(needAnalysisTxs) > 0 {
 		needAnalysisTxs.EnrichTxs()
-		for _, tx := range needAnalysisTxs {
-			tx.ComposeContractAndAlert(&ce.monitorAddresses)
+		for index, tx := range needAnalysisTxs {
+			tx.ComposeContractAndAlert(ce.monitorAddresses)
+			needAnalysisTxs[index] = tx
 		}
 		logrus.Infof("block: %d, analysis transactions: %d contract creation, elapsed: %s",
 			needAnalysisTxs[0].BlockNumber, len(needAnalysisTxs), utils.ElapsedTime(startTime))

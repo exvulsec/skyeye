@@ -178,10 +178,11 @@ func (st *SkyEyeTransaction) alert() {
 		if err := st.SendMessageToSlack(); err != nil {
 			logrus.Errorf("send txhash %s's contract %s message to slack is err %v", st.TxHash, st.ContractAddress, err)
 		}
+		logrus.Infof("monitor contract %s on chain %s", st.ContractAddress, st.Chain)
 		if err := st.MonitorContractAddress(); err != nil {
 			logrus.Error(err)
+			return
 		}
-		logrus.Infof("insert tx %s's contract %s to %s", st.TxHash, st.ContractAddress, skyEyeTableName)
 		if err := st.Insert(); err != nil {
 			logrus.Errorf("insert txhash %s's contract %s to %s is err %v", st.TxHash, st.ContractAddress, skyEyeTableName, err)
 			return
@@ -220,7 +221,9 @@ func (st *SkyEyeTransaction) MonitorContractAddress() error {
 		if err := monitorAddr.Create(); err != nil {
 			return fmt.Errorf("create monitor address chain %s address %s is err %v", config.Conf.ETL.Chain, st.ContractAddress, err)
 		}
-		*st.MonitorAddrs = append(*st.MonitorAddrs, monitorAddr)
+		if !st.MonitorAddrs.Existed([]string{monitorAddr.Address}) {
+			*st.MonitorAddrs = append(*st.MonitorAddrs, monitorAddr)
+		}
 	}
 	return nil
 }

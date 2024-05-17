@@ -10,10 +10,10 @@ import (
 )
 
 type assetTask struct {
-	monitorAddresses model.MonitorAddrs
+	monitorAddresses *model.MonitorAddrs
 }
 
-func NewAssetTask(monitorAddrs model.MonitorAddrs) Task {
+func NewAssetTask(monitorAddrs *model.MonitorAddrs) Task {
 	return &assetTask{
 		monitorAddresses: monitorAddrs,
 	}
@@ -30,7 +30,13 @@ func (at *assetTask) Run(data any) any {
 func (at *assetTask) AnalysisAssetTransfer(txs model.Transactions) model.Transactions {
 	startTime := time.Now()
 	conditionFunc := func(tx model.Transaction) bool {
-		return at.monitorAddresses.Existed(*tx.ToAddress)
+		if at.monitorAddresses.Existed([]string{*tx.ToAddress}) {
+			return true
+		}
+		if tx.MultiContracts != nil {
+			return at.monitorAddresses.Existed(tx.MultiContracts)
+		}
+		return false
 	}
 
 	originTxs, needAnalysisTxs := txs.MultiProcess(conditionFunc)

@@ -57,13 +57,16 @@ func (ma *MonitorAddr) Delete() error {
 func (mas *MonitorAddrs) List() error {
 	return datastore.DB().Table(monitorAddrTableName).
 		Where("chain = ?", config.Conf.ETL.Chain).
+		Order("id asc").
 		Find(mas).Error
 }
 
-func (mas *MonitorAddrs) Existed(addr string) bool {
-	for _, monitorAddr := range *mas {
-		if strings.EqualFold(monitorAddr.Address, addr) {
-			return true
+func (mas *MonitorAddrs) Existed(addrs []string) bool {
+	for _, addr := range addrs {
+		for _, monitorAddr := range *mas {
+			if strings.EqualFold(monitorAddr.Address, addr) {
+				return true
+			}
 		}
 	}
 	return false

@@ -23,7 +23,7 @@ type transactionExtractor struct {
 	latestBlock   *uint64
 	workers       int
 	exporters     []exporter.Exporter
-	monitorAddrs  model.MonitorAddrs
+	monitorAddrs  *model.MonitorAddrs
 }
 
 type transactionChan struct {
@@ -40,7 +40,7 @@ func NewTransactionExtractor(workers int) Extractor {
 		blocks:        make(chan uint64, 100),
 		transactionCh: make(chan transactionChan, 1000),
 		workers:       workers,
-		monitorAddrs:  monitorAddrs,
+		monitorAddrs:  &monitorAddrs,
 	}
 }
 
