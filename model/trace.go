@@ -49,6 +49,9 @@ func (trace *TransactionTrace) ListContracts() ([]string, bool) {
 			break
 		}
 		txTrace := queue.Pop()
+		if txTrace == nil {
+			continue
+		}
 		address, skip := txTrace.GetContractAddress()
 		if skip {
 			return contracts, true
