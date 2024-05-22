@@ -113,7 +113,6 @@ func (tx *Transaction) ComposeContractAndAlert(addrs *MonitorAddrs) {
 	}
 	skyTx := SkyEyeTransaction{}
 	skyTx.ConvertFromTransaction(*tx)
-
 	contracts, skip := tx.Trace.ListContracts()
 	if skip {
 		return
