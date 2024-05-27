@@ -29,7 +29,11 @@ func GetApprovalPreviousBlockNumber(chain string, blockNumber *uint64) error {
 }
 
 func (a *Approval) DecodeFromEvent(event Event, log types.Log) {
-	a.Token = strings.ToLower(log.Address.String())
+	if token, ok := event["token"]; ok {
+		a.Token = strings.ToLower(token.(common.Address).String())
+	} else {
+		a.Token = strings.ToLower(log.Address.String())
+	}
 	a.Owner = strings.ToLower(event["owner"].(common.Address).String())
 	a.Spender = strings.ToLower(event["spender"].(common.Address).String())
 
@@ -43,8 +47,8 @@ func (a *Approval) DecodeFromEvent(event Event, log types.Log) {
 			amount = decimal.NewFromInt(0)
 		}
 	}
-	err := a.Upsert(config.Conf.ETL.Chain, amount, log.BlockNumber)
-	if err != nil {
+
+	if err := a.Upsert(config.Conf.ETL.Chain, amount, log.BlockNumber); err != nil {
 		logrus.Errorf("upsert the owner %s, spender %s, token %s's approval data to db is err: %v", a.Owner, a.Spender, a.Token, err)
 	}
 }
@@ -57,15 +61,10 @@ func (a *Approval) Upsert(chain string, amount decimal.Decimal, blockNumber uint
 	a.Amount = amount
 	a.BlockNumber = int64(blockNumber)
 	if existed {
-		if amount.Equal(decimal.Decimal{}) || a.Spender == "0x0000000000000000000000000000000000000000" {
-			return a.Delete(chain)
-		}
 		return a.Update(chain)
-	}
-	if !amount.Equal(decimal.Decimal{}) && a.Spender != "0x0000000000000000000000000000000000000000" {
+	} else {
 		return a.Create(chain)
 	}
-	return nil
 }
 
 func (a *Approval) Update(chain string) error {
