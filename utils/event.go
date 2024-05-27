@@ -14,6 +14,7 @@ var TopicMaps = map[string]string{
 	"0xe1fffcc4923d04b559f4d29a8bfc6cda04eb5b0d3c460751c2402c5c5cc9109c": "Deposit",
 	"0x8c5be1e5ebec7d5bd14f71427d1e84f3dd0314c0f7b2291e5b200ac8c7c3b925": "Approval",
 	"0x17307eab39ab6107e8899845ad3d59bd9653f200f220920489ca2b5937696c31": "ApprovalForAll",
+	"0xda9fa7c1b00402c17d0161b249b1ab8bbec047c5a52207b9c112deffd817036b": "Permit2",
 }
 
 const (
@@ -26,6 +27,7 @@ const (
 	ApprovalName        = "Approval"
 	ApprovalIndexName   = "ApprovalIndex"
 	ApprovalForAllName  = "ApprovalForAll"
+	Permit2IndexName    = "Permit2"
 	TransferIndexName   = "TransferIndex"
 	WithdrawalIndexName = "WithdrawalIndex"
 	DepositIndexName    = "DepositIndex"
@@ -36,6 +38,7 @@ const (
 		{"anonymous":false,"inputs":[{"indexed":false,"name":"dst","type":"address"},{"indexed":false,"name":"wad","type":"uint256"}],"name":"Deposit","type":"event"},
 		{"anonymous":false,"inputs":[{"indexed":true,"name":"owner","type":"address"},{"indexed":true,"name":"spender","type":"address"},{"indexed":false,"name":"value","type":"uint256"}],"name":"Approval","type":"event"},
 		{"anonymous":false,"inputs":[{"indexed":true,"name":"owner","type":"address"},{"indexed":true,"name":"spender","type":"address"},{"indexed":true,"name":"value","type":"uint256"}],"name":"ApprovalIndex","type":"event"},
+		{"anonymous":false,"inputs":[{"indexed":true,"name":"owner","type":"address"},{"indexed":true,"name":"token","type":"address"},{"indexed":true,"name":"spender","type":"address"},{"indexed":false,"name":"value","type":"uint160"},{"indexed":false,"name":"expiration","type":"uint48"}],"name":"Permit2","type":"event"},
 		{"anonymous":false,"inputs":[{"indexed":true,"name":"owner","type":"address"},{"indexed":true,"name":"spender","type":"address"},{"indexed":false,"name":"approved","type":"bool"}],"name":"ApprovalForAll","type":"event"},
 		{"anonymous":false,"inputs":[{"indexed":true,"name":"from","type":"address"},{"indexed":true,"name":"to","type":"address"},{"indexed":true,"name":"value","type":"uint256"}],"name":"TransferIndex","type":"event"},
 		{"anonymous":false,"inputs":[{"indexed":true,"name":"src","type":"address"},{"indexed":false,"name":"wad","type":"uint256"}],"name":"WithdrawalIndex","type":"event"},
