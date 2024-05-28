@@ -36,7 +36,6 @@ type Assets struct {
 	TxHash         string
 	ToAddress      string
 	Items          []Asset
-	TotalUSD       decimal.Decimal
 }
 
 type AssetTransfer struct {
@@ -140,7 +139,7 @@ func (abs *AssetBalances) SetBalanceValue(address, token string, value decimal.D
 	}
 }
 
-func (abs *AssetBalances) calcBalance(transfers []AssetTransfer, focuses []string) {
+func (abs *AssetBalances) calcBalance(transfers []AssetTransfer) {
 	workers := make(chan int, 3)
 	wg := &sync.WaitGroup{}
 	mutex := &sync.Mutex{}
@@ -161,7 +160,7 @@ func (abs *AssetBalances) calcBalance(transfers []AssetTransfer, focuses []strin
 		}()
 	}
 	wg.Wait()
-	abs.filterBalance(focuses)
+	abs.filterBalance()
 }
 
 func checkAddressExisted(focuses []string, address string) bool {
@@ -173,12 +172,7 @@ func checkAddressExisted(focuses []string, address string) bool {
 	return false
 }
 
-func (abs *AssetBalances) filterBalance(focuses []string) {
-	for address := range *abs {
-		if !checkAddressExisted(focuses, address) {
-			delete(*abs, address)
-		}
-	}
+func (abs *AssetBalances) filterBalance() {
 	for address, tokens := range *abs {
 		for tokenAddr, value := range tokens {
 			if value.Equal(decimal.Decimal{}) {
@@ -224,9 +218,9 @@ func convertAddress(origin string) string {
 	return strings.ToLower(origin)
 }
 
-func (as *Assets) AnalysisAssetTransfers(assetTransfers AssetTransfers, focuses []string) error {
+func (as *Assets) AnalysisAssetTransfers(assetTransfers AssetTransfers) error {
 	balances := AssetBalances{}
-	balances.calcBalance(assetTransfers, focuses)
+	balances.calcBalance(assetTransfers)
 	tokensWithPrice, err := balances.ListPrices()
 	if err != nil {
 		return err
@@ -248,13 +242,15 @@ func (as *Assets) AnalysisAssetTransfers(assetTransfers AssetTransfers, focuses 
 				token := tokensWithPrice[tokenAddr]
 				token.Value = token.GetValueWithDecimals(value)
 				token.ValueWithUnit = fmt.Sprintf("%s %s", token.Value, token.Symbol)
-				assetTokens = append(assetTokens, token)
+				token.ValueUSD = &decimal.Decimal{}
 				if token.Price != nil {
-					asset.TotalUSD = asset.TotalUSD.Add(token.Value.Mul(*token.Price))
+					value := token.Value.Mul(*token.Price)
+					token.ValueUSD = &value
+					asset.TotalUSD = asset.TotalUSD.Add(value)
 				}
+				assetTokens = append(assetTokens, token)
 			}
 			asset.Tokens = assetTokens
-
 			mutex.Lock()
 			as.Items = append(as.Items, asset)
 			mutex.Unlock()
@@ -274,7 +270,6 @@ func (as *Assets) composeMsg(tx SkyEyeTransaction) string {
 	text += fmt.Sprintf("*TXhash:* <%s|%s>\n", fmt.Sprintf("%s/tx/%s", scanURL, as.TxHash), as.TxHash)
 	text += fmt.Sprintf("*Contract:* <%s|%s>\n", fmt.Sprintf("%s/address/%s", utils.GetScanURL(chain), as.ToAddress), as.ToAddress)
 	text += fmt.Sprintf("*Assets:* ```%s```\n\n", items)
-	text += fmt.Sprintf("*Value USD:* `%s`\n\n", as.TotalUSD)
 	text += fmt.Sprintf("*Split Score:* `%s`\n", tx.SplitScores)
 
 	input := tx.Input[:10]
@@ -307,13 +302,20 @@ func (as *Assets) SendMessageToSlack(tx SkyEyeTransaction) error {
 	return slack.PostWebhook(config.Conf.ETL.SlackTransferWebHook, &msg)
 }
 
-func (as *Assets) alert(tx SkyEyeTransaction) {
+func (as *Assets) alert(tx SkyEyeTransaction, focuses []string) {
+	alertAssets := []Asset{}
+	threshold, _ := decimal.NewFromString(config.Conf.ETL.AssetUSDAlertThreshold)
 	for _, asset := range as.Items {
-		as.TotalUSD = as.TotalUSD.Add(asset.TotalUSD)
+		if asset.TotalUSD.Cmp(threshold) >= 0 {
+			if checkAddressExisted(focuses, asset.Address) || !utils.IsContract(asset.Address, tx.BlockNumber) {
+				alertAssets = append(alertAssets, asset)
+			}
+		}
 	}
-	logrus.Infof("block: %d, tx hash: %s, asset transfer total usd: %s", as.BlockNumber, as.TxHash, as.TotalUSD)
-	if as.TotalUSD.Cmp(Threshold) >= 0 {
+
+	if len(alertAssets) > 0 {
 		stTime := time.Now()
+		as.Items = alertAssets
 		logrus.Infof("start to send asset alert msg to slack")
 		if err := as.SendMessageToSlack(tx); err != nil {
 			logrus.Errorf("send txhash %s's contract %s message to slack is err %v", as.TxHash, as.ToAddress, err)

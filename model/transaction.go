@@ -158,7 +158,6 @@ func (tx *Transaction) ComposeAssetsAndAlert() {
 		BlockTimestamp: tx.BlockTimestamp,
 		TxHash:         tx.TxHash,
 		Items:          []Asset{},
-		TotalUSD:       decimal.Decimal{},
 	}
 	if tx.Trace == nil {
 		tx.GetTrace(config.Conf.ETL.Chain)
@@ -197,12 +196,12 @@ func (tx *Transaction) ComposeAssetsAndAlert() {
 		assetTransfers := AssetTransfers{}
 
 		assetTransfers.compose(tx.Receipt.Logs, *tx.Trace)
-		if err := assets.AnalysisAssetTransfers(assetTransfers, focusesAddresses); err != nil {
+		if err := assets.AnalysisAssetTransfers(assetTransfers); err != nil {
 			logrus.Errorf("analysis asset transfer is err: %v", err)
 			return
 		}
 		if len(assets.Items) > 0 {
-			assets.alert(skyTx)
+			assets.alert(skyTx, focusesAddresses)
 		}
 	}
 }

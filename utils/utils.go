@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"math/big"
 	"net/http"
 	"os"
 	"reflect"
@@ -11,8 +12,10 @@ import (
 	"strings"
 	"time"
 
+	"github.com/ethereum/go-ethereum/common"
 	"github.com/sirupsen/logrus"
 
+	"github.com/exvulsec/skyeye/client"
 	"github.com/exvulsec/skyeye/config"
 	"github.com/exvulsec/skyeye/datastore"
 )
@@ -123,4 +126,13 @@ func FirstUpper(s string) string {
 		return ""
 	}
 	return strings.ToUpper(s[:1]) + s[1:]
+}
+
+func IsContract(address string, blockNumber int64) bool {
+	code, err := client.MultiEvmClient()[config.Conf.ETL.Chain].CodeAt(context.Background(), common.HexToAddress(address), big.NewInt(blockNumber))
+	if err != nil {
+		logrus.Errorf("get code for address %s on block %d from rpc is err: %v", address, blockNumber, err)
+		return false
+	}
+	return len(code) != 0
 }
