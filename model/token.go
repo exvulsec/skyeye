@@ -36,6 +36,7 @@ type Token struct {
 	Decimals      int64            `json:"-" gorm:"column:decimals"`
 	Value         decimal.Decimal  `json:"-" gorm:"-"`
 	ValueWithUnit string           `json:"value" gorm:"-"`
+	ValueUSD      *decimal.Decimal `json:"value_usd" gorm:"-"`
 	Price         *decimal.Decimal `json:"-" gorm:"column:price"`
 	UpdatedAt     time.Time        `json:"-" gorm:"column:updated_at"`
 }
