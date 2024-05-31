@@ -286,7 +286,7 @@ func (as *Assets) composeMsg(tx SkyEyeTransaction) string {
 
 func (as *Assets) SendMessageToSlack(tx SkyEyeTransaction) error {
 	tx.TxHash = as.TxHash
-	summary := fmt.Sprintf("⚠️Detected asset transfer on %s⚠️\n", config.Conf.ETL.Chain)
+	summary := fmt.Sprintf("⚠️Detected malicious asset transfer on %s⚠️\n", config.Conf.ETL.Chain)
 	attachment := slack.Attachment{
 		Color:      "warning",
 		AuthorName: "EXVul",

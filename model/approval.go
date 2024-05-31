@@ -42,7 +42,7 @@ func (a *Approval) DecodeFromEvent(event Event, log types.Log) {
 		amount = decimal.NewFromBigInt(event["value"].(*big.Int), 0)
 	} else if event.mapKeyExist("approved") {
 		if approved, ok := event["approved"].(bool); ok && approved {
-			amount = decimal.NewFromInt(2).Pow(decimal.NewFromInt32(256))
+			amount = decimal.NewFromInt(2).Pow(decimal.NewFromInt32(256)).Sub(decimal.NewFromInt(1))
 		} else {
 			amount = decimal.NewFromInt(0)
 		}
