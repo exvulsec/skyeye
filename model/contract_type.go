@@ -33,6 +33,7 @@ func (cpc *ContractTypePolicyCalc) Filter(tx *SkyEyeTransaction) bool {
 		utils.IsToken(utils.Erc1155Signatures, push4Codes, utils.Erc1155SignatureThreshold) {
 		return true
 	}
+
 	cpc.Push4Codes = push4Codes
 	cpc.Push20Codes = opCodeArgs[utils.PUSH20]
 	cpc.PushStringLogs = opCodeArgs[utils.LOGS]

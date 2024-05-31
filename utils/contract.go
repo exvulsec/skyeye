@@ -1,6 +1,9 @@
 package utils
 
-import "fmt"
+import (
+	"fmt"
+	"strings"
+)
 
 var Erc20Signatures = []string{
 	"18160ddd", // totalSupply()
@@ -42,11 +45,11 @@ func IsToken(signatures []string, funcSignatures []string, threshold int) bool {
 	count := 0
 	for _, funcSign := range funcSignatures {
 		for _, sign := range signatures {
-			if fmt.Sprintf("0x%s", sign) == funcSign {
+			if strings.EqualFold(fmt.Sprintf("0x%s", sign), funcSign) {
 				count++
 				break
 			}
 		}
 	}
-	return count >= threshold
+	return count == threshold
 }
