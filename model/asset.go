@@ -271,15 +271,17 @@ func (as *Assets) composeMsg(tx SkyEyeTransaction) string {
 	text += fmt.Sprintf("*Contract:* <%s|%s>\n", fmt.Sprintf("%s/address/%s", utils.GetScanURL(chain), as.ToAddress), as.ToAddress)
 	text += fmt.Sprintf("*Assets:* ```%s```\n\n", items)
 	text += fmt.Sprintf("*Split Score:* `%s`\n", tx.SplitScores)
+	input := ""
+	if len(tx.Input) > 2 {
+		textSignatures, err := GetSignatures([]string{tx.Input[:10]})
+		if err != nil {
+			logrus.Errorf("get signature is err %v", err)
+		}
+		if len(textSignatures) > 0 {
+			input = textSignatures[0]
+		}
+	}
 
-	input := tx.Input[:10]
-	texts, err := GetSignatures([]string{tx.Input[:10]})
-	if err != nil {
-		logrus.Errorf("get signature is err %v", err)
-	}
-	if len(texts) > 0 {
-		input = texts[0]
-	}
 	text += fmt.Sprintf("*Input:* `%s`", input)
 	return text
 }
