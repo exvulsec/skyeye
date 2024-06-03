@@ -5,6 +5,11 @@ import (
 	"strings"
 )
 
+type signaturesConfig struct {
+	signatures []string
+	threshold  int
+}
+
 var Erc20Signatures = []string{
 	"18160ddd", // totalSupply()
 	"70a08231", // balanceOf(address)
@@ -35,21 +40,41 @@ var Erc1155Signatures = []string{
 	"2eb2c2d6", // safeBatchTransferFrom(address,address,uint256[],uint256[],bytes)
 }
 
-const (
-	Erc20SignatureThreshold   = 6
-	Erc721SignatureThreshold  = 9
-	Erc1155SignatureThreshold = 6
-)
+var KeyStopWithdrawSignatures = []string{
+	"2b42b941", // SetTradeBalancePERCENT(uint256)
+	"57ea89b6", // Withdraw()
+	"9763d29b", // SetTradeBalanceETH(uint256)
+	"bedf0f4a", // Stop()
+	"eaf67ab9", // StartNative()
+	"f39d8c65", // Key()
+}
 
-func IsToken(signatures []string, funcSignatures []string, threshold int) bool {
+var signaturesConfigs = []signaturesConfig{
+	{signatures: Erc20Signatures, threshold: 6},
+	{signatures: Erc721Signatures, threshold: 9},
+	{signatures: Erc1155Signatures, threshold: 6},
+	{signatures: KeyStopWithdrawSignatures, threshold: 6},
+}
+
+func isFilterContractType(funcSignatures []string, signaturesConfig signaturesConfig) bool {
 	count := 0
+
 	for _, funcSign := range funcSignatures {
-		for _, sign := range signatures {
-			if strings.EqualFold(fmt.Sprintf("0x%s", sign), funcSign) {
+		for _, signature := range signaturesConfig.signatures {
+			if strings.EqualFold(fmt.Sprintf("0x%s", signature), funcSign) {
 				count++
 				break
 			}
 		}
 	}
-	return count == threshold
+	return count == signaturesConfig.threshold
+}
+
+func IsSkipContract(funcSignatures []string) bool {
+	for _, signaturesConfig := range signaturesConfigs {
+		if isFilterContractType(funcSignatures, signaturesConfig) {
+			return true
+		}
+	}
+	return false
 }
