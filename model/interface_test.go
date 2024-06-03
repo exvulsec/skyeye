@@ -38,20 +38,6 @@ func TestGetPush20Args(t *testing.T) {
 	assert.Equal(t, addr, []string{"Null: 0xeee...eee"})
 }
 
-func TestIsToken(t *testing.T) {
-	config.SetupConfig("../config/config.dev.yaml")
-	code, err := client.EvmClient().CodeAt(context.Background(), common.HexToAddress("0xc667e8ac55590d140957df005ca0c2ef69698270"), nil)
-	if err != nil {
-		panic(err)
-	}
-	opCodeArgs := GetPushTypeArgs(code)
-	if err != nil {
-		panic(err)
-	}
-	args := GetPush4Args(opCodeArgs[utils.PUSH4])
-	assert.Equal(t, utils.IsToken(utils.Erc20Signatures, args, utils.Erc20SignatureThreshold), false)
-}
-
 func TestGetPushTypeArgs(t *testing.T) {
 	type args struct {
 		byteCode []byte
@@ -73,4 +59,18 @@ func TestGetPushTypeArgs(t *testing.T) {
 			fmt.Println("ASCII:", ss[utils.LOGS])
 		})
 	}
+}
+
+func TestIsSkipContract(t *testing.T) {
+	config.SetupConfig("../config/config.dev.yaml")
+	code, err := client.EvmClient().CodeAt(context.Background(), common.HexToAddress("0x66349c9ec3d541c0aadb6341c0727ad7472cabbc"), nil)
+	if err != nil {
+		panic(err)
+	}
+	opCodeArgs := GetPushTypeArgs(code)
+	if err != nil {
+		panic(err)
+	}
+	args := opCodeArgs[utils.PUSH4]
+	assert.Equal(t, utils.IsSkipContract(args), true)
 }

@@ -26,15 +26,13 @@ func (cpc *ContractTypePolicyCalc) Name() string {
 
 func (cpc *ContractTypePolicyCalc) Filter(tx *SkyEyeTransaction) bool {
 	opCodeArgs := GetPushTypeArgs(tx.ByteCode)
-	push4Codes := opCodeArgs[utils.PUSH4]
+	funcSignatures := opCodeArgs[utils.PUSH4]
 
-	if utils.IsToken(utils.Erc20Signatures, push4Codes, utils.Erc20SignatureThreshold) ||
-		utils.IsToken(utils.Erc721Signatures, push4Codes, utils.Erc721SignatureThreshold) ||
-		utils.IsToken(utils.Erc1155Signatures, push4Codes, utils.Erc1155SignatureThreshold) {
+	if utils.IsSkipContract(funcSignatures) {
 		return true
 	}
 
-	cpc.Push4Codes = push4Codes
+	cpc.Push4Codes = funcSignatures
 	cpc.Push20Codes = opCodeArgs[utils.PUSH20]
 	cpc.PushStringLogs = opCodeArgs[utils.LOGS]
 	return false
