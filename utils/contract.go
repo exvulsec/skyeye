@@ -47,20 +47,14 @@ var StartStopWithdrawalSignatures = []string{
 }
 
 var KeyStopWithdrawSignatures = []string{
-	"2b42b941", // SetTradeBalancePERCENT(uint256)
 	"57ea89b6", // Withdraw()
-	"9763d29b", // SetTradeBalanceETH(uint256)
 	"bedf0f4a", // Stop()
 	"eaf67ab9", // StartNative()
 	"f39d8c65", // Key()
-}
-
-var StartStopWithdrawSymbolOwnerSignatures = []string{
-	"1b55ba3a", // Start()
-	"70e44c6a", // Withdrawal()
-	"8da5cb5b", // owner()
-	"95d89b41", // symbol()
-	"bedf0f4a", // Stop()
+	"2b42b941", // SetTradeBalancePERCENT(uint256)
+	"9763d29b", // SetTradeBalanceETH(uint256)
+	"802fe1da", // SetBalancePercent(uint256)
+	"c0452ef8", // SetBalanceUSD(uint256)
 }
 
 var RugPullSignatures = []string{
@@ -79,7 +73,6 @@ var signaturesConfigs = []signaturesConfig{
 	{signatures: Erc1155Signatures, threshold: 6},
 	{signatures: StartStopWithdrawalSignatures, threshold: 3},
 	{signatures: KeyStopWithdrawSignatures, threshold: 6},
-	{signatures: StartStopWithdrawSymbolOwnerSignatures, threshold: 5},
 }
 
 func IsRugPullContractType(funcSignatures []string) bool {
@@ -106,7 +99,7 @@ func isFilterContractType(funcSignatures []string, signaturesConfig signaturesCo
 			}
 		}
 	}
-	return count == signaturesConfig.threshold && len(funcSignatures) == signaturesConfig.threshold
+	return count >= signaturesConfig.threshold
 }
 
 func IsSkipContract(funcSignatures []string) bool {
