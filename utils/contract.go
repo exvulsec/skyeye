@@ -41,6 +41,12 @@ var Erc1155Signatures = []string{
 }
 
 var KeyStopWithdrawSignatures = []string{
+	"57ea89b6", // Withdraw()
+	"bedf0f4a", // Stop()
+	"f39d8c65", // Key()
+}
+
+var KeyStopWithdrawSetSignatures = []string{
 	"2b42b941", // SetTradeBalancePERCENT(uint256)
 	"57ea89b6", // Withdraw()
 	"9763d29b", // SetTradeBalanceETH(uint256)
@@ -49,11 +55,21 @@ var KeyStopWithdrawSignatures = []string{
 	"f39d8c65", // Key()
 }
 
+var StartStopWithdrawSignatures = []string{
+	"1b55ba3a", // Start()
+	"70e44c6a", // Withdrawal()
+	"8da5cb5b", // owner()
+	"95d89b41", // symbol()
+	"bedf0f4a", // Stop()
+}
+
 var signaturesConfigs = []signaturesConfig{
 	{signatures: Erc20Signatures, threshold: 6},
 	{signatures: Erc721Signatures, threshold: 9},
 	{signatures: Erc1155Signatures, threshold: 6},
-	{signatures: KeyStopWithdrawSignatures, threshold: 6},
+	{signatures: KeyStopWithdrawSignatures, threshold: 3},
+	{signatures: KeyStopWithdrawSetSignatures, threshold: 6},
+	{signatures: StartStopWithdrawSignatures, threshold: 5},
 }
 
 func isFilterContractType(funcSignatures []string, signaturesConfig signaturesConfig) bool {
@@ -67,7 +83,7 @@ func isFilterContractType(funcSignatures []string, signaturesConfig signaturesCo
 			}
 		}
 	}
-	return count == signaturesConfig.threshold
+	return count == signaturesConfig.threshold && len(funcSignatures) == signaturesConfig.threshold
 }
 
 func IsSkipContract(funcSignatures []string) bool {
