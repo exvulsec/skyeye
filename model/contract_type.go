@@ -17,6 +17,9 @@ func (cpc *ContractTypePolicyCalc) Calc(tx *SkyEyeTransaction) int {
 	tx.Push4Args = GetPush4Args(cpc.Push4Codes)
 	tx.Push20Args = GetPush20Args(config.Conf.ETL.Chain, cpc.Push20Codes)
 	tx.PushStringLogs = cpc.PushStringLogs
+	if utils.IsRugPullContractType(cpc.Push4Codes) {
+		return 70
+	}
 	return 20
 }
 

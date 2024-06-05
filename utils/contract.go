@@ -63,6 +63,16 @@ var StartStopWithdrawSignatures = []string{
 	"bedf0f4a", // Stop()
 }
 
+var RugPullSignatures = []string{
+	"c9567bf9", // openTrading
+	"9e78fb4f", // createPair
+	"751039fc", // removeLimits
+	"715018a6", // renounceOwnership
+	"4c8afff4", // delBots
+}
+
+var RugPullThreshold = 5
+
 var signaturesConfigs = []signaturesConfig{
 	{signatures: Erc20Signatures, threshold: 6},
 	{signatures: Erc721Signatures, threshold: 9},
@@ -70,6 +80,19 @@ var signaturesConfigs = []signaturesConfig{
 	{signatures: KeyStopWithdrawSignatures, threshold: 3},
 	{signatures: KeyStopWithdrawSetSignatures, threshold: 6},
 	{signatures: StartStopWithdrawSignatures, threshold: 5},
+}
+
+func IsRugPullContractType(funcSignatures []string) bool {
+	count := 0
+	for _, funcSign := range funcSignatures {
+		for _, signature := range RugPullSignatures {
+			if strings.EqualFold(fmt.Sprintf("0x%s", signature), funcSign) {
+				count++
+				break
+			}
+		}
+	}
+	return count == RugPullThreshold && len(funcSignatures) >= RugPullThreshold
 }
 
 func isFilterContractType(funcSignatures []string, signaturesConfig signaturesConfig) bool {
