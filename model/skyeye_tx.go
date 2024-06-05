@@ -24,6 +24,7 @@ var skyEyeTableName = utils.ComposeTableName(datastore.SchemaPublic, datastore.T
 const (
 	Dedaub  = "Dedaub"
 	Phalcon = "Phalcon"
+	ScanTX  = "ScanTX"
 )
 
 type SkyEyeTransaction struct {
@@ -52,6 +53,7 @@ type SkyEyeTransaction struct {
 	MonitorAddrs        *MonitorAddrs     `json:"-" gorm:"-"`
 	Skip                bool              `json:"-" gorm:"-"`
 	Input               string            `json:"input" gorm:"-"`
+	IsConstructor       bool              `json:"-" gorm:"-"`
 }
 
 func (st *SkyEyeTransaction) ConvertFromTransaction(tx Transaction) {
@@ -275,6 +277,8 @@ func (st *SkyEyeTransaction) ComposeSlackAction() []slack.AttachmentAction {
 			actionURL = fmt.Sprintf(url, dedaubMD5String)
 		case strings.EqualFold(key, Phalcon):
 			actionURL = fmt.Sprintf(url, utils.ConvertChainToBlockSecChainID(config.Conf.ETL.Chain), st.TxHash)
+		case strings.EqualFold(key, ScanTX):
+			actionURL = fmt.Sprintf(url, st.TxHash)
 		}
 		actions = append(actions, slack.AttachmentAction{
 			Name: utils.FirstUpper(key),

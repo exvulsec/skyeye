@@ -271,6 +271,7 @@ func (as *Assets) composeMsg(tx SkyEyeTransaction) string {
 	text += fmt.Sprintf("*Contract:* <%s|%s>\n", fmt.Sprintf("%s/address/%s", utils.GetScanURL(chain), as.ToAddress), as.ToAddress)
 	text += fmt.Sprintf("*Assets:* ```%s```\n\n", items)
 	text += fmt.Sprintf("*Split Score:* `%s`\n", tx.SplitScores)
+	text += fmt.Sprintf("*IsConstructor: `%v`*", tx.IsConstructor)
 	input := ""
 	if len(tx.Input) > 2 {
 		textSignatures, err := GetSignatures([]string{tx.Input[:10]})

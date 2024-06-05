@@ -31,6 +31,9 @@ func (at *assetTask) AnalysisAssetTransfer(txs model.Transactions) model.Transac
 	startTime := time.Now()
 	conditionFunc := func(tx model.Transaction) bool {
 		if tx.ToAddress != nil && at.monitorAddresses.Existed([]string{*tx.ToAddress}) {
+			if tx.Trace != nil && tx.Receipt != nil {
+				tx.IsConstructor = true
+			}
 			return true
 		}
 		if tx.MultiContracts != nil {

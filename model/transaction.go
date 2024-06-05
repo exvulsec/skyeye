@@ -34,6 +34,7 @@ type Transaction struct {
 	Receipt         *types.Receipt    `json:"receipt" gorm:"-"`
 	Trace           *TransactionTrace `json:"trace" gorm:"-"`
 	MultiContracts  []string          `json:"-" gorm:"-"`
+	IsConstructor   bool              `json:"-" gorm:"-"`
 }
 
 func (tx *Transaction) ConvertFromBlock(transaction *types.Transaction) {
