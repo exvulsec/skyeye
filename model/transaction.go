@@ -167,11 +167,7 @@ func (tx *Transaction) ComposeAssetsAndAlert() {
 	}
 	if tx.Receipt != nil && tx.Trace != nil {
 		skyTx := SkyEyeTransaction{Input: tx.Input}
-		focusesAddresses := []string{
-			tx.FromAddress,
-		}
 		if tx.ToAddress != nil {
-			focusesAddresses = append(focusesAddresses, *tx.ToAddress)
 			assets.ToAddress = *tx.ToAddress
 		}
 
@@ -188,11 +184,6 @@ func (tx *Transaction) ComposeAssetsAndAlert() {
 		} else {
 			skyTx.MultiContracts = tx.MultiContracts
 		}
-		for _, contract := range skyTx.MultiContracts {
-			if tx.ToAddress != nil && contract != *tx.ToAddress {
-				focusesAddresses = append(focusesAddresses, contract)
-			}
-		}
 		assetTransfers := AssetTransfers{}
 
 		assetTransfers.compose(tx.Receipt.Logs, *tx.Trace)
@@ -201,7 +192,7 @@ func (tx *Transaction) ComposeAssetsAndAlert() {
 			return
 		}
 		if len(assets.Items) > 0 {
-			assets.alert(skyTx, focusesAddresses)
+			assets.alert(skyTx)
 		}
 	}
 }

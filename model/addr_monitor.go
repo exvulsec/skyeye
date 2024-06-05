@@ -2,6 +2,7 @@ package model
 
 import (
 	"strings"
+	"time"
 
 	"github.com/sirupsen/logrus"
 
@@ -11,10 +12,11 @@ import (
 )
 
 type MonitorAddr struct {
-	ID          int    `json:"id" gorm:"column:id"`
-	Chain       string `json:"chain" gorm:"column:chain"`
-	Address     string `json:"address" gorm:"column:address"`
-	Description string `json:"description" gorm:"column:description"`
+	ID          int        `json:"id" gorm:"column:id"`
+	Chain       string     `json:"chain" gorm:"column:chain"`
+	Address     string     `json:"address" gorm:"column:address"`
+	Description string     `json:"description" gorm:"column:description"`
+	CreatedTime *time.Time `json:"-" gorm:"column:created_at"`
 }
 
 type MonitorAddrs []MonitorAddr
@@ -64,7 +66,8 @@ func (mas *MonitorAddrs) List() error {
 func (mas *MonitorAddrs) Existed(addrs []string) bool {
 	for _, addr := range addrs {
 		for _, monitorAddr := range *mas {
-			if strings.EqualFold(monitorAddr.Address, addr) {
+			if strings.EqualFold(monitorAddr.Address, addr) &&
+				time.Now().Sub(*monitorAddr.CreatedTime) <= time.Duration(config.Conf.ETL.WatchingDuration)*time.Minute {
 				return true
 			}
 		}

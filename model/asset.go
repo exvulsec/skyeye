@@ -304,14 +304,12 @@ func (as *Assets) SendMessageToSlack(tx SkyEyeTransaction) error {
 	return slack.PostWebhook(config.Conf.ETL.SlackTransferWebHook, &msg)
 }
 
-func (as *Assets) alert(tx SkyEyeTransaction, focuses []string) {
+func (as *Assets) alert(tx SkyEyeTransaction) {
 	alertAssets := []Asset{}
 	threshold, _ := decimal.NewFromString(config.Conf.ETL.AssetUSDAlertThreshold)
 	for _, asset := range as.Items {
 		if asset.TotalUSD.Cmp(threshold) >= 0 {
-			if checkAddressExisted(focuses, asset.Address) || !utils.IsContract(asset.Address, tx.BlockNumber) {
-				alertAssets = append(alertAssets, asset)
-			}
+			alertAssets = append(alertAssets, asset)
 		}
 	}
 
