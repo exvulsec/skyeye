@@ -213,10 +213,12 @@ func (st *SkyEyeTransaction) analysisContractByPolicies() bool {
 
 func (st *SkyEyeTransaction) MonitorContractAddress() error {
 	if st.MonitorAddrs != nil {
+		now := time.Now()
 		monitorAddr := MonitorAddr{
 			Chain:       strings.ToLower(config.Conf.ETL.Chain),
 			Address:     strings.ToLower(st.ContractAddress),
 			Description: "SkyEye Monitor",
+			CreatedTime: &now,
 		}
 		if err := monitorAddr.Create(); err != nil {
 			return fmt.Errorf("create monitor address chain %s address %s is err %v", config.Conf.ETL.Chain, st.ContractAddress, err)
