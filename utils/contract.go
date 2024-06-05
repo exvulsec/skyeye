@@ -40,13 +40,13 @@ var Erc1155Signatures = []string{
 	"2eb2c2d6", // safeBatchTransferFrom(address,address,uint256[],uint256[],bytes)
 }
 
-var KeyStopWithdrawSignatures = []string{
-	"57ea89b6", // Withdraw()
+var StartStopWithdrawalSignatures = []string{
+	"1b55ba3a", // Start()
+	"70e44c6a", // Withdrawal()
 	"bedf0f4a", // Stop()
-	"f39d8c65", // Key()
 }
 
-var KeyStopWithdrawSetSignatures = []string{
+var KeyStopWithdrawSignatures = []string{
 	"2b42b941", // SetTradeBalancePERCENT(uint256)
 	"57ea89b6", // Withdraw()
 	"9763d29b", // SetTradeBalanceETH(uint256)
@@ -55,7 +55,7 @@ var KeyStopWithdrawSetSignatures = []string{
 	"f39d8c65", // Key()
 }
 
-var StartStopWithdrawSignatures = []string{
+var StartStopWithdrawSymbolOwnerSignatures = []string{
 	"1b55ba3a", // Start()
 	"70e44c6a", // Withdrawal()
 	"8da5cb5b", // owner()
@@ -77,9 +77,9 @@ var signaturesConfigs = []signaturesConfig{
 	{signatures: Erc20Signatures, threshold: 6},
 	{signatures: Erc721Signatures, threshold: 9},
 	{signatures: Erc1155Signatures, threshold: 6},
-	{signatures: KeyStopWithdrawSignatures, threshold: 3},
-	{signatures: KeyStopWithdrawSetSignatures, threshold: 6},
-	{signatures: StartStopWithdrawSignatures, threshold: 5},
+	{signatures: StartStopWithdrawalSignatures, threshold: 3},
+	{signatures: KeyStopWithdrawSignatures, threshold: 6},
+	{signatures: StartStopWithdrawSymbolOwnerSignatures, threshold: 5},
 }
 
 func IsRugPullContractType(funcSignatures []string) bool {
