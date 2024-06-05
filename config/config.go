@@ -78,6 +78,7 @@ type ETLConfig struct {
 	LinkURLs               map[string]string `mapstructure:"link_urls" yaml:"link_urls"`
 	PreviousBlockThreshold uint64            `mapstructure:"previous_block_threshold" yaml:"previous_block_threshold"`
 	LogHashes              string            `mapstructure:"log_hashes" yaml:"log_hashes"`
+	WatchingDuration       int64             `mapstructure:"watching_duration" yaml:"watching_duration"`
 }
 
 func init() {
