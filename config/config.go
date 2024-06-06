@@ -62,23 +62,25 @@ type RedisConfig struct {
 }
 
 type ETLConfig struct {
-	ProviderURL            string            `mapstructure:"provider_url" yaml:"provider_url"`
-	Chain                  string            `mapstructure:"chain" yaml:"chain"`
-	RetryTimes             int               `mapstructure:"retry_times" yaml:"retry_times"`
-	PreviousFile           string            `mapstructure:"previous_file" yaml:"previous_file"`
-	FlashLoanFile          string            `mapstructure:"flash_loan_file" yaml:"flash_loan_file"`
-	FilterContracts        string            `mapstructure:"filter_contracts" yaml:"filter_contracts"`
-	ScoreAlertThreshold    int               `mapstructure:"score_alert_threshold" yaml:"score_alert_threshold"`
-	AssetUSDAlertThreshold string            `mapstructure:"asset_usd_alert_threshold" yaml:"asset_usd_alert_threshold"`
-	LogPath                string            `mapstructure:"log_path" yaml:"log_path"`
-	SlackContractWebHook   string            `mapstructure:"slack_contract_webhook" yaml:"slack_contract_webhook"`
-	SlackTransferWebHook   string            `mapstructure:"slack_transfer_webhook" yaml:"slack_transfer_webhook"`
-	HeimdallServer         string            `mapstructure:"heidmall_server" yaml:"heimdall_server"`
-	CGCAPIKey              string            `mapstructure:"cgc_apikey" yaml:"cgc_apikey"`
-	LinkURLs               map[string]string `mapstructure:"link_urls" yaml:"link_urls"`
-	PreviousBlockThreshold uint64            `mapstructure:"previous_block_threshold" yaml:"previous_block_threshold"`
-	LogHashes              string            `mapstructure:"log_hashes" yaml:"log_hashes"`
-	WatchingDuration       int64             `mapstructure:"watching_duration" yaml:"watching_duration"`
+	ProviderURL                 string            `mapstructure:"provider_url" yaml:"provider_url"`
+	Chain                       string            `mapstructure:"chain" yaml:"chain"`
+	RetryTimes                  int               `mapstructure:"retry_times" yaml:"retry_times"`
+	PreviousFile                string            `mapstructure:"previous_file" yaml:"previous_file"`
+	FlashLoanFile               string            `mapstructure:"flash_loan_file" yaml:"flash_loan_file"`
+	FilterContracts             string            `mapstructure:"filter_contracts" yaml:"filter_contracts"`
+	ScoreAlertThreshold         int               `mapstructure:"score_alert_threshold" yaml:"score_alert_threshold"`
+	AssetUSDAlertThreshold      string            `mapstructure:"asset_usd_alert_threshold" yaml:"asset_usd_alert_threshold"`
+	LogPath                     string            `mapstructure:"log_path" yaml:"log_path"`
+	SlackContractWebHook        string            `mapstructure:"slack_contract_webhook" yaml:"slack_contract_webhook"`
+	SlackAssetWebHook           string            `mapstructure:"slack_asset_webhook" yaml:"slack_asset_webhook"`
+	SlackTransferWebHook        string            `mapstructure:"slack_transfer_webhook" yaml:"slack_transfer_webhook"`
+	HeimdallServer              string            `mapstructure:"heidmall_server" yaml:"heimdall_server"`
+	CGCAPIKey                   string            `mapstructure:"cgc_apikey" yaml:"cgc_apikey"`
+	LinkURLs                    map[string]string `mapstructure:"link_urls" yaml:"link_urls"`
+	PreviousBlockThreshold      uint64            `mapstructure:"previous_block_threshold" yaml:"previous_block_threshold"`
+	LogHashes                   string            `mapstructure:"log_hashes" yaml:"log_hashes"`
+	WatchingDuration            int64             `mapstructure:"watching_duration" yaml:"watching_duration"`
+	AssetTransferCountThreshold int               `mapstructure:"asset_transfer_count_threshold" yaml:"asset_transfer_count_threshold"`
 }
 
 func init() {

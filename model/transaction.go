@@ -188,6 +188,11 @@ func (tx *Transaction) ComposeAssetsAndAlert() {
 		assetTransfers := AssetTransfers{}
 
 		assetTransfers.compose(tx.Receipt.Logs, *tx.Trace)
+
+		if len(assetTransfers) >= config.Conf.ETL.AssetTransferCountThreshold {
+			assetTransfers.Alert(skyTx)
+		}
+
 		if err := assets.AnalysisAssetTransfers(assetTransfers); err != nil {
 			logrus.Errorf("analysis asset transfer is err: %v", err)
 			return
