@@ -47,16 +47,6 @@ type AssetTransfer struct {
 
 type AssetTransfers []AssetTransfer
 
-var Threshold decimal.Decimal
-
-func init() {
-	var err error
-	Threshold, err = decimal.NewFromString(config.Conf.ETL.AssetUSDAlertThreshold)
-	if err != nil {
-		logrus.Panicf("convert asset usd alert threshold is err %v", err)
-	}
-}
-
 func (ats *AssetTransfers) compose(logs []*types.Log, trace TransactionTrace) {
 	mutex := sync.RWMutex{}
 	workers := make(chan int, 3)
@@ -90,6 +80,40 @@ func (ats *AssetTransfers) compose(logs []*types.Log, trace TransactionTrace) {
 	}
 	wg.Wait()
 	*ats = append(*ats, trace.ListTransferEvent()...)
+}
+
+func (ats *AssetTransfers) Alert(tx SkyEyeTransaction) {
+	summary := fmt.Sprintf("⚠️Detected malicious asset transfer count %d on %s⚠️\n", len(*ats), config.Conf.ETL.Chain)
+	attachment := slack.Attachment{
+		Color:      "warning",
+		AuthorName: "EXVul",
+		Fallback:   summary,
+		Text:       summary + ats.composeMsg(tx),
+		Footer:     fmt.Sprintf("skyeye-on-%s", config.Conf.ETL.Chain),
+		Ts:         json.Number(strconv.FormatInt(time.Now().Unix(), 10)),
+		Actions:    tx.ComposeSlackAction(),
+	}
+	msg := slack.WebhookMessage{
+		Attachments: []slack.Attachment{attachment},
+	}
+	if err := slack.PostWebhook(config.Conf.ETL.SlackTransferWebHook, &msg); err != nil {
+		logrus.Errorf("send message to slack channel %s is err: %v", config.Conf.ETL.SlackTransferWebHook, err)
+		return
+	}
+}
+
+func (ats *AssetTransfers) composeMsg(tx SkyEyeTransaction) string {
+	chain := config.Conf.ETL.Chain
+	scanURL := utils.GetScanURL(chain)
+	text := fmt.Sprintf("*Chain:* `%s`\n", strings.ToUpper(chain))
+	text += fmt.Sprintf("*Block:* `%d`\n", tx.BlockNumber)
+	text += fmt.Sprintf("*DateTime:* `%s UTC`\n", time.Unix(tx.BlockTimestamp, 0).Format(time.DateTime))
+	text += fmt.Sprintf("*TXhash:* <%s|%s>\n", fmt.Sprintf("%s/tx/%s", scanURL, tx.TxHash), tx.TxHash)
+	text += fmt.Sprintf("*Contract:* <%s|%s>\n", fmt.Sprintf("%s/address/%s", utils.GetScanURL(chain), tx.ContractAddress), tx.ContractAddress)
+	text += fmt.Sprintf("*TransferCount:* `%d`\n", len(*ats))
+	text += fmt.Sprintf("*Split Score:* `%s`\n", tx.SplitScores)
+	text += fmt.Sprintf("*IsConstructor:* `%v`\n", tx.IsConstructor)
+	return text
 }
 
 func (a *AssetTransfer) DecodeEvent(event map[string]any, log types.Log) {
@@ -289,7 +313,7 @@ func (as *Assets) composeMsg(tx SkyEyeTransaction) string {
 
 func (as *Assets) SendMessageToSlack(tx SkyEyeTransaction) error {
 	tx.TxHash = as.TxHash
-	summary := fmt.Sprintf("⚠️Detected malicious asset transfer on %s⚠️\n", config.Conf.ETL.Chain)
+	summary := fmt.Sprintf("⚠️Detected malicious asset transactions on %s⚠️\n", config.Conf.ETL.Chain)
 	attachment := slack.Attachment{
 		Color:      "warning",
 		AuthorName: "EXVul",
@@ -302,7 +326,7 @@ func (as *Assets) SendMessageToSlack(tx SkyEyeTransaction) error {
 	msg := slack.WebhookMessage{
 		Attachments: []slack.Attachment{attachment},
 	}
-	return slack.PostWebhook(config.Conf.ETL.SlackTransferWebHook, &msg)
+	return slack.PostWebhook(config.Conf.ETL.SlackAssetWebHook, &msg)
 }
 
 func (as *Assets) alert(tx SkyEyeTransaction) {
