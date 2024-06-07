@@ -88,7 +88,7 @@ func (ats *AssetTransfers) Alert(skyTX SkyEyeTransaction, tx Transaction) {
 		Color:      "warning",
 		AuthorName: "EXVul",
 		Fallback:   summary,
-		Text:       summary + ats.composeMsg(tx, skyTX.SplitScores, skyTX.ContractAddress),
+		Text:       summary + ats.composeMsg(tx, skyTX.ContractAddress, skyTX.SplitScores),
 		Footer:     fmt.Sprintf("skyeye-on-%s", config.Conf.ETL.Chain),
 		Ts:         json.Number(strconv.FormatInt(time.Now().Unix(), 10)),
 		Actions:    ComposeSlackAction(skyTX.ByteCode, tx.TxHash),
