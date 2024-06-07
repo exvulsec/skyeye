@@ -262,23 +262,23 @@ func (st *SkyEyeTransaction) ComposeMessage() string {
 	return text
 }
 
-func (st *SkyEyeTransaction) ComposeSlackAction() []slack.AttachmentAction {
+func ComposeSlackAction(byteCode []byte, TXHash string) []slack.AttachmentAction {
 	actions := []slack.AttachmentAction{}
 	var actionURL string
 	for key, url := range config.Conf.ETL.LinkURLs {
 		switch {
 		case strings.EqualFold(key, Dedaub):
 			var dedaubMD5String DeDaubResponseString
-			err := dedaubMD5String.GetCodeMD5(st.ByteCode)
+			err := dedaubMD5String.GetCodeMD5(byteCode)
 			if err != nil {
 				logrus.Errorf("get md5 for contract %s is err:", err)
 				continue
 			}
 			actionURL = fmt.Sprintf(url, dedaubMD5String)
 		case strings.EqualFold(key, Phalcon):
-			actionURL = fmt.Sprintf(url, utils.ConvertChainToBlockSecChainID(config.Conf.ETL.Chain), st.TxHash)
+			actionURL = fmt.Sprintf(url, utils.ConvertChainToBlockSecChainID(config.Conf.ETL.Chain), TXHash)
 		case strings.EqualFold(key, ScanTX):
-			actionURL = fmt.Sprintf(url, st.TxHash)
+			actionURL = fmt.Sprintf(url, TXHash)
 		}
 		actions = append(actions, slack.AttachmentAction{
 			Name: utils.FirstUpper(key),
@@ -299,7 +299,7 @@ func (st *SkyEyeTransaction) SendMessageToSlack() error {
 		Text:       summary + st.ComposeMessage(),
 		Footer:     fmt.Sprintf("skyeye-on-%s", config.Conf.ETL.Chain),
 		Ts:         json.Number(strconv.FormatInt(time.Now().Unix(), 10)),
-		Actions:    st.ComposeSlackAction(),
+		Actions:    ComposeSlackAction(st.ByteCode, st.TxHash),
 	}
 	msg := slack.WebhookMessage{
 		Attachments: []slack.Attachment{attachment},

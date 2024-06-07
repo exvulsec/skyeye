@@ -82,16 +82,16 @@ func (ats *AssetTransfers) compose(logs []*types.Log, trace TransactionTrace) {
 	*ats = append(*ats, trace.ListTransferEvent()...)
 }
 
-func (ats *AssetTransfers) Alert(tx SkyEyeTransaction) {
+func (ats *AssetTransfers) Alert(skyTX SkyEyeTransaction, tx Transaction) {
 	summary := fmt.Sprintf("⚠️Detected malicious asset transfer count %d on %s⚠️\n", len(*ats), config.Conf.ETL.Chain)
 	attachment := slack.Attachment{
 		Color:      "warning",
 		AuthorName: "EXVul",
 		Fallback:   summary,
-		Text:       summary + ats.composeMsg(tx),
+		Text:       summary + ats.composeMsg(tx, skyTX.SplitScores, skyTX.ContractAddress),
 		Footer:     fmt.Sprintf("skyeye-on-%s", config.Conf.ETL.Chain),
 		Ts:         json.Number(strconv.FormatInt(time.Now().Unix(), 10)),
-		Actions:    tx.ComposeSlackAction(),
+		Actions:    ComposeSlackAction(skyTX.ByteCode, tx.TxHash),
 	}
 	msg := slack.WebhookMessage{
 		Attachments: []slack.Attachment{attachment},
@@ -102,16 +102,16 @@ func (ats *AssetTransfers) Alert(tx SkyEyeTransaction) {
 	}
 }
 
-func (ats *AssetTransfers) composeMsg(tx SkyEyeTransaction) string {
+func (ats *AssetTransfers) composeMsg(tx Transaction, contractAddress, splitScores string) string {
 	chain := config.Conf.ETL.Chain
 	scanURL := utils.GetScanURL(chain)
 	text := fmt.Sprintf("*Chain:* `%s`\n", strings.ToUpper(chain))
 	text += fmt.Sprintf("*Block:* `%d`\n", tx.BlockNumber)
 	text += fmt.Sprintf("*DateTime:* `%s UTC`\n", time.Unix(tx.BlockTimestamp, 0).Format(time.DateTime))
 	text += fmt.Sprintf("*TXhash:* <%s|%s>\n", fmt.Sprintf("%s/tx/%s", scanURL, tx.TxHash), tx.TxHash)
-	text += fmt.Sprintf("*Contract:* <%s|%s>\n", fmt.Sprintf("%s/address/%s", utils.GetScanURL(chain), tx.ContractAddress), tx.ContractAddress)
+	text += fmt.Sprintf("*Contract:* <%s|%s>\n", fmt.Sprintf("%s/address/%s", utils.GetScanURL(chain), contractAddress), contractAddress)
 	text += fmt.Sprintf("*TransferCount:* `%d`\n", len(*ats))
-	text += fmt.Sprintf("*Split Score:* `%s`\n", tx.SplitScores)
+	text += fmt.Sprintf("*Split Score:* `%s`\n", splitScores)
 	text += fmt.Sprintf("*IsConstructor:* `%v`\n", tx.IsConstructor)
 	return text
 }
@@ -321,7 +321,7 @@ func (as *Assets) SendMessageToSlack(tx SkyEyeTransaction) error {
 		Text:       summary + as.composeMsg(tx),
 		Footer:     fmt.Sprintf("skyeye-on-%s", config.Conf.ETL.Chain),
 		Ts:         json.Number(strconv.FormatInt(time.Now().Unix(), 10)),
-		Actions:    tx.ComposeSlackAction(),
+		Actions:    ComposeSlackAction(tx.ByteCode, tx.TxHash),
 	}
 	msg := slack.WebhookMessage{
 		Attachments: []slack.Attachment{attachment},
