@@ -179,7 +179,7 @@ func (tx *Transaction) ComposeAssetsAndAlert() {
 			if skyTx.ID == nil {
 				return
 			}
-			if skyTx.MultiContractString != "" {
+			if skyTx.MultiContractString != "" && skyTx.MultiContractString != *tx.ToAddress {
 				skyTx.MultiContracts = strings.Split(skyTx.MultiContractString, ",")
 			}
 		} else {

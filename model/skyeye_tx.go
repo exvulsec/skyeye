@@ -113,7 +113,7 @@ func (st *SkyEyeTransaction) ComposeSkyEyeTXValues() map[string]string {
 		"Chain":      utils.ConvertChainToDeFiHackLabChain(config.Conf.ETL.Chain),
 		"Block":      fmt.Sprintf("%d", st.BlockNumber),
 		"TXhash":     st.TxHash,
-		"CreateTime": fmt.Sprintf("%s UTC", time.Unix(st.BlockTimestamp, 0).Format(time.DateTime)),
+		"CreateTime": fmt.Sprintf("%s", time.Unix(st.BlockTimestamp, 0).Format(time.DateTime)),
 		"Contract":   st.ContractAddress,
 		"Deployer":   st.FromAddress,
 		"Fund":       st.Fund,
@@ -253,7 +253,7 @@ func (st *SkyEyeTransaction) ComposeMessage() string {
 	text += fmt.Sprintf("*Emit Logs:* `%s`\n", strings.Join(st.PushStringLogs, ","))
 	text += fmt.Sprintf("*Block:* `%d`\n", st.BlockNumber)
 	text += fmt.Sprintf("*TXhash:* <%s|%s>\n", fmt.Sprintf("%s/tx/%s", scanURL, st.TxHash), st.TxHash)
-	text += fmt.Sprintf("*DateTime:* `%s UTC`\n", time.Unix(st.BlockTimestamp, 0).Format(time.DateTime))
+	text += fmt.Sprintf("*DateTime:* `%s`\n", time.Unix(st.BlockTimestamp, 0).Format(time.DateTime))
 	text += fmt.Sprintf("*Contract:* <%s|%s>\n", fmt.Sprintf("%s/address/%s", utils.GetScanURL(chain), st.ContractAddress), st.ContractAddress)
 	text += fmt.Sprintf("*Fund:* `%s`\n", st.Fund)
 	text += fmt.Sprintf("*Deployer:* <%s|%s>\n", fmt.Sprintf("%s/address/%s", utils.GetScanURL(chain), st.FromAddress), st.FromAddress)

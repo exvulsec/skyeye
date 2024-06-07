@@ -73,7 +73,10 @@ func (te *transactionExtractor) ExtractBlocks() {
 }
 
 func (te *transactionExtractor) ExecuteTask(txCh transactionChan) {
-	tasks := []task.Task{task.NewContractTask(te.monitorAddrs), task.NewAssetTask(te.monitorAddrs)}
+	tasks := []task.Task{
+		task.NewContractTask(te.monitorAddrs),
+		task.NewAssetTask(te.monitorAddrs),
+	}
 	var data any = txCh.transactions
 	for _, t := range tasks {
 		data = t.Run(data)
