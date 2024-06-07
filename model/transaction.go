@@ -190,7 +190,7 @@ func (tx *Transaction) ComposeAssetsAndAlert() {
 		assetTransfers.compose(tx.Receipt.Logs, *tx.Trace)
 
 		if len(assetTransfers) >= config.Conf.ETL.AssetTransferCountThreshold {
-			assetTransfers.Alert(skyTx)
+			assetTransfers.Alert(skyTx, *tx)
 		}
 
 		if err := assets.AnalysisAssetTransfers(assetTransfers); err != nil {
