@@ -64,10 +64,12 @@ func (mas *MonitorAddrs) List() error {
 }
 
 func (mas *MonitorAddrs) Existed(addrs []string) bool {
+	now := time.Now().Unix()
 	for _, addr := range addrs {
-		for _, monitorAddr := range *mas {
-			if strings.EqualFold(monitorAddr.Address, addr) &&
-				time.Now().Sub(*monitorAddr.CreatedTime) <= time.Duration(config.Conf.ETL.WatchingDuration)*time.Minute {
+		for _, m := range *mas {
+			duration := now - m.CreatedTime.Unix()
+			if strings.EqualFold(m.Address, addr) &&
+				duration <= config.Conf.ETL.WatchingDuration*int64(time.Minute.Seconds()) {
 				return true
 			}
 		}
