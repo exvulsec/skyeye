@@ -44,9 +44,8 @@ type ScanTransaction struct {
 }
 
 type ScanTXResponse struct {
-	Address string   `json:"address"`
-	Label   string   `json:"label"`
-	Nonce   []uint64 `json:"nonce"`
+	Address string `json:"address"`
+	Label   string `json:"label"`
 }
 
 func (st *ScanTransaction) ConvertStringToInt() error {
