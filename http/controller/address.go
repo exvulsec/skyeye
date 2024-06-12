@@ -25,7 +25,7 @@ func (ac *AddressController) GetFund(c *gin.Context) {
 	chain := utils.GetSupportChain(c.Query(utils.ChainKey))
 
 	address := strings.ToLower(c.Param("address"))
-	txResp, err := ac.fpc.GetFund(chain, address)
+	txResp, err := ac.fpc.SearchFund(chain, address)
 	if err != nil {
 		c.JSON(http.StatusOK, model.Message{Code: http.StatusInternalServerError, Msg: err.Error()})
 	}

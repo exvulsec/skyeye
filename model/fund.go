@@ -26,15 +26,16 @@ func (fpc *FundPolicyCalc) Calc(tx *SkyEyeTransaction) int {
 		if fpc.Chain == utils.ChainAvalanche {
 			return 0
 		}
-		scanTxResp, err := fpc.GetFund(fpc.Chain, tx.FromAddress)
+		scanTxResp, err := fpc.SearchFund(fpc.Chain, tx.FromAddress)
 		if err != nil {
 			logrus.Errorf("get contract %s's fund is err: %v", tx.ContractAddress, err)
 		}
 		if scanTxResp.Address != "" {
 			fund = scanTxResp.Label
 		} else {
-			fund = "not found"
+			fund = "unknown"
 		}
+
 		tx.Fund = fund
 
 	}
@@ -84,8 +85,7 @@ func (fpc *FundPolicyCalc) GetFundFromScan(url string) (ScanTransactionResponse,
 	return txResp, nil
 }
 
-func (fpc *FundPolicyCalc) GetFund(chain, address string) (ScanTXResponse, error) {
-	txResp := ScanTXResponse{}
+func (fpc *FundPolicyCalc) GetFundAddress(chain, address string) (string, error) {
 	scanAPI := fmt.Sprintf("%s%s", utils.GetScanAPI(chain), utils.APIQuery)
 	r := rand.New(rand.NewSource(time.Now().UnixNano()))
 	scanInfo := config.Conf.ScanInfos[chain]
@@ -98,27 +98,27 @@ func (fpc *FundPolicyCalc) GetFund(chain, address string) (ScanTXResponse, error
 
 	transactionResp, err := fpc.GetFundFromScan(fmt.Sprintf(scanAPI, scanAPIKEY, address, utils.ScanTransactionAction))
 	if err != nil {
-		return txResp, nil
+		return "", err
 	}
 	traceResp, err := fpc.GetFundFromScan(fmt.Sprintf(scanAPI, scanAPIKEY, address, utils.ScanTraceAction))
 	if err != nil {
-		return txResp, nil
+		return "", err
 	}
 	if len(transactionResp.Result) > 0 {
 		if err := transactionResp.Result[0].ConvertStringToInt(); err != nil {
-			return txResp, fmt.Errorf("convert string to int is err: %v", err)
+			return "", fmt.Errorf("convert string to int is err: %v", err)
 		}
 		transaction = &transactionResp.Result[0]
 	}
 	if len(traceResp.Result) > 0 {
 		if err := traceResp.Result[0].ConvertStringToInt(); err != nil {
-			return txResp, fmt.Errorf("convert string to int is err: %v", err)
+			return "", fmt.Errorf("convert string to int is err: %v", err)
 		}
 		trace = &traceResp.Result[0]
 	}
 	var fundAddress string
 	if trace == nil && transaction == nil {
-		return txResp, nil
+		return "", nil
 	}
 
 	if transaction != nil && (trace == nil || transaction.Timestamp < trace.Timestamp || trace.Timestamp == 0) {
@@ -126,15 +126,40 @@ func (fpc *FundPolicyCalc) GetFund(chain, address string) (ScanTXResponse, error
 	} else {
 		fundAddress = trace.FromAddress
 	}
+	return fundAddress, nil
+}
 
-	addrLabel := AddressLabel{Label: fundAddress}
-	if fundAddress != utils.ScanGenesisAddress && fundAddress != "" {
-		if err := addrLabel.GetLabel(chain, fundAddress); err != nil {
-			return txResp, fmt.Errorf("get address %s label is err: %v", address, err)
+func (fpc *FundPolicyCalc) SearchFund(chain, address string) (ScanTXResponse, error) {
+	txResp := ScanTXResponse{}
+	searchAddress := address
+	for i := 0; i < 3; i++ {
+		fundAddress, err := fpc.GetFundAddress(chain, searchAddress)
+		if err != nil {
+			return txResp, err
 		}
+		if fundAddress == "" {
+			return txResp, nil
+		}
+
+		addrLabel := AddressLabel{Label: fundAddress}
+
+		if fundAddress != utils.ScanGenesisAddress {
+			if err := addrLabel.GetLabel(chain, fundAddress); err != nil {
+				return txResp, fmt.Errorf("get address %s label is err: %v", address, err)
+			}
+		}
+
+		if addrLabel.IsTornadoCashAddress() ||
+			addrLabel.IsFixedFloat() ||
+			addrLabel.IsChangeNow() ||
+			fundAddress == utils.ScanGenesisAddress {
+
+			txResp.Address = fundAddress
+			txResp.Label = addrLabel.Label
+			return txResp, nil
+		}
+		searchAddress = fundAddress
 	}
-	txResp.Address = fundAddress
-	txResp.Label = addrLabel.Label
 	return txResp, nil
 }
 
