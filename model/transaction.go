@@ -167,7 +167,8 @@ func (tx *Transaction) ComposeAssetsAndAlert() {
 		tx.getReceipt(config.Conf.ETL.Chain)
 	}
 	if tx.Receipt != nil && tx.Trace != nil {
-		skyTx := SkyEyeTransaction{Input: tx.Input}
+		tx.IsConstructor = true
+		skyTx := SkyEyeTransaction{Input: tx.Input, IsConstructor: tx.IsConstructor}
 		if tx.ToAddress != nil {
 			assets.ToAddress = *tx.ToAddress
 		}
