@@ -109,7 +109,15 @@ func (ats *AssetTransfers) composeMsg(tx Transaction, contractAddress, splitScor
 	text += fmt.Sprintf("*Block:* `%d`\n", tx.BlockNumber)
 	text += fmt.Sprintf("*DateTime:* `%s`\n", time.Unix(tx.BlockTimestamp, 0).Format(time.DateTime))
 	text += fmt.Sprintf("*TXhash:* <%s|%s>\n", fmt.Sprintf("%s/tx/%s", scanURL, tx.TxHash), tx.TxHash)
-	text += fmt.Sprintf("*Contract:* <%s|%s>\n", fmt.Sprintf("%s/address/%s", utils.GetScanURL(chain), contractAddress), contractAddress)
+
+	if contractAddress != "" {
+		text += fmt.Sprintf("*Contract:* <%s|%s>\n", fmt.Sprintf("%s/address/%s", utils.GetScanURL(chain), contractAddress), contractAddress)
+	} else {
+		for _, contract := range tx.MultiContracts {
+			text += fmt.Sprintf("*Contract:* <%s|%s>\n", fmt.Sprintf("%s/address/%s", utils.GetScanURL(chain), contract), contract)
+		}
+	}
+
 	text += fmt.Sprintf("*TransferCount:* `%d`\n", len(*ats))
 	text += fmt.Sprintf("*Split Score:* `%s`\n", splitScores)
 	text += fmt.Sprintf("*IsConstructor:* `%v`\n", tx.IsConstructor)
@@ -292,7 +300,15 @@ func (as *Assets) composeMsg(tx SkyEyeTransaction) string {
 	text += fmt.Sprintf("*Block:* `%d`\n", as.BlockNumber)
 	text += fmt.Sprintf("*DateTime:* `%s`\n", time.Unix(as.BlockTimestamp, 0).Format(time.DateTime))
 	text += fmt.Sprintf("*TXhash:* <%s|%s>\n", fmt.Sprintf("%s/tx/%s", scanURL, as.TxHash), as.TxHash)
-	text += fmt.Sprintf("*Contract:* <%s|%s>\n", fmt.Sprintf("%s/address/%s", utils.GetScanURL(chain), as.ToAddress), as.ToAddress)
+
+	if as.ToAddress != "" {
+		text += fmt.Sprintf("*Contract:* <%s|%s>\n", fmt.Sprintf("%s/address/%s", utils.GetScanURL(chain), as.ToAddress), as.ToAddress)
+	} else {
+		for _, contract := range tx.MultiContracts {
+			text += fmt.Sprintf("*Contract:* <%s|%s>\n", fmt.Sprintf("%s/address/%s", utils.GetScanURL(chain), contract), contract)
+		}
+	}
+
 	text += fmt.Sprintf("*Assets:* ```%s```\n\n", items)
 	text += fmt.Sprintf("*Split Score:* `%s`\n", tx.SplitScores)
 	text += fmt.Sprintf("*IsConstructor:* `%v`\n", tx.IsConstructor)
