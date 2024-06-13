@@ -33,6 +33,7 @@ type Transaction struct {
 	Nonce           uint64            `json:"nonce" gorm:"column:nonce"`
 	Receipt         *types.Receipt    `json:"receipt" gorm:"-"`
 	Trace           *TransactionTrace `json:"trace" gorm:"-"`
+	SplitScores     string            `json:"-" gorm:"-"`
 	MultiContracts  []string          `json:"-" gorm:"-"`
 	IsConstructor   bool              `json:"-" gorm:"-"`
 }
@@ -148,6 +149,7 @@ func (tx *Transaction) ComposeContractAndAlert(addrs *MonitorAddrs) {
 		}
 		contractTX.Analysis(config.Conf.ETL.Chain)
 		if !contractTX.Skip {
+			tx.SplitScores = contractTX.SplitScores
 			contractTX.alert()
 		}
 	}
@@ -168,7 +170,7 @@ func (tx *Transaction) ComposeAssetsAndAlert() {
 	}
 	if tx.Receipt != nil && tx.Trace != nil {
 		tx.IsConstructor = true
-		skyTx := SkyEyeTransaction{Input: tx.Input, IsConstructor: tx.IsConstructor}
+		skyTx := SkyEyeTransaction{Input: tx.Input}
 		if tx.ToAddress != nil {
 			assets.ToAddress = *tx.ToAddress
 		}
@@ -184,6 +186,9 @@ func (tx *Transaction) ComposeAssetsAndAlert() {
 				skyTx.MultiContracts = strings.Split(skyTx.MultiContractString, ",")
 			}
 		} else {
+			skyTx.TxHash = tx.TxHash
+			skyTx.SplitScores = tx.SplitScores
+			skyTx.IsConstructor = tx.IsConstructor
 			skyTx.MultiContracts = tx.MultiContracts
 		}
 		assetTransfers := AssetTransfers{}
