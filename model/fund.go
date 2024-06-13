@@ -152,7 +152,7 @@ func (fpc *FundPolicyCalc) SearchFund(chain, address string) (ScanTXResponse, er
 		if addrLabel.IsTornadoCashAddress() ||
 			addrLabel.IsFixedFloat() ||
 			addrLabel.IsChangeNow() ||
-			fundAddress == utils.ScanGenesisAddress {
+			fundAddress == utils.ScanGenesisAddress || i == 2 {
 
 			txResp.Address = fundAddress
 			txResp.Label = addrLabel.Label
