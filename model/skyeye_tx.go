@@ -221,6 +221,7 @@ func (st *SkyEyeTransaction) MonitorContractAddress() error {
 			Address:     strings.ToLower(st.ContractAddress),
 			Description: "SkyEye Monitor",
 			CreatedTime: &now,
+			isSkyEye:    true,
 		}
 		if err := monitorAddr.Create(); err != nil {
 			return fmt.Errorf("create monitor address chain %s address %s is err %v", config.Conf.ETL.Chain, st.ContractAddress, err)
@@ -228,17 +229,6 @@ func (st *SkyEyeTransaction) MonitorContractAddress() error {
 		if !st.MonitorAddrs.Existed([]string{monitorAddr.Address}) {
 			*st.MonitorAddrs = append(*st.MonitorAddrs, monitorAddr)
 		}
-	}
-	return nil
-}
-
-func (st *SkyEyeTransaction) RemoveMonitorContractAddress() error {
-	monitorAddr := MonitorAddr{
-		Chain:   strings.ToLower(config.Conf.ETL.Chain),
-		Address: strings.ToLower(st.ContractAddress),
-	}
-	if err := monitorAddr.Delete(); err != nil {
-		return fmt.Errorf("remove monitor address on chain %s address %s is err %v", config.Conf.ETL.Chain, st.ContractAddress, err)
 	}
 	return nil
 }

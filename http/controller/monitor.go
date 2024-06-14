@@ -20,10 +20,15 @@ func (mc *MonitorController) Routers(routers gin.IRouter) {
 }
 
 func (mc *MonitorController) GetMonitorAddress(c *gin.Context) {
-	chain := utils.GetSupportChain(c.Query(utils.ChainKey))
-	address := strings.ToLower(c.Query("address"))
-	monitorAddr := model.MonitorAddr{}
-	if err := monitorAddr.Get(chain, address); err != nil {
+	monitorAddr := model.MonitorAddr{
+		Chain:   utils.GetSupportChain(c.Query(utils.ChainKey)),
+		Address: strings.ToLower(c.Param("address")),
+	}
+	if monitorAddr.Chain == utils.ChainEmpty {
+		c.JSON(http.StatusOK, model.Message{Code: http.StatusBadRequest, Msg: "required chain name, but got empty"})
+		return
+	}
+	if err := monitorAddr.Get(); err != nil {
 		c.JSON(http.StatusOK, model.Message{Code: http.StatusInternalServerError, Msg: err.Error()})
 		return
 	}
@@ -32,14 +37,14 @@ func (mc *MonitorController) GetMonitorAddress(c *gin.Context) {
 }
 
 func (mc *MonitorController) AppendMonitorAddress(c *gin.Context) {
-	monitorAddr := model.MonitorAddr{}
-	if err := c.BindJSON(&monitorAddr); err != nil {
-		c.JSON(http.StatusOK, model.Message{Code: http.StatusBadRequest, Msg: fmt.Sprintf("unmarhsal body is err %v", err)})
+	monitorAddr := model.MonitorAddr{
+		Chain:   utils.GetSupportChain(c.Query(utils.ChainKey)),
+		Address: strings.ToLower(c.Param("address")),
+	}
+	if monitorAddr.Chain == utils.ChainEmpty {
+		c.JSON(http.StatusOK, model.Message{Code: http.StatusBadRequest, Msg: "required chain name, but got empty"})
 		return
 	}
-	monitorAddr.Chain = utils.GetSupportChain(monitorAddr.Chain)
-	monitorAddr.Address = strings.ToLower(monitorAddr.Address)
-
 	if err := monitorAddr.Create(); err != nil {
 		c.JSON(http.StatusOK, model.Message{Code: http.StatusInternalServerError, Msg: err.Error()})
 		return
@@ -51,8 +56,13 @@ func (mc *MonitorController) AppendMonitorAddress(c *gin.Context) {
 func (mc *MonitorController) DeleteMonitorAddress(c *gin.Context) {
 	chain := utils.GetSupportChain(c.Query(utils.ChainKey))
 	address := strings.ToLower(c.Param("address"))
-	monitor := model.MonitorAddr{Chain: chain, Address: address}
-	if err := monitor.Delete(); err != nil {
+	monitorAddr := model.MonitorAddr{Chain: chain, Address: address}
+	if monitorAddr.Chain == utils.ChainEmpty {
+		c.JSON(http.StatusOK, model.Message{Code: http.StatusBadRequest, Msg: "required chain name, but got empty"})
+		return
+	}
+
+	if err := monitorAddr.Delete(); err != nil {
 		c.JSON(http.StatusOK, model.Message{
 			Code: http.StatusInternalServerError,
 			Msg:  fmt.Sprintf("delete chain %s address %s from db is err: %v", chain, address, err),

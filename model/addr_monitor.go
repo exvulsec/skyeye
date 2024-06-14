@@ -1,63 +1,60 @@
 package model
 
 import (
+	"fmt"
 	"strings"
 	"time"
 
-	"github.com/sirupsen/logrus"
-
 	"github.com/exvulsec/skyeye/config"
 	"github.com/exvulsec/skyeye/datastore"
-	"github.com/exvulsec/skyeye/utils"
 )
 
 type MonitorAddr struct {
-	ID          int        `json:"id" gorm:"column:id"`
+	ID          *int64     `json:"id" gorm:"column:id"`
 	Chain       string     `json:"chain" gorm:"column:chain"`
 	Address     string     `json:"address" gorm:"column:address"`
 	Description string     `json:"description" gorm:"column:description"`
 	CreatedTime *time.Time `json:"-" gorm:"column:created_at"`
+	isSkyEye    bool       `gorm:"-"`
 }
 
 type MonitorAddrs []MonitorAddr
 
-var monitorAddrTableName = utils.ComposeTableName(datastore.SchemaPublic, datastore.TableMonitorAddrs)
+func (ma *MonitorAddr) TableName() string {
+	if ma.isSkyEye {
+		return fmt.Sprintf("%s.%s", datastore.SchemaPublic, datastore.TableMonitorAddrs)
+	}
+	return fmt.Sprintf("%s.%s", ma.Chain, datastore.TableMonitorAddrs)
+}
+
+func (mas *MonitorAddrs) TableName() string {
+	return fmt.Sprintf("%s.%s", datastore.SchemaPublic, datastore.TableMonitorAddrs)
+}
 
 func (ma *MonitorAddr) Create() error {
-	if ma.Exist() {
+	if err := ma.Get(); err != nil {
+		return err
+	}
+	if ma.ID != nil {
 		return nil
 	}
-	return datastore.DB().Table(monitorAddrTableName).Create(ma).Error
+	return datastore.DB().Table(ma.TableName()).Create(ma).Error
 }
 
-func (ma *MonitorAddr) Get(chain, address string) error {
-	return datastore.DB().Table(monitorAddrTableName).
-		Where("chain = ?", chain).
-		Where("address = ?", address).
-		Find(ma).Error
-}
-
-func (ma *MonitorAddr) Exist() bool {
-	err := datastore.DB().Table(monitorAddrTableName).
-		Where("chain = ?", ma.Chain).
+func (ma *MonitorAddr) Get() error {
+	return datastore.DB().Table(ma.TableName()).
 		Where("address = ?", ma.Address).
 		Find(ma).Error
-	if err != nil {
-		logrus.Errorf("get chain %s address %s is err %v", ma.Chain, ma.Address, err)
-		return false
-	}
-	return ma.ID != 0
 }
 
 func (ma *MonitorAddr) Delete() error {
-	return datastore.DB().Table(monitorAddrTableName).
-		Where("chain = ?", ma.Chain).
+	return datastore.DB().Table(ma.TableName()).
 		Where("address = ?", ma.Address).
 		Delete(nil).Error
 }
 
 func (mas *MonitorAddrs) List() error {
-	return datastore.DB().Table(monitorAddrTableName).
+	return datastore.DB().Table(mas.TableName()).
 		Where("chain = ?", config.Conf.ETL.Chain).
 		Order("id asc").
 		Find(mas).Error
