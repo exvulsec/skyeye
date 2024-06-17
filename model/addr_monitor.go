@@ -35,12 +35,14 @@ func (sma *SkyEyeMonitorAddress) Create() error {
 func (sma *SkyEyeMonitorAddress) Get() error {
 	return datastore.DB().Table(sma.TableName()).
 		Where("address = ?", sma.Address).
+		Where("chain = ?", sma.Chain).
 		Find(sma).Error
 }
 
 func (sma *SkyEyeMonitorAddress) Delete() error {
 	return datastore.DB().Table(sma.TableName()).
 		Where("address = ?", sma.Address).
+		Where("chain = ?", sma.Chain).
 		Delete(nil).Error
 }
 
