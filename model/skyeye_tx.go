@@ -50,7 +50,7 @@ type SkyEyeTransaction struct {
 	Push32Args          []string          `json:"-" gorm:"-"`
 	PushStringLogs      []string          `json:"-" gorm:"-"`
 	Fund                string            `json:"fund" gorm:"-"`
-	MonitorAddrs        *MonitorAddrs     `json:"-" gorm:"-"`
+	MonitorAddrs        *SkyMonitorAddrs  `json:"-" gorm:"-"`
 	Skip                bool              `json:"-" gorm:"-"`
 	Input               string            `json:"input" gorm:"-"`
 	IsConstructor       bool              `json:"-" gorm:"-"`
@@ -216,12 +216,13 @@ func (st *SkyEyeTransaction) analysisContractByPolicies() bool {
 func (st *SkyEyeTransaction) MonitorContractAddress() error {
 	if st.MonitorAddrs != nil {
 		now := time.Now()
-		monitorAddr := MonitorAddr{
-			Chain:       strings.ToLower(config.Conf.ETL.Chain),
-			Address:     strings.ToLower(st.ContractAddress),
-			Description: "SkyEye Monitor",
-			CreatedTime: &now,
-			isSkyEye:    true,
+		monitorAddr := SkyEyeMonitorAddress{
+			Chain: strings.ToLower(config.Conf.ETL.Chain),
+			MonitorAddr: MonitorAddr{
+				Address:     strings.ToLower(st.ContractAddress),
+				Description: "SkyEye Monitor",
+				CreatedAt:   &now,
+			},
 		}
 		if err := monitorAddr.Create(); err != nil {
 			return fmt.Errorf("create monitor address chain %s address %s is err %v", config.Conf.ETL.Chain, st.ContractAddress, err)

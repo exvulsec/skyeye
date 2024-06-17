@@ -10,10 +10,10 @@ import (
 )
 
 type assetTask struct {
-	monitorAddresses *model.MonitorAddrs
+	monitorAddresses *model.SkyMonitorAddrs
 }
 
-func NewAssetTask(monitorAddrs *model.MonitorAddrs) Task {
+func NewAssetTask(monitorAddrs *model.SkyMonitorAddrs) Task {
 	return &assetTask{
 		monitorAddresses: monitorAddrs,
 	}

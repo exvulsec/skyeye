@@ -9,62 +9,59 @@ import (
 	"github.com/exvulsec/skyeye/datastore"
 )
 
-type MonitorAddr struct {
-	ID          *int64     `json:"id" gorm:"column:id"`
-	Chain       string     `json:"chain" gorm:"column:chain"`
-	Address     string     `json:"address" gorm:"column:address"`
-	Description string     `json:"description" gorm:"column:description"`
-	CreatedTime *time.Time `json:"-" gorm:"column:created_at"`
-	isSkyEye    bool       `gorm:"-"`
+type SkyEyeMonitorAddress struct {
+	Chain string `json:"chain" gorm:"column:chain"`
+	MonitorAddr
 }
 
-type MonitorAddrs []MonitorAddr
-
-func (ma *MonitorAddr) TableName() string {
-	if ma.isSkyEye {
-		return fmt.Sprintf("%s.%s", datastore.SchemaPublic, datastore.TableMonitorAddrs)
-	}
-	return fmt.Sprintf("%s.%s", ma.Chain, datastore.TableMonitorAddrs)
-}
-
-func (mas *MonitorAddrs) TableName() string {
+func (sma *SkyEyeMonitorAddress) TableName() string {
 	return fmt.Sprintf("%s.%s", datastore.SchemaPublic, datastore.TableMonitorAddrs)
 }
 
-func (ma *MonitorAddr) Create() error {
-	if err := ma.Get(); err != nil {
+func (ma *MonitorAddr) TableName(chain string) string {
+	return fmt.Sprintf("%s.%s", chain, datastore.TableMonitorAddrs)
+}
+
+func (sma *SkyEyeMonitorAddress) Create() error {
+	if err := sma.Get(); err != nil {
 		return err
 	}
-	if ma.ID != nil {
+	if sma.ID != nil {
 		return nil
 	}
-	return datastore.DB().Table(ma.TableName()).Create(ma).Error
+	return datastore.DB().Table(sma.TableName()).Create(sma).Error
 }
 
-func (ma *MonitorAddr) Get() error {
-	return datastore.DB().Table(ma.TableName()).
-		Where("address = ?", ma.Address).
-		Find(ma).Error
+func (sma *SkyEyeMonitorAddress) Get() error {
+	return datastore.DB().Table(sma.TableName()).
+		Where("address = ?", sma.Address).
+		Find(sma).Error
 }
 
-func (ma *MonitorAddr) Delete() error {
-	return datastore.DB().Table(ma.TableName()).
-		Where("address = ?", ma.Address).
+func (sma *SkyEyeMonitorAddress) Delete() error {
+	return datastore.DB().Table(sma.TableName()).
+		Where("address = ?", sma.Address).
 		Delete(nil).Error
 }
 
-func (mas *MonitorAddrs) List() error {
-	return datastore.DB().Table(mas.TableName()).
-		Where("chain = ?", config.Conf.ETL.Chain).
-		Order("id asc").
-		Find(mas).Error
+type SkyMonitorAddrs []SkyEyeMonitorAddress
+
+func (smas *SkyMonitorAddrs) TableName() string {
+	return fmt.Sprintf("%s.%s", datastore.SchemaPublic, datastore.TableMonitorAddrs)
 }
 
-func (mas *MonitorAddrs) Existed(addrs []string) bool {
+func (smas *SkyMonitorAddrs) List() error {
+	return datastore.DB().Table(smas.TableName()).
+		Where("chain = ?", config.Conf.ETL.Chain).
+		Order("id asc").
+		Find(smas).Error
+}
+
+func (smas *SkyMonitorAddrs) Existed(addrs []string) bool {
 	now := time.Now().Unix()
 	for _, addr := range addrs {
-		for _, m := range *mas {
-			duration := now - m.CreatedTime.Unix()
+		for _, m := range *smas {
+			duration := now - m.CreatedAt.Unix()
 			if strings.EqualFold(m.Address, addr) &&
 				duration <= config.Conf.ETL.WatchingDuration*int64(time.Minute.Seconds()) {
 				return true
@@ -72,4 +69,33 @@ func (mas *MonitorAddrs) Existed(addrs []string) bool {
 		}
 	}
 	return false
+}
+
+type MonitorAddr struct {
+	ID          *int64     `json:"id" gorm:"column:id"`
+	Address     string     `json:"address" gorm:"column:address"`
+	Description string     `json:"description" gorm:"column:description"`
+	CreatedAt   *time.Time `json:"created_at" gorm:"column:created_at"`
+}
+
+func (ma *MonitorAddr) Create(chain string) error {
+	if err := ma.Get(chain); err != nil {
+		return err
+	}
+	if ma.ID != nil {
+		return nil
+	}
+	return datastore.DB().Table(ma.TableName(chain)).Create(ma).Error
+}
+
+func (ma *MonitorAddr) Get(chain string) error {
+	return datastore.DB().Table(ma.TableName(chain)).
+		Where("address = ?", ma.Address).
+		Find(ma).Error
+}
+
+func (ma *MonitorAddr) Delete(chain string) error {
+	return datastore.DB().Table(ma.TableName(chain)).
+		Where("address = ?", ma.Address).
+		Delete(nil).Error
 }

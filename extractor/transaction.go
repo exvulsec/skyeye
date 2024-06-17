@@ -23,7 +23,7 @@ type transactionExtractor struct {
 	latestBlock   *uint64
 	workers       int
 	exporters     []exporter.Exporter
-	monitorAddrs  *model.MonitorAddrs
+	monitorAddrs  *model.SkyMonitorAddrs
 }
 
 type transactionChan struct {
@@ -32,7 +32,7 @@ type transactionChan struct {
 }
 
 func NewTransactionExtractor(workers int) Extractor {
-	monitorAddrs := model.MonitorAddrs{}
+	monitorAddrs := model.SkyMonitorAddrs{}
 	if err := monitorAddrs.List(); err != nil {
 		logrus.Panicf("list monitor addr is err %v", err)
 	}
