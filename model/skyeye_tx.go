@@ -50,7 +50,7 @@ type SkyEyeTransaction struct {
 	Push32Args          []string          `json:"-" gorm:"-"`
 	PushStringLogs      []string          `json:"-" gorm:"-"`
 	Fund                string            `json:"fund" gorm:"-"`
-	MonitorAddrs        *MonitorAddrs     `json:"-" gorm:"-"`
+	MonitorAddrs        *SkyMonitorAddrs  `json:"-" gorm:"-"`
 	Skip                bool              `json:"-" gorm:"-"`
 	Input               string            `json:"input" gorm:"-"`
 	IsConstructor       bool              `json:"-" gorm:"-"`
@@ -216,11 +216,13 @@ func (st *SkyEyeTransaction) analysisContractByPolicies() bool {
 func (st *SkyEyeTransaction) MonitorContractAddress() error {
 	if st.MonitorAddrs != nil {
 		now := time.Now()
-		monitorAddr := MonitorAddr{
-			Chain:       strings.ToLower(config.Conf.ETL.Chain),
-			Address:     strings.ToLower(st.ContractAddress),
-			Description: "SkyEye Monitor",
-			CreatedTime: &now,
+		monitorAddr := SkyEyeMonitorAddress{
+			Chain: strings.ToLower(config.Conf.ETL.Chain),
+			MonitorAddr: MonitorAddr{
+				Address:     strings.ToLower(st.ContractAddress),
+				Description: "SkyEye Monitor",
+				CreatedAt:   &now,
+			},
 		}
 		if err := monitorAddr.Create(); err != nil {
 			return fmt.Errorf("create monitor address chain %s address %s is err %v", config.Conf.ETL.Chain, st.ContractAddress, err)
@@ -228,17 +230,6 @@ func (st *SkyEyeTransaction) MonitorContractAddress() error {
 		if !st.MonitorAddrs.Existed([]string{monitorAddr.Address}) {
 			*st.MonitorAddrs = append(*st.MonitorAddrs, monitorAddr)
 		}
-	}
-	return nil
-}
-
-func (st *SkyEyeTransaction) RemoveMonitorContractAddress() error {
-	monitorAddr := MonitorAddr{
-		Chain:   strings.ToLower(config.Conf.ETL.Chain),
-		Address: strings.ToLower(st.ContractAddress),
-	}
-	if err := monitorAddr.Delete(); err != nil {
-		return fmt.Errorf("remove monitor address on chain %s address %s is err %v", config.Conf.ETL.Chain, st.ContractAddress, err)
 	}
 	return nil
 }
@@ -267,14 +258,6 @@ func ComposeSlackAction(byteCode []byte, TXHash string) []slack.AttachmentAction
 	var actionURL string
 	for key, url := range config.Conf.ETL.LinkURLs {
 		switch {
-		case strings.EqualFold(key, Dedaub):
-			var dedaubMD5String DeDaubResponseString
-			err := dedaubMD5String.GetCodeMD5(byteCode)
-			if err != nil {
-				logrus.Errorf("get md5 for contract %s is err:", err)
-				continue
-			}
-			actionURL = fmt.Sprintf(url, dedaubMD5String)
 		case strings.EqualFold(key, Phalcon):
 			actionURL = fmt.Sprintf(url, utils.ConvertChainToBlockSecChainID(config.Conf.ETL.Chain), TXHash)
 		case strings.EqualFold(key, ScanTX):

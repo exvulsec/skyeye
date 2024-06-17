@@ -11,10 +11,10 @@ import (
 )
 
 type contractTask struct {
-	monitorAddresses *model.MonitorAddrs
+	monitorAddresses *model.SkyMonitorAddrs
 }
 
-func NewContractTask(monitorAddrs *model.MonitorAddrs) Task {
+func NewContractTask(monitorAddrs *model.SkyMonitorAddrs) Task {
 	return &contractTask{
 		monitorAddresses: monitorAddrs,
 	}

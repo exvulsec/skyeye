@@ -17,8 +17,6 @@ const (
 
 func GetSupportChain(chain string) string {
 	switch chain {
-	case ChainEmpty:
-		return ChainEthereum
 	case ChainEth, ChainEthereum:
 		return ChainEthereum
 	case ChainBSC:
