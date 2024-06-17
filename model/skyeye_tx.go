@@ -257,14 +257,6 @@ func ComposeSlackAction(byteCode []byte, TXHash string) []slack.AttachmentAction
 	var actionURL string
 	for key, url := range config.Conf.ETL.LinkURLs {
 		switch {
-		case strings.EqualFold(key, Dedaub):
-			var dedaubMD5String DeDaubResponseString
-			err := dedaubMD5String.GetCodeMD5(byteCode)
-			if err != nil {
-				logrus.Errorf("get md5 for contract %s is err:", err)
-				continue
-			}
-			actionURL = fmt.Sprintf(url, dedaubMD5String)
 		case strings.EqualFold(key, Phalcon):
 			actionURL = fmt.Sprintf(url, utils.ConvertChainToBlockSecChainID(config.Conf.ETL.Chain), TXHash)
 		case strings.EqualFold(key, ScanTX):
