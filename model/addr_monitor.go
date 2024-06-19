@@ -81,6 +81,18 @@ type MonitorAddr struct {
 }
 
 func (ma *MonitorAddr) Create(chain string) error {
+	t := Token{}
+	if t.IsExisted(config.Conf.ETL.Chain, ma.Address) {
+		return nil
+	}
+	addrLabel := AddressLabel{}
+	if err := addrLabel.GetLabel(config.Conf.ETL.Chain, ma.Address); err != nil {
+		return err
+	}
+	if strings.Contains(addrLabel.Label, "OKX") || strings.Contains(addrLabel.Label, "Binance") {
+		return nil
+	}
+
 	if err := ma.Get(chain); err != nil {
 		return err
 	}
@@ -110,7 +122,6 @@ func (mas *MonitorAddrs) TableName() string {
 
 func (mas *MonitorAddrs) List(id int64) error {
 	return datastore.DB().Table(mas.TableName()).
-		Where("chain = ?", config.Conf.ETL.Chain).
 		Where("id > ?", id).
 		Order("id asc").
 		Find(mas).Error

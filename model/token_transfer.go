@@ -1,14 +1,15 @@
 package model
 
 import (
+	"context"
 	"fmt"
 	"math/big"
 	"strings"
 
-	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/shopspring/decimal"
 
+	"github.com/exvulsec/skyeye/client"
 	"github.com/exvulsec/skyeye/config"
 	"github.com/exvulsec/skyeye/datastore"
 )
@@ -34,18 +35,29 @@ func (tt *TokenTransfer) Create() error {
 }
 
 func (tt *TokenTransfer) DecodeFromEvent(event Event, log types.Log, addrs MonitorAddrs) error {
-	tt.FromAddress = convertAddress(event["from"].(common.Address).String())
-	tt.ToAddress = convertAddress(event["to"].(common.Address).String())
+	at := AssetTransfer{}
+	at.DecodeEvent(event, log)
+	tt.FromAddress = at.From
+	tt.ToAddress = at.To
 	if !addrs.Existed([]string{tt.FromAddress, tt.ToAddress}) {
 		return nil
 	}
-	tt.Value = decimal.NewFromBigInt(event["value"].(*big.Int), 0)
-	if tt.Value.Cmp(decimal.Decimal{}) == 0 {
+
+	if at.Value.Cmp(decimal.Decimal{}) == 0 {
 		return nil
 	}
 
-	tt.TokenAddress = strings.ToLower(log.Address.String())
 	tt.BlockNumber = int64(log.BlockNumber)
+	block, err := client.MultiEvmClient()[config.Conf.ETL.Chain].BlockByNumber(context.Background(), big.NewInt(tt.BlockNumber))
+	if err != nil {
+		return err
+	}
+	tt.BlockTimestamp = int64(block.Time())
+
+	tt.Value = at.Value
+	tt.TxHash = log.TxHash.Hex()
+	tt.TokenAddress = at.Address
+
 	tt.Logpos = int64(log.Index)
 	tt.TxPos = int64(log.TxIndex)
 	if err := tt.Create(); err != nil {

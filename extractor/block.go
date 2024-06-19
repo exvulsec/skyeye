@@ -8,23 +8,41 @@ import (
 
 	"github.com/exvulsec/skyeye/client"
 	"github.com/exvulsec/skyeye/config"
+	"github.com/exvulsec/skyeye/model"
 )
 
 type blockExtractor struct {
-	extractors []Extractor
+	extractors   []Extractor
+	monitorAddrs *model.MonitorAddrs
 }
 
 func NewBlockExtractor(workers int) Extractor {
+	monitorAddrs := model.MonitorAddrs{}
+	if err := monitorAddrs.List(0); err != nil {
+		logrus.Panicf("list monitor addr is err: %v", err)
+	}
 	extractors := []Extractor{
-		NewTransactionExtractor(workers),
+		NewTransactionExtractor(workers, &monitorAddrs),
 	}
 	if config.Conf.ETL.LogHashes != "" {
-		extractors = append(extractors, NewLogsExtractor(workers))
+		extractors = append(extractors, NewLogsExtractor(workers, &monitorAddrs))
 	}
 
 	return &blockExtractor{
-		extractors: extractors,
+		extractors:   extractors,
+		monitorAddrs: &monitorAddrs,
 	}
+}
+
+func (be *blockExtractor) updateMonitorAddrs() {
+	length := len(*be.monitorAddrs) - 1
+	id := (*be.monitorAddrs)[length].ID
+	newMonitorAddrs := model.MonitorAddrs{}
+
+	if err := newMonitorAddrs.List(*id); err != nil {
+		logrus.Panicf("list monitor addr is err %v", err)
+	}
+	*be.monitorAddrs = append(*be.monitorAddrs, newMonitorAddrs...)
 }
 
 func (be *blockExtractor) Extract(data any) {
@@ -60,6 +78,7 @@ func (be *blockExtractor) subLatestBlocks() {
 		case header := <-headers:
 			blockNumber := header.Number.Uint64()
 			logrus.Infof("block: %d, is received from header", blockNumber)
+			be.updateMonitorAddrs()
 			be.Extract(header)
 		}
 	}

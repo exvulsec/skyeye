@@ -47,10 +47,10 @@ func (tt *transactionTask) MonitorTransactions(txs model.Transactions) {
 	_, needAnalysisTxs := txs.MultiProcess(conditionFunc)
 
 	if len(needAnalysisTxs) > 0 {
+		tt.Save(needAnalysisTxs)
 		logrus.Infof("block: %d, analysis transactions: %d contract creation, elapsed: %s",
 			needAnalysisTxs[0].BlockNumber, len(needAnalysisTxs), utils.ElapsedTime(startTime))
 	}
-	tt.Save(needAnalysisTxs)
 }
 
 func (tt *transactionTask) Save(txs model.Transactions) {

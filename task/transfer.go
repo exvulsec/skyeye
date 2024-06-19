@@ -12,26 +12,32 @@ import (
 )
 
 type tokenTransferTask struct {
-	topics []string
+	topics       []string
+	monitorAddrs *model.MonitorAddrs
 }
 
-func NewTokenTransferTask() Task {
-	return &tokenTransferTask{topics: []string{
-		"0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef",
-	}}
+func NewTokenTransferTask(addrs *model.MonitorAddrs) Task {
+	return &tokenTransferTask{
+		topics: []string{
+			"0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef",
+			"0x7fcf532c15f0a6db0bd6d0e038bea71d30d808c7d98cb3bf7268a95bf5081b65",
+			"0xe1fffcc4923d04b559f4d29a8bfc6cda04eb5b0d3c460751c2402c5c5cc9109c",
+		},
+		monitorAddrs: addrs,
+	}
 }
 
-func (tt *tokenTransferTask) Run(data any) any {
+func (ttt *tokenTransferTask) Run(data any) any {
 	logs, ok := data.([]types.Log)
 	if !ok || len(logs) == 0 {
 		return nil
 	}
-	tt.DecodeTopic(logs)
+	ttt.DecodeTopic(logs)
 	return nil
 }
 
-func (tt *tokenTransferTask) isExisted(topics0 string) bool {
-	for _, topic := range tt.topics {
+func (ttt *tokenTransferTask) isExisted(topics0 string) bool {
+	for _, topic := range ttt.topics {
 		if strings.EqualFold(topic, topics0) {
 			return true
 		}
@@ -39,12 +45,12 @@ func (tt *tokenTransferTask) isExisted(topics0 string) bool {
 	return false
 }
 
-func (tt *tokenTransferTask) DecodeTopic(logs []types.Log) {
+func (ttt *tokenTransferTask) DecodeTopic(logs []types.Log) {
 	startTime := time.Now()
 
 	tokenTransferLogs := []types.Log{}
 	for _, l := range logs {
-		if tt.isExisted(l.Topics[0].String()) {
+		if ttt.isExisted(l.Topics[0].String()) {
 			tokenTransferLogs = append(tokenTransferLogs, l)
 		}
 	}
@@ -58,7 +64,7 @@ func (tt *tokenTransferTask) DecodeTopic(logs []types.Log) {
 			}
 			if len(event) > 0 {
 				tt := model.TokenTransfer{}
-				if err := tt.DecodeFromEvent(event, l, model.MonitorAddrs{}); err != nil {
+				if err := tt.DecodeFromEvent(event, l, *ttt.monitorAddrs); err != nil {
 					logrus.Errorf("decode logs pos %d in transaction %s is err: %v", l.Index, l.TxHash, err)
 					continue
 				}

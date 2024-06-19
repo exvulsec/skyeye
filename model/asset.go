@@ -145,11 +145,13 @@ func (a *AssetTransfer) DecodeTransfer(event Event, log types.Log) {
 
 func (a *AssetTransfer) DecodeWithdrawal(event Event, log types.Log) {
 	a.From = convertAddress(event["src"].(common.Address).String())
+	a.To = strings.ToLower(log.Address.String())
 	a.Value = decimal.NewFromBigInt(event["wad"].(*big.Int), 0)
 	a.Address = strings.ToLower(log.Address.String())
 }
 
 func (a *AssetTransfer) DecodeDeposit(event Event, log types.Log) {
+	a.From = strings.ToLower(log.Address.String())
 	a.To = convertAddress(event["dst"].(common.Address).String())
 	a.Value = decimal.NewFromBigInt(event["wad"].(*big.Int), 0)
 	a.Address = strings.ToLower(log.Address.String())

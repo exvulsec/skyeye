@@ -32,13 +32,9 @@ type transactionChan struct {
 	block        uint64
 }
 
-func NewTransactionExtractor(workers int) Extractor {
+func NewTransactionExtractor(workers int, addrs *model.MonitorAddrs) Extractor {
 	skyEyeMonitorAddrs := model.SkyMonitorAddrs{}
 	if err := skyEyeMonitorAddrs.List(); err != nil {
-		logrus.Panicf("list monitor addr is err %v", err)
-	}
-	monitorAddrs := model.MonitorAddrs{}
-	if err := monitorAddrs.List(0); err != nil {
 		logrus.Panicf("list monitor addr is err %v", err)
 	}
 	return &transactionExtractor{
@@ -46,7 +42,7 @@ func NewTransactionExtractor(workers int) Extractor {
 		transactionCh:      make(chan transactionChan, 1000),
 		workers:            workers,
 		skyEyeMonitorAddrs: &skyEyeMonitorAddrs,
-		monitorAddrs:       &monitorAddrs,
+		monitorAddrs:       addrs,
 	}
 }
 
@@ -63,12 +59,12 @@ func (te *transactionExtractor) ProcessTasks() {
 			defer func() { <-concurrency }()
 			te.ExecuteTask(txsCh)
 		}()
-
 	}
 }
 
 func (te *transactionExtractor) ExtractBlocks() {
 	concurrency := make(chan struct{}, te.workers)
+	te.blocks <- 15344029
 	for blockNumber := range te.blocks {
 		concurrency <- struct{}{}
 		go func() {
@@ -82,6 +78,7 @@ func (te *transactionExtractor) ExecuteTask(txCh transactionChan) {
 	tasks := []task.Task{
 		task.NewContractTask(te.skyEyeMonitorAddrs),
 		task.NewAssetTask(te.skyEyeMonitorAddrs),
+		task.NewTransactionTask(te.monitorAddrs),
 	}
 	var data any = txCh.transactions
 	for _, t := range tasks {
@@ -104,17 +101,6 @@ func (te *transactionExtractor) Extract(data any) {
 	}
 }
 
-func (te *transactionExtractor) updateMonitorAddrs() {
-	length := len(*te.monitorAddrs) - 1
-	id := (*te.monitorAddrs)[length].ID
-	newMonitorAddrs := model.MonitorAddrs{}
-
-	if err := newMonitorAddrs.List(*id); err != nil {
-		logrus.Panicf("list monitor addr is err %v", err)
-	}
-	*te.monitorAddrs = append(*te.monitorAddrs, newMonitorAddrs...)
-}
-
 func (te *transactionExtractor) extractTransactionFromBlock(blockNumber uint64) {
 	startTime := time.Now()
 
@@ -125,8 +111,6 @@ func (te *transactionExtractor) extractTransactionFromBlock(blockNumber uint64) 
 	}).(*types.Block)
 
 	if ok {
-		te.updateMonitorAddrs()
-
 		te.transactionCh <- transactionChan{transactions: te.convertTransactionFromBlock(block), block: blockNumber}
 
 		logrus.Infof("block: %d, extract transactions: %d, elapsed: %s",
