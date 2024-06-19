@@ -81,6 +81,18 @@ type MonitorAddr struct {
 }
 
 func (ma *MonitorAddr) Create(chain string) error {
+	t := Token{}
+	if t.IsExisted(config.Conf.ETL.Chain, ma.Address) {
+		return nil
+	}
+	addrLabel := AddressLabel{}
+	if err := addrLabel.GetLabel(config.Conf.ETL.Chain, ma.Address); err != nil {
+		return err
+	}
+	if strings.Contains(addrLabel.Label, "OKX") || strings.Contains(addrLabel.Label, "Binance") {
+		return nil
+	}
+
 	if err := ma.Get(chain); err != nil {
 		return err
 	}
@@ -100,4 +112,28 @@ func (ma *MonitorAddr) Delete(chain string) error {
 	return datastore.DB().Table(ma.TableName(chain)).
 		Where("address = ?", ma.Address).
 		Delete(nil).Error
+}
+
+type MonitorAddrs []MonitorAddr
+
+func (mas *MonitorAddrs) TableName() string {
+	return fmt.Sprintf("%s.%s", config.Conf.ETL.Chain, datastore.TableMonitorAddrs)
+}
+
+func (mas *MonitorAddrs) List(id int64) error {
+	return datastore.DB().Table(mas.TableName()).
+		Where("id > ?", id).
+		Order("id asc").
+		Find(mas).Error
+}
+
+func (mas *MonitorAddrs) Existed(addrs []string) bool {
+	for _, addr := range addrs {
+		for _, m := range *mas {
+			if strings.EqualFold(m.Address, addr) {
+				return true
+			}
+		}
+	}
+	return false
 }

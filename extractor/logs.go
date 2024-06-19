@@ -19,11 +19,12 @@ import (
 )
 
 type logsExtractor struct {
-	blocks      chan uint64
-	logCh       chan logChan
-	latestBlock *uint64
-	workers     int
-	topics      []common.Hash
+	blocks       chan uint64
+	logCh        chan logChan
+	latestBlock  *uint64
+	workers      int
+	topics       []common.Hash
+	monitorAddrs *model.MonitorAddrs
 }
 
 type logChan struct {
@@ -31,16 +32,17 @@ type logChan struct {
 	blocks uint64
 }
 
-func NewLogsExtractor(workers int) Extractor {
+func NewLogsExtractor(workers int, monitorAddrs *model.MonitorAddrs) Extractor {
 	topics := []common.Hash{}
 	for _, hash := range strings.Split(config.Conf.ETL.LogHashes, ",") {
 		topics = append(topics, common.HexToHash(hash))
 	}
 	return &logsExtractor{
-		blocks:  make(chan uint64, 1000),
-		logCh:   make(chan logChan, 10000),
-		workers: workers,
-		topics:  topics,
+		blocks:       make(chan uint64, 1000),
+		logCh:        make(chan logChan, 10000),
+		workers:      workers,
+		topics:       topics,
+		monitorAddrs: monitorAddrs,
 	}
 }
 
@@ -87,6 +89,7 @@ func (le *logsExtractor) ExtractLog() {
 
 func (le *logsExtractor) ExtractBlocks() {
 	concurrency := make(chan struct{}, le.workers)
+	le.blocks <- 17111817
 	for blockNumber := range le.blocks {
 		concurrency <- struct{}{}
 		go func() {
@@ -140,7 +143,7 @@ func (le *logsExtractor) ProcessTasks() {
 }
 
 func (le *logsExtractor) ExecuteTask(logCh logChan) {
-	tasks := []task.Task{task.NewApprovalTask()}
+	tasks := []task.Task{task.NewApprovalTask(), task.NewTokenTransferTask(le.monitorAddrs)}
 	var data any = logCh.logs
 	for _, t := range tasks {
 		t.Run(data)

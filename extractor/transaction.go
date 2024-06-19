@@ -18,12 +18,13 @@ import (
 )
 
 type transactionExtractor struct {
-	blocks        chan uint64
-	transactionCh chan transactionChan
-	latestBlock   *uint64
-	workers       int
-	exporters     []exporter.Exporter
-	monitorAddrs  *model.SkyMonitorAddrs
+	blocks             chan uint64
+	transactionCh      chan transactionChan
+	latestBlock        *uint64
+	workers            int
+	exporters          []exporter.Exporter
+	skyEyeMonitorAddrs *model.SkyMonitorAddrs
+	monitorAddrs       *model.MonitorAddrs
 }
 
 type transactionChan struct {
@@ -31,16 +32,17 @@ type transactionChan struct {
 	block        uint64
 }
 
-func NewTransactionExtractor(workers int) Extractor {
-	monitorAddrs := model.SkyMonitorAddrs{}
-	if err := monitorAddrs.List(); err != nil {
+func NewTransactionExtractor(workers int, addrs *model.MonitorAddrs) Extractor {
+	skyEyeMonitorAddrs := model.SkyMonitorAddrs{}
+	if err := skyEyeMonitorAddrs.List(); err != nil {
 		logrus.Panicf("list monitor addr is err %v", err)
 	}
 	return &transactionExtractor{
-		blocks:        make(chan uint64, 100),
-		transactionCh: make(chan transactionChan, 1000),
-		workers:       workers,
-		monitorAddrs:  &monitorAddrs,
+		blocks:             make(chan uint64, 100),
+		transactionCh:      make(chan transactionChan, 1000),
+		workers:            workers,
+		skyEyeMonitorAddrs: &skyEyeMonitorAddrs,
+		monitorAddrs:       addrs,
 	}
 }
 
@@ -57,12 +59,12 @@ func (te *transactionExtractor) ProcessTasks() {
 			defer func() { <-concurrency }()
 			te.ExecuteTask(txsCh)
 		}()
-
 	}
 }
 
 func (te *transactionExtractor) ExtractBlocks() {
 	concurrency := make(chan struct{}, te.workers)
+	te.blocks <- 15344029
 	for blockNumber := range te.blocks {
 		concurrency <- struct{}{}
 		go func() {
@@ -74,8 +76,9 @@ func (te *transactionExtractor) ExtractBlocks() {
 
 func (te *transactionExtractor) ExecuteTask(txCh transactionChan) {
 	tasks := []task.Task{
-		task.NewContractTask(te.monitorAddrs),
-		task.NewAssetTask(te.monitorAddrs),
+		task.NewContractTask(te.skyEyeMonitorAddrs),
+		task.NewAssetTask(te.skyEyeMonitorAddrs),
+		task.NewTransactionTask(te.monitorAddrs),
 	}
 	var data any = txCh.transactions
 	for _, t := range tasks {
