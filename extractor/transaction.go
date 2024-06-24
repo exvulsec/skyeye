@@ -64,7 +64,6 @@ func (te *transactionExtractor) ProcessTasks() {
 
 func (te *transactionExtractor) ExtractBlocks() {
 	concurrency := make(chan struct{}, te.workers)
-	te.blocks <- 15344029
 	for blockNumber := range te.blocks {
 		concurrency <- struct{}{}
 		go func() {
