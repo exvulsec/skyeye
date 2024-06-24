@@ -89,7 +89,6 @@ func (le *logsExtractor) ExtractLog() {
 
 func (le *logsExtractor) ExtractBlocks() {
 	concurrency := make(chan struct{}, le.workers)
-	le.blocks <- 17111817
 	for blockNumber := range le.blocks {
 		concurrency <- struct{}{}
 		go func() {

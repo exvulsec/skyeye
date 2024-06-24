@@ -26,6 +26,7 @@ const (
 	DepositName         = "Deposit"
 	ApprovalName        = "Approval"
 	ApprovalIndexName   = "ApprovalIndex"
+	ApprovalDataName    = "ApprovalData"
 	ApprovalForAllName  = "ApprovalForAll"
 	Permit2IndexName    = "Permit2"
 	TransferIndexName   = "TransferIndex"
@@ -42,7 +43,8 @@ const (
 		{"anonymous":false,"inputs":[{"indexed":true,"name":"owner","type":"address"},{"indexed":true,"name":"spender","type":"address"},{"indexed":false,"name":"approved","type":"bool"}],"name":"ApprovalForAll","type":"event"},
 		{"anonymous":false,"inputs":[{"indexed":true,"name":"from","type":"address"},{"indexed":true,"name":"to","type":"address"},{"indexed":true,"name":"value","type":"uint256"}],"name":"TransferIndex","type":"event"},
 		{"anonymous":false,"inputs":[{"indexed":true,"name":"src","type":"address"},{"indexed":false,"name":"wad","type":"uint256"}],"name":"WithdrawalIndex","type":"event"},
-		{"anonymous":false,"inputs":[{"indexed":true,"name":"dst","type":"address"},{"indexed":false,"name":"wad","type":"uint256"}],"name":"DepositIndex","type":"event"}
+		{"anonymous":false,"inputs":[{"indexed":true,"name":"dst","type":"address"},{"indexed":false,"name":"wad","type":"uint256"}],"name":"DepositIndex","type":"event"},
+		{"anonymous":false,"inputs":[{"indexed":false,"name":"owner","type":"address"},{"indexed":false,"name":"spender","type":"address"},{"indexed":false,"name":"value","type":"uint256"}],"name":"ApprovalData","type":"event"}
 	]`
 )
 
@@ -98,6 +100,9 @@ func decodeWithTopic(log types.Log) string {
 			return DepositIndexName
 		}
 	case ApprovalName:
+		if len(log.Topics) == 1 {
+			return ApprovalDataName
+		}
 		if len(log.Topics) == 4 {
 			return ApprovalIndexName
 		}
