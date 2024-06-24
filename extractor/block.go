@@ -36,13 +36,15 @@ func NewBlockExtractor(workers int) Extractor {
 
 func (be *blockExtractor) updateMonitorAddrs() {
 	length := len(*be.monitorAddrs) - 1
-	id := (*be.monitorAddrs)[length].ID
-	newMonitorAddrs := model.MonitorAddrs{}
+	if length > 0 {
+		id := (*be.monitorAddrs)[length].ID
+		newMonitorAddrs := model.MonitorAddrs{}
 
-	if err := newMonitorAddrs.List(*id); err != nil {
-		logrus.Panicf("list monitor addr is err %v", err)
+		if err := newMonitorAddrs.List(*id); err != nil {
+			logrus.Panicf("list monitor addr is err %v", err)
+		}
+		*be.monitorAddrs = append(*be.monitorAddrs, newMonitorAddrs...)
 	}
-	*be.monitorAddrs = append(*be.monitorAddrs, newMonitorAddrs...)
 }
 
 func (be *blockExtractor) Extract(data any) {
