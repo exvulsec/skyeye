@@ -18,27 +18,6 @@ import (
 	"github.com/exvulsec/skyeye/utils"
 )
 
-type EVMTransaction struct {
-	BlockTimestamp int64           `json:"block_timestamp" gorm:"column:block_timestamp"`
-	BlockNumber    int64           `json:"block_number" gorm:"column:blknum"`
-	TxHash         string          `json:"txhash" gorm:"column:txhash"`
-	TxPos          int64           `json:"txpos" gorm:"column:txpos"`
-	FromAddress    string          `json:"from_address" gorm:"column:from_address"`
-	ToAddress      *string         `json:"to_address" gorm:"column:to_address"`
-	TxType         uint8           `json:"tx_type" gorm:"column:tx_type"`
-	Value          decimal.Decimal `json:"value" gorm:"column:value"`
-	TxStatus       int64           `json:"tx_status" gorm:"column:tx_status"`
-	Nonce          uint64          `json:"nonce" gorm:"column:nonce"`
-}
-
-func (et *EVMTransaction) TableName() string {
-	return fmt.Sprintf("%s.%s", config.Conf.ETL.Chain, datastore.TableTransactions)
-}
-
-func (et *EVMTransaction) Create() error {
-	return datastore.DB().Table(et.TableName()).Create(et).Error
-}
-
 type Transaction struct {
 	EVMTransaction
 	ContractAddress string            `json:"contract_address" gorm:"column:contract_address"`
@@ -50,7 +29,7 @@ type Transaction struct {
 	IsConstructor   bool              `json:"-" gorm:"-"`
 }
 
-func (tx *Transaction) ConvertFromBlock(transaction *types.Transaction) {
+func (tx *Transaction) ConvertFromBlock(transaction *types.Transaction, index int64) {
 	fromAddr, err := types.Sender(types.LatestSignerForChainID(transaction.ChainId()), transaction)
 	if err != nil {
 		logrus.Fatalf("get from address is err: %v", err)
@@ -62,6 +41,7 @@ func (tx *Transaction) ConvertFromBlock(transaction *types.Transaction) {
 		toAddr := strings.ToLower(transaction.To().String())
 		tx.ToAddress = &toAddr
 	}
+	tx.TxPos = index
 	tx.Nonce = transaction.Nonce()
 	tx.TxType = transaction.Type()
 	tx.Input = fmt.Sprintf("0x%s", hex.EncodeToString(transaction.Data()))

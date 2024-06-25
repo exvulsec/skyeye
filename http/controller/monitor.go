@@ -18,6 +18,7 @@ func (mc *MonitorController) Routers(routers gin.IRouter) {
 	routers.POST("/monitoring", mc.AppendMonitorAddress)
 	routers.DELETE("/monitoring/:address", mc.DeleteMonitorAddress)
 	routers.GET("/monitoring/:address", mc.GetMonitorAddress)
+	routers.GET("/monitoring/:address/txs", mc.GetMonitorAddress)
 }
 
 func (mc *MonitorController) GetQuery(c *gin.Context) (string, model.MonitorAddr, error) {
@@ -47,6 +48,16 @@ func (mc *MonitorController) GetMonitorAddress(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, model.Message{Code: http.StatusOK, Data: monitorAddr})
+}
+
+func (mc *MonitorController) GetMonitorAddressTXs(c *gin.Context) {
+	chain, monitorAddr, err := mc.GetQuery(c)
+	if err != nil {
+		c.JSON(http.StatusOK, model.Message{Code: http.StatusBadRequest, Msg: err.Error()})
+		return
+	}
+
+	txs := model.EVMTransaction{}
 }
 
 func (mc *MonitorController) AppendMonitorAddress(c *gin.Context) {

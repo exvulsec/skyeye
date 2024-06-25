@@ -74,3 +74,47 @@ func (tt *TokenTransfer) DecodeFromEvent(event Event, log types.Log, addrs Monit
 	}
 	return nil
 }
+
+func (tt *TokenTransfer) ComposeNode(address string) Node {
+	nodeAddr := ""
+	if tt.FromAddress == address {
+		nodeAddr = tt.ToAddress
+	} else {
+		nodeAddr = tt.FromAddress
+	}
+	return Node{
+		Timestamp: tt.BlockTimestamp,
+		Address:   nodeAddr,
+		Token:     tt.TokenAddress,
+		TxHash:    tt.TxHash,
+		Value:     tt.Value,
+	}
+}
+
+type TokenTransfers []TokenTransfer
+
+func (tts *TokenTransfers) TableName(chain string) string {
+	if chain == "" {
+		chain = config.Conf.ETL.Chain
+	}
+	return fmt.Sprintf("%s.%s", chain, datastore.TableTokenTransfers)
+}
+
+func (tts *TokenTransfers) GetByAddress(source, chain, address string) error {
+	engine := datastore.DB().Table(tts.TableName(chain))
+	switch source {
+	case FromAddressSource:
+		engine = engine.Where("from_address = ?", address)
+	case ToAddressSource:
+		engine = engine.Where("to_address = ?", address)
+	}
+	return engine.Find(tts).Error
+}
+
+func (tts *TokenTransfers) ComposeNodes(address string) []Node {
+	nodes := []Node{}
+	for _, tokenXfer := range *tts {
+		nodes = append(nodes, tokenXfer.ComposeNode(address))
+	}
+	return nodes
+}
