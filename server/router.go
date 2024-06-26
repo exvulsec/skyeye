@@ -14,9 +14,11 @@ import (
 func addRouters(r gin.IRouter) {
 	addHealthRouter(r)
 	apiV1 := setV1Group(r)
+	monitorCTRL := controller.MonitorController{}
+	monitorCTRL.Routers(apiV1)
+
 	ctrls := []controller.Controller{
 		&controller.AddressController{},
-		&controller.MonitorController{},
 		&controller.SkyEyeController{},
 		&controller.TXController{},
 		&controller.SignatureController{},

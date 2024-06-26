@@ -82,11 +82,11 @@ type MonitorAddr struct {
 
 func (ma *MonitorAddr) Create(chain string) error {
 	t := Token{}
-	if t.IsExisted(config.Conf.ETL.Chain, ma.Address) {
-		return nil
+	if err := t.IsExisted(chain, ma.Address); err != nil {
+		return fmt.Errorf("get token %s info on chain %s is err: %v", ma.Address, chain, err)
 	}
 	addrLabel := AddressLabel{}
-	if err := addrLabel.GetLabel(config.Conf.ETL.Chain, ma.Address); err != nil {
+	if err := addrLabel.GetLabel(chain, ma.Address); err != nil {
 		return err
 	}
 	if strings.Contains(addrLabel.Label, "OKX") || strings.Contains(addrLabel.Label, "Binance") {

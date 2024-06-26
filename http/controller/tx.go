@@ -59,7 +59,7 @@ func (tc *TXController) Reviewed(c *gin.Context) {
 	}
 
 	tx := model.Transaction{}
-	tx.ConvertFromBlock(ethTX)
+	tx.ConvertFromBlock(ethTX, 0)
 	tx.EnrichReceipt(chain)
 	tx.GetTrace(chain)
 

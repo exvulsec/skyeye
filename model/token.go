@@ -43,16 +43,11 @@ type Token struct {
 
 type Tokens []Token
 
-func (t *Token) IsExisted(chain, address string) bool {
-	err := datastore.DB().
+func (t *Token) IsExisted(chain, address string) error {
+	return datastore.DB().
 		Table(utils.ComposeTableName(chain, datastore.TableTokens)).
 		Where("address = ?", address).
 		Find(t).Error
-	if err != nil {
-		logrus.Panic(err)
-		return false
-	}
-	return t.ID != nil
 }
 
 func (t *Token) Create(chain string) error {
@@ -102,6 +97,15 @@ func (t *Token) GetValueWithDecimals(value decimal.Decimal) decimal.Decimal {
 	return value.DivRound(pow, 20)
 }
 
+func (t *Token) GetValueWithDecimalsAndSymbol(value decimal.Decimal) string {
+	pow := decimal.NewFromInt(10).Pow(decimal.NewFromInt(t.Decimals))
+	symbol := t.Address
+	if t.Symbol != "" {
+		symbol = t.Symbol
+	}
+	return fmt.Sprintf("%s %s", value.DivRound(pow, 20), symbol)
+}
+
 func (t *Token) Update(chain string) error {
 	return datastore.DB().
 		Table(utils.ComposeTableName(chain, datastore.TableTokens)).
@@ -123,7 +127,11 @@ func UpdateTokensPrice(chain string, tokenAddrs []string) (Tokens, error) {
 				<-workers
 			}()
 			token := Token{}
-			if !token.IsExisted(chain, addr) {
+			if err := token.IsExisted(chain, addr); err != nil {
+				logrus.Errorf("get token %s info is err: %v", addr, err)
+				return
+			}
+			if token.ID == nil {
 				if err := token.GetMetadataOnChain(chain, addr); err != nil {
 					logrus.Error(err)
 					return

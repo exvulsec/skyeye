@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	"github.com/shopspring/decimal"
+	"github.com/sirupsen/logrus"
 
 	"github.com/exvulsec/skyeye/config"
 	"github.com/exvulsec/skyeye/datastore"
@@ -35,23 +36,19 @@ func (et *EVMTransaction) Create() error {
 	return datastore.DB().Table(et.TableName()).Create(et).Error
 }
 
-func (et *EVMTransaction) ComposeNode(source string) Node {
-	if et.ToAddress != nil {
-		nodeAddr := ""
-		switch source {
-		case FromAddressSource:
-			nodeAddr = *et.ToAddress
-		case ToAddressSource:
-			nodeAddr = et.FromAddress
-		}
-		return Node{
-			Timestamp: et.BlockTimestamp,
-			Address:   nodeAddr,
-			TxHash:    et.TxHash,
-			Value:     et.Value,
-		}
+func (et *EVMTransaction) ComposeNodeEdge(chain string) (NodeEdge, error) {
+	token := Token{}
+	if err := token.IsExisted(chain, EVMPlatformCurrency); err != nil {
+		return NodeEdge{}, fmt.Errorf("get token %s on chain is err: %v", EVMPlatformCurrency, err)
 	}
-	return Node{}
+
+	return NodeEdge{
+		Timestamp:   et.BlockTimestamp,
+		TxHash:      et.TxHash,
+		Value:       token.GetValueWithDecimalsAndSymbol(et.Value),
+		FromAddress: et.FromAddress,
+		ToAddress:   *et.ToAddress,
+	}, nil
 }
 
 type EVMTransactions []EVMTransaction
@@ -75,10 +72,15 @@ func (ets *EVMTransactions) GetByAddress(source, chain, address string) error {
 	return engine.Find(ets).Error
 }
 
-func (ets *EVMTransactions) ComposeNodes(source string) []Node {
-	nodes := []Node{}
+func (ets *EVMTransactions) ComposeNodeEdges(chain string) []NodeEdge {
+	nodeEdges := []NodeEdge{}
 	for _, evmTX := range *ets {
-		nodes = append(nodes, evmTX.ComposeNode(source))
+		nodeEdge, err := evmTX.ComposeNodeEdge(chain)
+		if err != nil {
+			logrus.Error(err)
+			continue
+		}
+		nodeEdges = append(nodeEdges, nodeEdge)
 	}
-	return nodes
+	return nodeEdges
 }
