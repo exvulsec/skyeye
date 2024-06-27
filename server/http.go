@@ -9,6 +9,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
 	"github.com/sirupsen/logrus"
 
@@ -22,6 +23,7 @@ type HTTPServer struct {
 
 func NewHTTPServer() HTTPServer {
 	r := gin.Default()
+	r.Use(cors.Default())
 	addRouters(r)
 	s := HTTPServer{routers: r}
 

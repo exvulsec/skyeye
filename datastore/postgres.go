@@ -52,6 +52,7 @@ func initPostgresql() any {
 		config.Conf.Postgresql.Password,
 		config.Conf.Postgresql.Database,
 	)
+	// db, err := gorm.Open(postgres.Open(dsn), &gorm.Config{Logger: logger.Default.LogMode(logger.Info)})
 	db, err := gorm.Open(postgres.Open(dsn), &gorm.Config{})
 	if err != nil {
 		logrus.Panicf("connect to postgresql is err: %v", err)

@@ -8,6 +8,7 @@ import (
 
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/shopspring/decimal"
+	"github.com/sirupsen/logrus"
 
 	"github.com/exvulsec/skyeye/client"
 	"github.com/exvulsec/skyeye/config"
@@ -73,4 +74,52 @@ func (tt *TokenTransfer) DecodeFromEvent(event Event, log types.Log, addrs Monit
 		return fmt.Errorf("create monitor address %s is err: %v", tt.ToAddress, err)
 	}
 	return nil
+}
+
+func (tt *TokenTransfer) ComposeNodeEdge(chain string) (NodeEdge, error) {
+	token := Token{}
+	if err := token.IsExisted(chain, tt.TokenAddress); err != nil {
+		return NodeEdge{}, fmt.Errorf("get token %s on chain is err: %v", tt.TokenAddress, err)
+	}
+
+	return NodeEdge{
+		Timestamp:   tt.BlockTimestamp,
+		TxHash:      tt.TxHash,
+		Value:       token.GetValueWithDecimalsAndSymbol(tt.Value),
+		FromAddress: tt.FromAddress,
+		ToAddress:   tt.ToAddress,
+	}, nil
+}
+
+type TokenTransfers []TokenTransfer
+
+func (tts *TokenTransfers) TableName(chain string) string {
+	if chain == "" {
+		chain = config.Conf.ETL.Chain
+	}
+	return fmt.Sprintf("%s.%s", chain, datastore.TableTokenTransfers)
+}
+
+func (tts *TokenTransfers) GetByAddress(source, chain, address string) error {
+	engine := datastore.DB().Table(tts.TableName(chain))
+	switch source {
+	case FromAddressSource:
+		engine = engine.Where("from_address = ?", address)
+	case ToAddressSource:
+		engine = engine.Where("to_address = ?", address)
+	}
+	return engine.Find(tts).Error
+}
+
+func (tts *TokenTransfers) ComposeNodes(chain string) []NodeEdge {
+	nodeEdges := []NodeEdge{}
+	for _, tt := range *tts {
+		nodeEdge, err := tt.ComposeNodeEdge(chain)
+		if err != nil {
+			logrus.Error(err)
+			continue
+		}
+		nodeEdges = append(nodeEdges, nodeEdge)
+	}
+	return nodeEdges
 }

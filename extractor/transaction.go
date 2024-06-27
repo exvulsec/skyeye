@@ -142,7 +142,7 @@ func (te *transactionExtractor) convertTransactionFromBlock(block *types.Block) 
 	rwMutex := sync.RWMutex{}
 	wg := sync.WaitGroup{}
 	concurrency := make(chan struct{}, te.workers)
-	for _, tx := range block.Transactions() {
+	for index, tx := range block.Transactions() {
 		if tx == nil {
 			continue
 		}
@@ -155,7 +155,7 @@ func (te *transactionExtractor) convertTransactionFromBlock(block *types.Block) 
 				<-concurrency
 			}()
 			t := model.Transaction{}
-			t.ConvertFromBlock(transaction)
+			t.ConvertFromBlock(transaction, int64(index))
 			t.BlockNumber = block.Number().Int64()
 			t.BlockTimestamp = int64(block.Time())
 			rwMutex.Lock()
