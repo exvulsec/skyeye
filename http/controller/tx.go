@@ -62,6 +62,10 @@ func (tc *TXController) Reviewed(c *gin.Context) {
 	tx.ConvertFromBlock(ethTX, 0)
 	tx.EnrichReceipt(chain)
 	tx.GetTrace(chain)
+	contracts, skip := tx.Trace.ListContracts()
+	if skip {
+		return
+	}
 
 	block, err := ethClient.BlockByHash(c, tx.Receipt.BlockHash)
 	if err != nil {
@@ -75,7 +79,7 @@ func (tc *TXController) Reviewed(c *gin.Context) {
 	}
 	results := []model.SkyEyeTransaction{}
 
-	skyTx := model.SkyEyeTransaction{}
+	skyTx := model.SkyEyeTransaction{MultiContracts: contracts}
 	skyTx.ConvertFromTransaction(tx)
 	for _, p := range policies {
 		if p.Filter(&skyTx) {
