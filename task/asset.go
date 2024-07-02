@@ -42,6 +42,9 @@ func (at *assetTask) AnalysisAssetTransfer(txs model.Transactions) model.Transac
 	originTxs, needAnalysisTxs := txs.MultiProcess(conditionFunc)
 	if len(needAnalysisTxs) > 0 {
 		for _, tx := range needAnalysisTxs {
+			if tx.Trace != nil && tx.Receipt != nil {
+				tx.IsConstructor = true
+			}
 			tx.ComposeAssetsAndAlert()
 		}
 		logrus.Infof("block: %d, analysis transactions: %d asset transfer, elapsed: %s",
