@@ -154,6 +154,7 @@ func (tx *Transaction) ComposeAssetsAndAlert() {
 		TxHash:         tx.TxHash,
 		Items:          []Asset{},
 	}
+
 	if tx.Trace == nil {
 		tx.GetTrace(config.Conf.ETL.Chain)
 	}
@@ -161,7 +162,6 @@ func (tx *Transaction) ComposeAssetsAndAlert() {
 		tx.getReceipt(config.Conf.ETL.Chain)
 	}
 	if tx.Receipt != nil && tx.Trace != nil {
-		tx.IsConstructor = true
 		skyTx := SkyEyeTransaction{Input: tx.Input}
 		if tx.ToAddress != nil {
 			assets.ToAddress = *tx.ToAddress
