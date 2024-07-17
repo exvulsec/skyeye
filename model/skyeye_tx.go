@@ -10,12 +10,12 @@ import (
 	"time"
 
 	"github.com/ethereum/go-ethereum/common"
-	"github.com/sirupsen/logrus"
 	"github.com/slack-go/slack"
 
 	"github.com/exvulsec/skyeye/client"
 	"github.com/exvulsec/skyeye/config"
 	"github.com/exvulsec/skyeye/datastore"
+	"github.com/exvulsec/skyeye/notifier"
 	"github.com/exvulsec/skyeye/utils"
 )
 
@@ -175,23 +175,6 @@ func (st *SkyEyeTransaction) Analysis(chain string) {
 	st.SplitScores = strings.Join(st.Scores, ",")
 }
 
-func (st *SkyEyeTransaction) alert() {
-	if st.Score > config.Conf.ETL.ScoreAlertThreshold {
-		if err := st.SendMessageToSlack(); err != nil {
-			logrus.Errorf("send txhash %s's contract %s message to slack is err %v", st.TxHash, st.ContractAddress, err)
-		}
-		logrus.Infof("monitor contract %s on chain %s", st.ContractAddress, st.Chain)
-		if err := st.MonitorContractAddress(); err != nil {
-			logrus.Error(err)
-			return
-		}
-		if err := st.Insert(); err != nil {
-			logrus.Errorf("insert txhash %s's contract %s to %s is err %v", st.TxHash, st.ContractAddress, skyEyeTableName, err)
-			return
-		}
-	}
-}
-
 func (st *SkyEyeTransaction) analysisContractByPolicies() bool {
 	policies := []PolicyCalc{
 		&ByteCodePolicyCalc{},
@@ -288,4 +271,24 @@ func (st *SkyEyeTransaction) SendMessageToSlack() error {
 		Attachments: []slack.Attachment{attachment},
 	}
 	return slack.PostWebhook(config.Conf.ETL.SlackContractWebHook, &msg)
+}
+
+func (st *SkyEyeTransaction) ComposeSplitScoresLarkColumnsSet() []notifier.LarkColumnSet {
+	larkColumnSets := []notifier.LarkColumnSet{}
+	larkColumnSet := notifier.LarkColumnSet{Columns: []notifier.LarkColumn{}}
+	splitScores := strings.Split(st.SplitScores, ",")
+	weight := 1
+	for index, splitScore := range splitScores {
+		splitScoreKeyValue := strings.Split(splitScore, ":")
+		if index+1 == len(splitScores) && (index+1)%4 != 0 {
+			weight = 5 - ((index + 1) % 4)
+		}
+		larkColumnSet.Columns = append(larkColumnSet.Columns, notifier.LarkColumn{Name: splitScoreKeyValue[0], Value: strings.Trim(splitScoreKeyValue[1], " "), Weight: weight})
+		if (index+1)%4 == 0 && (index+1) != len(splitScores) {
+			larkColumnSets = append(larkColumnSets, larkColumnSet)
+			larkColumnSet = notifier.LarkColumnSet{Columns: []notifier.LarkColumn{}}
+		}
+	}
+	larkColumnSets = append(larkColumnSets, larkColumnSet)
+	return larkColumnSets
 }

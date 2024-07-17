@@ -7,6 +7,7 @@ require (
 	github.com/ethereum/go-ethereum v1.13.15
 	github.com/gin-contrib/cors v1.7.2
 	github.com/gin-gonic/gin v1.9.1
+	github.com/go-lark/lark v1.14.1
 	github.com/jackc/pgx/v5 v5.3.1
 	github.com/magiconair/properties v1.8.7
 	github.com/redis/go-redis/v9 v9.0.3
