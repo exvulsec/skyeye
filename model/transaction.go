@@ -13,7 +13,6 @@ import (
 	"github.com/sirupsen/logrus"
 
 	"github.com/exvulsec/skyeye/client"
-	"github.com/exvulsec/skyeye/config"
 	"github.com/exvulsec/skyeye/datastore"
 	"github.com/exvulsec/skyeye/utils"
 )
@@ -53,7 +52,7 @@ func (tx *Transaction) GetLatestRecord(chain string) error {
 	return datastore.DB().Table(tableName).Order("id DESC").Limit(1).Find(tx).Error
 }
 
-func (tx *Transaction) getReceipt(chain string) {
+func (tx *Transaction) GetReceipt(chain string) {
 	receipt, ok := utils.Retry(func() (any, error) {
 		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 		defer cancel()
@@ -65,7 +64,7 @@ func (tx *Transaction) getReceipt(chain string) {
 }
 
 func (tx *Transaction) EnrichReceipt(chain string) {
-	tx.getReceipt(chain)
+	tx.GetReceipt(chain)
 	if tx.Receipt != nil {
 		tx.TxPos = int64(tx.Receipt.TransactionIndex)
 		tx.TxStatus = int64(tx.Receipt.Status)
@@ -97,106 +96,5 @@ func (tx *Transaction) GetTrace(chain string) {
 	}).(*TransactionTrace)
 	if ok {
 		tx.Trace = trace
-	}
-}
-
-func (tx *Transaction) ComposeContractAndAlert(addrs *SkyMonitorAddrs) {
-	policies := []PolicyCalc{
-		&FundPolicyCalc{Chain: config.Conf.ETL.Chain, NeedFund: true},
-		&NoncePolicyCalc{},
-	}
-	skyTx := SkyEyeTransaction{}
-	skyTx.ConvertFromTransaction(*tx)
-	contracts, skip := tx.Trace.ListContracts()
-	if skip {
-		return
-	}
-	tx.MultiContracts = contracts
-	skyTx.MultiContracts = contracts
-	skyTx.MultiContractString = strings.Join(skyTx.MultiContracts, ",")
-
-	for _, p := range policies {
-		if p.Filter(&skyTx) {
-			return
-		}
-		score := p.Calc(&skyTx)
-		skyTx.Scores = append(skyTx.Scores, fmt.Sprintf("%s: %d", p.Name(), score))
-		skyTx.Score += score
-	}
-	for _, contract := range skyTx.MultiContracts {
-		contractTX := SkyEyeTransaction{
-			Chain:               skyTx.Chain,
-			BlockTimestamp:      skyTx.BlockTimestamp,
-			BlockNumber:         skyTx.BlockNumber,
-			TxHash:              skyTx.TxHash,
-			TxPos:               skyTx.TxPos,
-			FromAddress:         skyTx.FromAddress,
-			ContractAddress:     contract,
-			Nonce:               skyTx.Nonce,
-			Score:               skyTx.Score,
-			Scores:              skyTx.Scores,
-			Fund:                skyTx.Fund,
-			MonitorAddrs:        addrs,
-			MultiContractString: skyTx.MultiContractString,
-		}
-		contractTX.Analysis(config.Conf.ETL.Chain)
-		if !contractTX.Skip {
-			tx.SplitScores = contractTX.SplitScores
-			contractTX.alert()
-		}
-	}
-}
-
-func (tx *Transaction) ComposeAssetsAndAlert() {
-	assets := Assets{
-		BlockNumber:    tx.BlockNumber,
-		BlockTimestamp: tx.BlockTimestamp,
-		TxHash:         tx.TxHash,
-		Items:          []Asset{},
-	}
-
-	if tx.Trace == nil {
-		tx.GetTrace(config.Conf.ETL.Chain)
-	}
-	if tx.Receipt == nil {
-		tx.getReceipt(config.Conf.ETL.Chain)
-	}
-	if tx.Receipt != nil && tx.Trace != nil {
-		skyTx := SkyEyeTransaction{Input: tx.Input}
-		if tx.ToAddress != nil {
-			assets.ToAddress = *tx.ToAddress
-		}
-
-		if tx.MultiContracts == nil {
-			if err := skyTx.GetInfoByContract(config.Conf.ETL.Chain, *tx.ToAddress); err != nil {
-				logrus.Errorf("get skyeye tx info is err %v", err)
-			}
-			if skyTx.ID == nil {
-				return
-			}
-			if skyTx.MultiContractString != "" && skyTx.MultiContractString != *tx.ToAddress {
-				skyTx.MultiContracts = strings.Split(skyTx.MultiContractString, ",")
-			}
-		} else {
-			skyTx.TxHash = tx.TxHash
-			skyTx.SplitScores = tx.SplitScores
-			skyTx.IsConstructor = tx.IsConstructor
-			skyTx.MultiContracts = tx.MultiContracts
-		}
-		assetTransfers := AssetTransfers{}
-
-		assetTransfers.compose(tx.Receipt.Logs, *tx.Trace)
-
-		if len(assetTransfers) >= config.Conf.ETL.AssetTransferCountThreshold {
-			assetTransfers.Alert(skyTx, *tx)
-		}
-
-		if err := assets.AnalysisAssetTransfers(assetTransfers); err != nil {
-			logrus.Errorf("analysis asset transfer is err: %v", err)
-			return
-		}
-		if len(assets.Items) > 0 {
-			assets.alert(skyTx)
-		}
 	}
 }
