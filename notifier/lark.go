@@ -13,6 +13,7 @@ type larkNotifier struct {
 }
 
 type LarkCard struct {
+	TitleColor string
 	Title      string
 	ColumnSets []LarkColumnSet
 	Actions    []LarkAction
@@ -79,8 +80,15 @@ func (ln *larkNotifier) ComposeCard(data LarkCard) *card.Block {
 	for _, action := range data.Actions {
 		elements = append(elements, ln.ComposeAction(builder, action))
 	}
-
-	return builder.Card(elements...).Title(data.Title).Red()
+	block := builder.Card(elements...).Title(data.Title)
+	switch data.TitleColor {
+	case "red":
+		return block.Red()
+	case "orange":
+		return block.Orange()
+	default:
+		return block.Blue()
+	}
 }
 
 func (ln *larkNotifier) ComposeColumnSet(builder *lark.CardBuilder, larkColumns []LarkColumn) *card.ColumnSetBlock {
