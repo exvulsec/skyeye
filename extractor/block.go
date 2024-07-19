@@ -62,8 +62,7 @@ func (be *blockExtractor) Run() {
 			t.Run()
 		}()
 	}
-	// be.subLatestBlocks()
-	select {}
+	be.subLatestBlocks()
 }
 
 func (be *blockExtractor) subLatestBlocks() {
