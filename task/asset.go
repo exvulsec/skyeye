@@ -142,6 +142,7 @@ func (at *assetTask) Alert(assets model.Assets, tx model.SkyEyeTransaction, tran
 func (at *assetTask) ComposeLarkNotifierData(st model.SkyEyeTransaction, title string, transferCount int, assets []model.Asset) notifier.LarkCard {
 	return notifier.LarkCard{
 		Title:      title,
+		TitleColor: "orange",
 		ColumnSets: at.ComposeLarkColumnSets(st, transferCount, assets),
 		Actions:    at.ComposeLarkActions(st),
 	}

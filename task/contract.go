@@ -104,6 +104,7 @@ func (ce *contractTask) ComposeContractAndAlert(tx *model.Transaction) {
 func (ce *contractTask) ComposeLarkNotifierData(st model.SkyEyeTransaction) notifier.LarkCard {
 	return notifier.LarkCard{
 		Title:      fmt.Sprintf("%s Contract Creation Alert", strings.ToUpper(config.Conf.ETL.Chain)),
+		TitleColor: "red",
 		ColumnSets: ce.ComposeLarkColumnSets(st),
 		Actions:    ce.ComposeLarkActions(st),
 	}
