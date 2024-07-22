@@ -112,9 +112,6 @@ func (ce *contractTask) ComposeLarkNotifierData(st model.SkyEyeTransaction) noti
 
 func (ce *contractTask) Alert(st model.SkyEyeTransaction) {
 	if st.Score > config.Conf.ETL.ScoreAlertThreshold {
-		if err := st.SendMessageToSlack(); err != nil {
-			logrus.Errorf("send txhash %s's contract %s message to slack is err %v", st.TxHash, st.ContractAddress, err)
-		}
 		logrus.Infof("monitor contract %s on chain %s", st.ContractAddress, st.Chain)
 		if err := st.MonitorContractAddress(); err != nil {
 			logrus.Error(err)
@@ -130,6 +127,7 @@ func (ce *contractTask) Alert(st model.SkyEyeTransaction) {
 				case notifier.LarkNotifierName:
 					n.Notify(ce.ComposeLarkNotifierData(st))
 				}
+				logrus.Infof("send message to %s channel", n.Name())
 			}
 		}
 	}

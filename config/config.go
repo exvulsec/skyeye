@@ -71,9 +71,6 @@ type ETLConfig struct {
 	ScoreAlertThreshold    int               `mapstructure:"score_alert_threshold" yaml:"score_alert_threshold"`
 	AssetUSDAlertThreshold string            `mapstructure:"asset_usd_alert_threshold" yaml:"asset_usd_alert_threshold"`
 	LogPath                string            `mapstructure:"log_path" yaml:"log_path"`
-	SlackContractWebHook   string            `mapstructure:"slack_contract_webhook" yaml:"slack_contract_webhook"`
-	SlackAssetWebHook      string            `mapstructure:"slack_asset_webhook" yaml:"slack_asset_webhook"`
-	SlackTransferWebHook   string            `mapstructure:"slack_transfer_webhook" yaml:"slack_transfer_webhook"`
 	LarkAssetWebHook       string            `mapstructure:"lark_asset_webhook" yaml:"lark_asset_webhook"`
 	LarkContractWebHook    string            `mapstructure:"lark_contract_webhook" yaml:"lark_contract_webhook"`
 	HeimdallServer         string            `mapstructure:"heidmall_server" yaml:"heimdall_server"`

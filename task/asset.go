@@ -123,19 +123,15 @@ func (at *assetTask) Alert(assets model.Assets, tx model.SkyEyeTransaction, tran
 	if len(alertAssets) > 0 {
 		stTime := time.Now()
 		assets.Items = alertAssets
-		logrus.Infof("start to send asset alert msg to slack")
-		if err := assets.SendMessageToSlack(tx, transferCount); err != nil {
-			logrus.Errorf("send txhash %s's contract %s message to slack is err %v", assets.TxHash, assets.ToAddress, err)
-		}
-		title := fmt.Sprintf("%s %d Malicious Asset Transfer", strings.ToUpper(config.Conf.ETL.Chain), transferCount)
 
+		title := fmt.Sprintf("%s %d Malicious Asset Transfer", strings.ToUpper(config.Conf.ETL.Chain), transferCount)
 		if at.notifiers != nil {
 			for _, n := range at.notifiers {
 				n.Notify(at.ComposeLarkNotifierData(tx, title, transferCount, assets.Items))
 			}
 		}
 
-		logrus.Infof("send asset alert message to slack channel, elapsed: %s", utils.ElapsedTime(stTime))
+		logrus.Infof("send asset alert message to lark channel, elapsed: %s", utils.ElapsedTime(stTime))
 	}
 }
 

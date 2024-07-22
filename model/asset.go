@@ -1,20 +1,16 @@
 package model
 
 import (
-	"encoding/json"
 	"fmt"
 	"math/big"
-	"strconv"
 	"strings"
 	"sync"
-	"time"
 
 	mapset "github.com/deckarep/golang-set/v2"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/shopspring/decimal"
 	"github.com/sirupsen/logrus"
-	"github.com/slack-go/slack"
 
 	"github.com/exvulsec/skyeye/config"
 	"github.com/exvulsec/skyeye/utils"
@@ -80,48 +76,6 @@ func (ats *AssetTransfers) Compose(logs []*types.Log, trace TransactionTrace) {
 	}
 	wg.Wait()
 	*ats = append(*ats, trace.ListTransferEvent()...)
-}
-
-func (ats *AssetTransfers) Alert(skyTX SkyEyeTransaction, tx Transaction) {
-	summary := fmt.Sprintf("⚠️Detected malicious asset transfer count %d on %s⚠️\n", len(*ats), config.Conf.ETL.Chain)
-	attachment := slack.Attachment{
-		Color:      "warning",
-		AuthorName: "EXVul",
-		Fallback:   summary,
-		Text:       summary + ats.composeMsg(tx, skyTX.ContractAddress, skyTX.SplitScores),
-		Footer:     fmt.Sprintf("skyeye-on-%s", config.Conf.ETL.Chain),
-		Ts:         json.Number(strconv.FormatInt(time.Now().Unix(), 10)),
-		Actions:    ComposeSlackAction(skyTX.ByteCode, tx.TxHash),
-	}
-	msg := slack.WebhookMessage{
-		Attachments: []slack.Attachment{attachment},
-	}
-	if err := slack.PostWebhook(config.Conf.ETL.SlackTransferWebHook, &msg); err != nil {
-		logrus.Errorf("send message to slack channel %s is err: %v", config.Conf.ETL.SlackTransferWebHook, err)
-		return
-	}
-}
-
-func (ats *AssetTransfers) composeMsg(tx Transaction, contractAddress, splitScores string) string {
-	chain := config.Conf.ETL.Chain
-	scanURL := utils.GetScanURL(chain)
-	text := fmt.Sprintf("*Chain:* `%s`\n", strings.ToUpper(chain))
-	text += fmt.Sprintf("*Block:* `%d`\n", tx.BlockNumber)
-	text += fmt.Sprintf("*DateTime:* `%s`\n", time.Unix(tx.BlockTimestamp, 0).Format(time.DateTime))
-	text += fmt.Sprintf("*TXhash:* <%s|%s>\n", fmt.Sprintf("%s/tx/%s", scanURL, tx.TxHash), tx.TxHash)
-
-	if contractAddress != "" {
-		text += fmt.Sprintf("*Contract:* <%s|%s>\n", fmt.Sprintf("%s/address/%s", utils.GetScanURL(chain), contractAddress), contractAddress)
-	} else {
-		for _, contract := range tx.MultiContracts {
-			text += fmt.Sprintf("*Contract:* <%s|%s>\n", fmt.Sprintf("%s/address/%s", utils.GetScanURL(chain), contract), contract)
-		}
-	}
-
-	text += fmt.Sprintf("*TransferCount:* `%d`\n", len(*ats))
-	text += fmt.Sprintf("*Split Score:* `%s`\n", splitScores)
-	text += fmt.Sprintf("*IsConstructor:* `%v`\n", tx.IsConstructor)
-	return text
 }
 
 func (a *AssetTransfer) DecodeEvent(event map[string]any, log types.Log) {
@@ -195,15 +149,6 @@ func (abs *AssetBalances) calcBalance(transfers []AssetTransfer) {
 	}
 	wg.Wait()
 	abs.filterBalance()
-}
-
-func checkAddressExisted(focuses []string, address string) bool {
-	for _, focus := range focuses {
-		if strings.EqualFold(address, focus) {
-			return true
-		}
-	}
-	return false
 }
 
 func (abs *AssetBalances) filterBalance() {
@@ -292,57 +237,4 @@ func (as *Assets) AnalysisAssetTransfers(assetTransfers AssetTransfers) error {
 	}
 	wg.Wait()
 	return nil
-}
-
-func (as *Assets) composeMsg(tx SkyEyeTransaction, transferCount int) string {
-	chain := config.Conf.ETL.Chain
-	scanURL := utils.GetScanURL(chain)
-	items, _ := json.MarshalIndent(as.Items, "", "\t")
-	text := fmt.Sprintf("*Chain:* `%s`\n", strings.ToUpper(chain))
-	text += fmt.Sprintf("*Block:* `%d`\n", as.BlockNumber)
-	text += fmt.Sprintf("*DateTime:* `%s`\n", time.Unix(as.BlockTimestamp, 0).Format(time.DateTime))
-	text += fmt.Sprintf("*TXhash:* <%s|%s>\n", fmt.Sprintf("%s/tx/%s", scanURL, as.TxHash), as.TxHash)
-
-	if as.ToAddress != "" {
-		text += fmt.Sprintf("*Contract:* <%s|%s>\n", fmt.Sprintf("%s/address/%s", utils.GetScanURL(chain), as.ToAddress), as.ToAddress)
-	} else {
-		for _, contract := range tx.MultiContracts {
-			text += fmt.Sprintf("*Contract:* <%s|%s>\n", fmt.Sprintf("%s/address/%s", utils.GetScanURL(chain), contract), contract)
-		}
-	}
-	text += fmt.Sprintf("*TransferCount:* `%d`\n", transferCount)
-	text += fmt.Sprintf("*Assets:* ```%s```\n\n", items)
-	text += fmt.Sprintf("*Split Score:* `%s`\n", tx.SplitScores)
-	text += fmt.Sprintf("*IsConstructor:* `%v`\n", tx.IsConstructor)
-	input := ""
-	if len(tx.Input) > 2 {
-		textSignatures, err := GetSignatures([]string{tx.Input[:10]})
-		if err != nil {
-			logrus.Errorf("get signature is err %v", err)
-		}
-		if len(textSignatures) > 0 {
-			input = textSignatures[0]
-		}
-	}
-
-	text += fmt.Sprintf("*Input:* `%s`", input)
-	return text
-}
-
-func (as *Assets) SendMessageToSlack(tx SkyEyeTransaction, transferCount int) error {
-	tx.TxHash = as.TxHash
-	summary := fmt.Sprintf("⚠️Detected malicious asset transactions on %s⚠️\n", config.Conf.ETL.Chain)
-	attachment := slack.Attachment{
-		Color:      "warning",
-		AuthorName: "EXVul",
-		Fallback:   summary,
-		Text:       summary + as.composeMsg(tx, transferCount),
-		Footer:     fmt.Sprintf("skyeye-on-%s", config.Conf.ETL.Chain),
-		Ts:         json.Number(strconv.FormatInt(time.Now().Unix(), 10)),
-		Actions:    ComposeSlackAction(tx.ByteCode, tx.TxHash),
-	}
-	msg := slack.WebhookMessage{
-		Attachments: []slack.Attachment{attachment},
-	}
-	return slack.PostWebhook(config.Conf.ETL.SlackAssetWebHook, &msg)
 }
