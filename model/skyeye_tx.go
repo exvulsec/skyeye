@@ -5,12 +5,10 @@ import (
 	"encoding/json"
 	"fmt"
 	"math/big"
-	"strconv"
 	"strings"
 	"time"
 
 	"github.com/ethereum/go-ethereum/common"
-	"github.com/slack-go/slack"
 
 	"github.com/exvulsec/skyeye/client"
 	"github.com/exvulsec/skyeye/config"
@@ -215,62 +213,6 @@ func (st *SkyEyeTransaction) MonitorContractAddress() error {
 		}
 	}
 	return nil
-}
-
-func (st *SkyEyeTransaction) ComposeMessage() string {
-	chain := config.Conf.ETL.Chain
-	scanURL := utils.GetScanURL(chain)
-	text := fmt.Sprintf("*Chain:* `%s`\n", strings.ToUpper(chain))
-	text += fmt.Sprintf("*Score:* `%d`\n", st.Score)
-	text += fmt.Sprintf("*Funcs:* `%s`\n", strings.Join(st.Push4Args, ","))
-	text += fmt.Sprintf("*Address Labels:* `%s`\n", strings.Join(st.Push20Args, ","))
-	text += fmt.Sprintf("*Emit Logs:* `%s`\n", strings.Join(st.PushStringLogs, ","))
-	text += fmt.Sprintf("*Block:* `%d`\n", st.BlockNumber)
-	text += fmt.Sprintf("*TXhash:* <%s|%s>\n", fmt.Sprintf("%s/tx/%s", scanURL, st.TxHash), st.TxHash)
-	text += fmt.Sprintf("*DateTime:* `%s`\n", time.Unix(st.BlockTimestamp, 0).Format(time.DateTime))
-	text += fmt.Sprintf("*Contract:* <%s|%s>\n", fmt.Sprintf("%s/address/%s", utils.GetScanURL(chain), st.ContractAddress), st.ContractAddress)
-	text += fmt.Sprintf("*Fund:* `%s`\n", st.Fund)
-	text += fmt.Sprintf("*Deployer:* <%s|%s>\n", fmt.Sprintf("%s/address/%s", utils.GetScanURL(chain), st.FromAddress), st.FromAddress)
-	text += fmt.Sprintf("*CodeSize:* `%d`\n", len(st.ByteCode))
-	text += fmt.Sprintf("*Split Scores:* `%s`\n", st.SplitScores)
-	return text
-}
-
-func ComposeSlackAction(byteCode []byte, TXHash string) []slack.AttachmentAction {
-	actions := []slack.AttachmentAction{}
-	var actionURL string
-	for key, url := range config.Conf.ETL.LinkURLs {
-		switch {
-		case strings.EqualFold(key, Phalcon):
-			actionURL = fmt.Sprintf(url, utils.ConvertChainToBlockSecChainID(config.Conf.ETL.Chain), TXHash)
-		case strings.EqualFold(key, ScanTX):
-			actionURL = fmt.Sprintf(url, TXHash)
-		}
-		actions = append(actions, slack.AttachmentAction{
-			Name: utils.FirstUpper(key),
-			Text: utils.FirstUpper(key),
-			Type: "button",
-			URL:  actionURL,
-		})
-	}
-	return actions
-}
-
-func (st *SkyEyeTransaction) SendMessageToSlack() error {
-	summary := fmt.Sprintf("⚠️Detected a suspected risk transactionon %s, score %d ⚠️\n", strings.ToUpper(config.Conf.ETL.Chain), st.Score)
-	attachment := slack.Attachment{
-		Color:      "warning",
-		AuthorName: "EXVul",
-		Fallback:   summary,
-		Text:       summary + st.ComposeMessage(),
-		Footer:     fmt.Sprintf("skyeye-on-%s", config.Conf.ETL.Chain),
-		Ts:         json.Number(strconv.FormatInt(time.Now().Unix(), 10)),
-		Actions:    ComposeSlackAction(st.ByteCode, st.TxHash),
-	}
-	msg := slack.WebhookMessage{
-		Attachments: []slack.Attachment{attachment},
-	}
-	return slack.PostWebhook(config.Conf.ETL.SlackContractWebHook, &msg)
 }
 
 func (st *SkyEyeTransaction) ComposeSplitScoresLarkColumnsSet() []notifier.LarkColumnSet {
