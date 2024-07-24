@@ -3,7 +3,7 @@ package model
 type ByteCodePolicyCalc struct{}
 
 func (bpc *ByteCodePolicyCalc) Calc(tx *SkyEyeTransaction) int {
-	if len(tx.ByteCode) == 0 || len(tx.ByteCode[2:]) < 500 {
+	if len(tx.ByteCode) < 2 || len(tx.ByteCode[2:]) < 500 {
 		return 0
 	}
 	return 12
