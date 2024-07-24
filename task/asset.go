@@ -127,7 +127,7 @@ func (at *assetTask) Alert(assets model.Assets, tx model.SkyEyeTransaction, tran
 		title := fmt.Sprintf("%s %d Malicious Asset Transfer", strings.ToUpper(config.Conf.ETL.Chain), transferCount)
 		if at.notifiers != nil {
 			for _, n := range at.notifiers {
-				n.Notify(at.ComposeLarkNotifierData(tx, title, transferCount, assets.Items))
+				n.Notify(at.ComposeLarkNotifierData(tx, title, transferCount, assets))
 			}
 		}
 
@@ -135,34 +135,34 @@ func (at *assetTask) Alert(assets model.Assets, tx model.SkyEyeTransaction, tran
 	}
 }
 
-func (at *assetTask) ComposeLarkNotifierData(st model.SkyEyeTransaction, title string, transferCount int, assets []model.Asset) notifier.LarkCard {
+func (at *assetTask) ComposeLarkNotifierData(st model.SkyEyeTransaction, title string, transferCount int, assets model.Assets) notifier.LarkCard {
 	return notifier.LarkCard{
 		Title:      title,
 		TitleColor: "orange",
 		ColumnSets: at.ComposeLarkColumnSets(st, transferCount, assets),
-		Actions:    at.ComposeLarkActions(st),
+		Actions:    at.ComposeLarkActions(assets.TxHash),
 	}
 }
 
-func (at *assetTask) ComposeLarkColumnSets(st model.SkyEyeTransaction, transferCount int, assets []model.Asset) []notifier.LarkColumnSet {
+func (at *assetTask) ComposeLarkColumnSets(st model.SkyEyeTransaction, transferCount int, assets model.Assets) []notifier.LarkColumnSet {
 	chain := strings.ToUpper(config.Conf.ETL.Chain)
 	scanURL := utils.GetScanURL(chain)
 	larkColumnSets := []notifier.LarkColumnSet{
 		{
 			Columns: []notifier.LarkColumn{
 				{Name: "🔗 Chain Name", Value: chain, Weight: 2},
-				{Name: "🕐 Time", Value: time.Unix(st.BlockTimestamp, 0).Format(time.DateTime), Weight: 2},
-				{Name: "📦 Block", Value: fmt.Sprintf("%d", st.BlockNumber), Weight: 1},
+				{Name: "🕐 Time", Value: time.Unix(assets.BlockTimestamp, 0).Format(time.DateTime), Weight: 2},
+				{Name: "📦 Block", Value: fmt.Sprintf("%d", assets.BlockNumber), Weight: 1},
 			},
 		},
 		{
 			Columns: []notifier.LarkColumn{
-				{Name: "#️⃣ Transaction Hash", Value: fmt.Sprintf("[%s](%s)", st.TxHash, fmt.Sprintf("%s/tx/%s", scanURL, st.TxHash)), Weight: 1},
+				{Name: "#️⃣ Transaction Hash", Value: fmt.Sprintf("[%s](%s)", assets.TxHash, fmt.Sprintf("%s/tx/%s", scanURL, assets.TxHash)), Weight: 1},
 			},
 		},
 		{
 			Columns: []notifier.LarkColumn{
-				{Name: "📜 Contract", Value: fmt.Sprintf("[%s](%s)", st.ContractAddress, fmt.Sprintf("%s/address/%s", scanURL, st.ContractAddress)), Weight: 4},
+				{Name: "📜 Contract", Value: fmt.Sprintf("[%s](%s)", assets.ToAddress, fmt.Sprintf("%s/address/%s", scanURL, assets.ToAddress)), Weight: 4},
 			},
 		},
 		{
@@ -173,7 +173,7 @@ func (at *assetTask) ComposeLarkColumnSets(st model.SkyEyeTransaction, transferC
 		},
 	}
 	larkColumnSets = append(larkColumnSets, notifier.LarkColumnSet{Name: "HR"})
-	for _, asset := range assets {
+	for _, asset := range assets.Items {
 		larkColumnSets = append(larkColumnSets, notifier.LarkColumnSet{Columns: []notifier.LarkColumn{
 			{Name: "🏠 Address", Value: asset.Address, Weight: 2},
 			{Name: "💲 TotalUSD", Value: asset.TotalUSD.String(), Weight: 1},
@@ -190,13 +190,13 @@ func (at *assetTask) ComposeLarkColumnSets(st model.SkyEyeTransaction, transferC
 	return larkColumnSets
 }
 
-func (at *assetTask) ComposeLarkActions(st model.SkyEyeTransaction) []notifier.LarkAction {
+func (at *assetTask) ComposeLarkActions(txHash string) []notifier.LarkAction {
 	larkActions := []notifier.LarkAction{}
 	actionURL := ""
 	for key, url := range config.Conf.ETL.LinkURLs {
 		switch {
 		case strings.EqualFold(key, "Phalcon"):
-			actionURL = fmt.Sprintf(url, utils.ConvertChainToBlockSecChainID(config.Conf.ETL.Chain), st.TxHash)
+			actionURL = fmt.Sprintf(url, utils.ConvertChainToBlockSecChainID(config.Conf.ETL.Chain), txHash)
 		}
 		larkActions = append(larkActions, notifier.LarkAction{
 			Name: utils.FirstUpper(key),
