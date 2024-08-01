@@ -17,8 +17,10 @@ func addRouters(r gin.IRouter) {
 	monitorCTRL := controller.MonitorController{}
 	monitorCTRL.Routers(apiV1)
 
+	addressCTRL := &controller.AddressController{}
+	addressCTRL.Routers(apiV1)
+
 	ctrls := []controller.Controller{
-		&controller.AddressController{},
 		&controller.SkyEyeController{},
 		&controller.TXController{},
 		&controller.SignatureController{},

@@ -1,5 +1,7 @@
 package utils
 
+import "strings"
+
 const (
 	ChainEthereum  = "ethereum"
 	ChainEth       = "eth"
@@ -73,4 +75,19 @@ func ConvertChainToCGCID(chain string) string {
 	default:
 		return CGCEthereum
 	}
+}
+
+const (
+	BSCChainCurrency      = "BNB"
+	EthereumChainCurrency = "Eth"
+)
+
+func GetChainCurrency(chain string) string {
+	switch strings.ToLower(chain) {
+	case ChainBSC:
+		return BSCChainCurrency
+	case ChainEthereum:
+		return EthereumChainCurrency
+	}
+	return ""
 }

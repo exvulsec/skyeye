@@ -2,8 +2,11 @@ package model
 
 import (
 	"fmt"
+	"sort"
 
 	mapset "github.com/deckarep/golang-set/v2"
+	"github.com/shopspring/decimal"
+	"github.com/sirupsen/logrus"
 )
 
 type NodeEdge struct {
@@ -19,6 +22,13 @@ type NodeEdges []NodeEdge
 type Graph struct {
 	Nodes []string  `json:"nodes"`
 	Edges NodeEdges `json:"edges"`
+}
+
+func NewGraphFromScan(transactions []ScanTransaction) *Graph {
+	g := Graph{}
+	g.ConvertEdgeFromScanTransactions(transactions)
+	g.AddNodes()
+	return &g
 }
 
 func NewGraph(chain, address string) (*Graph, error) {
@@ -39,6 +49,29 @@ func (g *Graph) AddNodes() {
 		nodes = append(nodes, edge.FromAddress, edge.ToAddress)
 	}
 	g.Nodes = mapset.NewSet[string](nodes...).ToSlice()
+}
+
+func (g *Graph) ConvertEdgeFromScanTransactions(transactions []ScanTransaction) {
+	if g.Edges == nil {
+		g.Edges = NodeEdges{}
+	}
+	for _, transaction := range transactions {
+		if err := transaction.ConvertStringToInt(); err != nil {
+			logrus.Error(err)
+			continue
+		}
+		value := fmt.Sprintf("%s %s", transaction.Value.DivRound(decimal.NewFromInt32(10).Pow(transaction.TokenDecimal), 6), transaction.TokenSymbol)
+		g.Edges = append(g.Edges, NodeEdge{
+			FromAddress: transaction.FromAddress,
+			ToAddress:   transaction.ToAddress,
+			Value:       value,
+			TxHash:      transaction.TransactionHash,
+			Timestamp:   transaction.Timestamp,
+		})
+	}
+	sort.SliceStable(g.Edges, func(i, j int) bool {
+		return g.Edges[i].Timestamp > g.Edges[j].Timestamp
+	})
 }
 
 func (g *Graph) AddNodeEdges(chain, address string) error {
