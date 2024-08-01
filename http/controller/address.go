@@ -43,5 +43,5 @@ func (ac *AddressController) GetTransactionGraph(c *gin.Context) {
 		c.JSON(http.StatusOK, model.Message{Code: http.StatusInternalServerError, Msg: err.Error()})
 	}
 
-	c.JSON(http.StatusOK, model.Message{Code: http.StatusOK, Data: graph})
+	c.JSON(http.StatusOK, model.Message{Code: 0, Data: graph})
 }
