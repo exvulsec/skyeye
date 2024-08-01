@@ -68,10 +68,14 @@ func (g *Graph) ConvertEdgeFromScanTransactions(transactions []ScanTransaction) 
 			logrus.Error(err)
 			continue
 		}
+		toAddress := transaction.ToAddress
+		if toAddress == "" {
+			toAddress = transaction.Contract
+		}
 		value := fmt.Sprintf("%s %s", transaction.Value.DivRound(decimal.NewFromInt32(10).Pow(transaction.TokenDecimal), 6), transaction.TokenSymbol)
 		g.Edges = append(g.Edges, NodeEdge{
 			FromAddress: transaction.FromAddress,
-			ToAddress:   transaction.ToAddress,
+			ToAddress:   toAddress,
 			Value:       value,
 			TxHash:      transaction.TransactionHash,
 			Timestamp:   transaction.Timestamp,
