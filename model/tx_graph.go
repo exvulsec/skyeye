@@ -46,7 +46,12 @@ func (g *Graph) AddNodes() {
 	}
 	nodes := []string{}
 	for _, edge := range g.Edges {
-		nodes = append(nodes, edge.FromAddress, edge.ToAddress)
+		if edge.FromAddress != "" {
+			nodes = append(nodes, edge.FromAddress)
+		}
+		if edge.ToAddress != "" {
+			nodes = append(nodes, edge.ToAddress)
+		}
 	}
 	g.Nodes = mapset.NewSet[string](nodes...).ToSlice()
 	sort.SliceStable(g.Nodes, func(i, j int) bool {
