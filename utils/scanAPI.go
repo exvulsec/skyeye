@@ -14,6 +14,7 @@ const (
 	ArbiturmScanURL            = "https://arbiscan.io"
 	AvalancheScanURL           = "https://43114.snowtrace.io"
 	APIQuery                   = "?module=account&apikey=%s&address=%s&startblock=0&endblock=99999999&sort=asc&action=%s&page=1&offset=1"
+	ScanGraphQuery             = "?module=account&apikey=%s&address=%s&startblock=0&endblock=99999999&sort=desc&action=%s&offset=50"
 	ScanTransactionAction      = "txlist"
 	ScanTokenTransactionAction = "tokentx"
 	ScanNFTTransactionAction   = "tokennfttx"

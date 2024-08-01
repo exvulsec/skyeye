@@ -2,6 +2,7 @@ package model
 
 import (
 	"fmt"
+	"sort"
 
 	mapset "github.com/deckarep/golang-set/v2"
 	"github.com/shopspring/decimal"
@@ -68,6 +69,9 @@ func (g *Graph) ConvertEdgeFromScanTransactions(transactions []ScanTransaction) 
 			Timestamp:   transaction.Timestamp,
 		})
 	}
+	sort.SliceStable(g.Edges, func(i, j int) bool {
+		return g.Edges[i].Timestamp > g.Edges[j].Timestamp
+	})
 }
 
 func (g *Graph) AddNodeEdges(chain, address string) error {

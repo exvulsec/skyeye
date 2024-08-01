@@ -18,7 +18,7 @@ func (ac *AddressController) Routers(routers gin.IRouter) {
 	api := routers.Group("/address")
 	{
 		api.GET("/:address/fund", ac.GetFund)
-		api.GET("/:address/tx_graph")
+		api.GET("/:address/tx_graph", ac.GetTransactionGraph)
 	}
 }
 
