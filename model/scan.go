@@ -7,6 +7,8 @@ import (
 	"net/http"
 	"strconv"
 
+	"github.com/shopspring/decimal"
+
 	"github.com/exvulsec/skyeye/client"
 	"github.com/exvulsec/skyeye/utils"
 )
@@ -38,9 +40,17 @@ type ScanTransactionResponse struct {
 }
 
 type ScanTransaction struct {
-	TimestampString string `json:"timeStamp"`
-	Timestamp       int64  `json:"-"`
-	FromAddress     string `json:"from"`
+	TransactionHash string          `json:"hash"`
+	TimestampString string          `json:"timeStamp"`
+	Timestamp       int64           `json:"-"`
+	FromAddress     string          `json:"from"`
+	ToAddress       string          `json:"to"`
+	Value           decimal.Decimal `json:"value"`
+	Contract        string          `json:"contractAddress"`
+	TokenName       string          `json:"tokenName"`
+	TokenID         string          `json:"tokenID"`
+	TokenSymbol     string          `json:"tokenSymbol"`
+	TokenDecimal    decimal.Decimal `json:"tokenDecimal"`
 }
 
 type ScanTXResponse struct {

@@ -6,6 +6,7 @@ import (
 	"io"
 	"math/rand"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/sirupsen/logrus"
@@ -55,7 +56,7 @@ func (fpc *FundPolicyCalc) Name() string {
 	return "Fund"
 }
 
-func (fpc *FundPolicyCalc) GetFundFromScan(url string) (ScanTransactionResponse, error) {
+func (fpc *FundPolicyCalc) GetTransactionInfoFromScan(url string) (ScanTransactionResponse, error) {
 	txResp := ScanTransactionResponse{}
 
 	resp, err := client.HTTPClient().Get(url)
@@ -96,11 +97,11 @@ func (fpc *FundPolicyCalc) GetFundAddress(chain, address string) (string, error)
 		trace       *ScanTransaction
 	)
 
-	transactionResp, err := fpc.GetFundFromScan(fmt.Sprintf(scanAPI, scanAPIKEY, address, utils.ScanTransactionAction))
+	transactionResp, err := fpc.GetTransactionInfoFromScan(fmt.Sprintf(scanAPI, scanAPIKEY, address, utils.ScanTransactionAction))
 	if err != nil {
 		return "", err
 	}
-	traceResp, err := fpc.GetFundFromScan(fmt.Sprintf(scanAPI, scanAPIKEY, address, utils.ScanTraceAction))
+	traceResp, err := fpc.GetTransactionInfoFromScan(fmt.Sprintf(scanAPI, scanAPIKEY, address, utils.ScanTraceAction))
 	if err != nil {
 		return "", err
 	}
@@ -165,4 +166,33 @@ func (fpc *FundPolicyCalc) SearchFund(chain, address string) (ScanTXResponse, er
 
 func (fpc *FundPolicyCalc) Filter(tx *SkyEyeTransaction) bool {
 	return false
+}
+
+func (fpc *FundPolicyCalc) GetAddressTransactionGraph(chain, address string) (*Graph, error) {
+	scanAPI := fmt.Sprintf("%s%s", utils.GetScanAPI(chain), utils.APIQuery)
+	r := rand.New(rand.NewSource(time.Now().UnixNano()))
+	scanInfo := config.Conf.ScanInfos[chain]
+
+	actions := []string{utils.ScanTransactionAction, utils.ScanTokenTransactionAction, utils.ScanNFTTransactionAction}
+
+	wg := sync.WaitGroup{}
+	txs := []ScanTransaction{}
+	for _, action := range actions {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+
+			index := r.Intn(len(scanInfo.APIKeys))
+			scanAPIKEY := scanInfo.APIKeys[index]
+			resp, err := fpc.GetTransactionInfoFromScan(fmt.Sprintf(scanAPI, scanAPIKEY, address, action))
+			if err != nil {
+				logrus.Errorf("get %s resp from scan is err %v", action, err)
+				return
+			}
+			txs = append(txs, resp.Result...)
+		}()
+
+	}
+	wg.Wait()
+	return NewGraphFromScan(txs), nil
 }

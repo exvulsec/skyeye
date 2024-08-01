@@ -6,17 +6,19 @@ import (
 )
 
 const (
-	EtherScanAPIURL       = "https://api.etherscan.io/api"
-	BSCScanAPIURL         = "https://api.bscscan.com/api"
-	ArbitrumScanAPIURL    = "https://api.arbiscan.io/api"
-	EtherScanURL          = "https://etherscan.io"
-	BSCScanURL            = "https://bscscan.com"
-	ArbiturmScanURL       = "https://arbiscan.io"
-	AvalancheScanURL      = "https://43114.snowtrace.io"
-	APIQuery              = "?module=account&apikey=%s&address=%s&startblock=0&endblock=99999999&sort=asc&action=%s&page=1&offset=1"
-	ScanTransactionAction = "txlist"
-	ScanTraceAction       = "txlistinternal"
-	ScanGenesisAddress    = "GENESIS"
+	EtherScanAPIURL            = "https://api.etherscan.io/api"
+	BSCScanAPIURL              = "https://api.bscscan.com/api"
+	ArbitrumScanAPIURL         = "https://api.arbiscan.io/api"
+	EtherScanURL               = "https://etherscan.io"
+	BSCScanURL                 = "https://bscscan.com"
+	ArbiturmScanURL            = "https://arbiscan.io"
+	AvalancheScanURL           = "https://43114.snowtrace.io"
+	APIQuery                   = "?module=account&apikey=%s&address=%s&startblock=0&endblock=99999999&sort=asc&action=%s&page=1&offset=1"
+	ScanTransactionAction      = "txlist"
+	ScanTokenTransactionAction = "tokentx"
+	ScanNFTTransactionAction   = "tokennfttx"
+	ScanTraceAction            = "txlistinternal"
+	ScanGenesisAddress         = "GENESIS"
 )
 
 func GetScanAPI(chain string) string {
