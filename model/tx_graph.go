@@ -49,6 +49,9 @@ func (g *Graph) AddNodes() {
 		nodes = append(nodes, edge.FromAddress, edge.ToAddress)
 	}
 	g.Nodes = mapset.NewSet[string](nodes...).ToSlice()
+	sort.SliceStable(g.Nodes, func(i, j int) bool {
+		return g.Nodes[i] < g.Nodes[j]
+	})
 }
 
 func (g *Graph) ConvertEdgeFromScanTransactions(transactions []ScanTransaction) {

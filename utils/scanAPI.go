@@ -18,7 +18,7 @@ const (
 	ScanTransactionAction      = "txlist"
 	ScanTokenTransactionAction = "tokentx"
 	ScanNFTTransactionAction   = "tokennfttx"
-	ScanTraceAction            = "txlistinternal"
+	ScanInternaTXlAction       = "txlistinternal"
 	ScanGenesisAddress         = "GENESIS"
 )
 
