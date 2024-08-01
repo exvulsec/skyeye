@@ -102,7 +102,7 @@ func (fpc *FundPolicyCalc) GetFundAddress(chain, address string) (string, error)
 	if err != nil {
 		return "", err
 	}
-	traceResp, err := fpc.GetTransactionInfoFromScan(fmt.Sprintf(scanAPI, scanAPIKEY, address, utils.ScanTraceAction))
+	traceResp, err := fpc.GetTransactionInfoFromScan(fmt.Sprintf(scanAPI, scanAPIKEY, address, utils.ScanInternaTXlAction))
 	if err != nil {
 		return "", err
 	}
@@ -174,7 +174,7 @@ func (fpc *FundPolicyCalc) GetAddressTransactionGraph(chain, address string) (*G
 	r := rand.New(rand.NewSource(time.Now().UnixNano()))
 	scanInfo := config.Conf.ScanInfos[chain]
 
-	actions := []string{utils.ScanTransactionAction, utils.ScanTokenTransactionAction, utils.ScanNFTTransactionAction}
+	actions := []string{utils.ScanTransactionAction, utils.ScanTokenTransactionAction, utils.ScanNFTTransactionAction, utils.ScanInternaTXlAction}
 
 	wg := sync.WaitGroup{}
 	txs := []ScanTransaction{}
@@ -191,7 +191,7 @@ func (fpc *FundPolicyCalc) GetAddressTransactionGraph(chain, address string) (*G
 				return
 			}
 			rwMutex.Lock()
-			if action == utils.ScanTransactionAction {
+			if action == utils.ScanTransactionAction || action == utils.ScanInternaTXlAction {
 				for index, result := range resp.Result {
 					result.TokenDecimal = decimal.NewFromInt(18)
 					result.TokenSymbol = utils.GetChainCurrency(chain)
