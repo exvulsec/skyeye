@@ -98,3 +98,16 @@ func (tx *Transaction) GetTrace(chain string) {
 		tx.Trace = trace
 	}
 }
+
+func (tx *Transaction) GenerateFundFlowGraph(chain string) (*Graph, error) {
+	ats := AssetTransfers{}
+	tx.GetTrace(chain)
+	tx.GetReceipt(chain)
+	ats.Compose(tx.Receipt.Logs, tx.Trace)
+	graph, err := NewGraphFromAssetTransfers(chain, tx.TxHash, tx.BlockTimestamp, ats)
+	if err != nil {
+		return nil, err
+	}
+
+	return graph, nil
+}

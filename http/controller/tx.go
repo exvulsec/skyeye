@@ -1,6 +1,7 @@
 package controller
 
 import (
+	"context"
 	"fmt"
 	"net/http"
 	"strconv"
@@ -21,6 +22,7 @@ func (tc *TXController) Routers(routers gin.IRouter) {
 	api := routers.Group("/tx")
 	{
 		api.GET("/reviewed", tc.Reviewed)
+		api.GET("/:tx_hash/graph", tc.TransactionFundFlowGraph)
 	}
 }
 
@@ -117,5 +119,36 @@ func (tc *TXController) Reviewed(c *gin.Context) {
 		Code: http.StatusOK,
 		Msg:  "",
 		Data: results,
+	})
+}
+
+func (tc *TXController) TransactionFundFlowGraph(c *gin.Context) {
+	chain := utils.GetSupportChain(c.Query(utils.ChainKey))
+	txhash := strings.ToLower(c.Param("tx_hash"))
+	transaction, _, err := client.MultiEvmClient()[chain].TransactionByHash(context.Background(), common.HexToHash(txhash))
+	if err != nil {
+		c.JSON(http.StatusOK, model.Message{
+			Code: http.StatusInternalServerError,
+			Msg:  fmt.Sprintf("get transaction is err %v", err),
+		})
+		return
+	}
+
+	tx := model.Transaction{}
+	tx.TxHash = txhash
+	tx.BlockTimestamp = transaction.Time().Unix()
+
+	graph, err := tx.GenerateFundFlowGraph(chain)
+	if err != nil {
+		c.JSON(http.StatusOK, model.Message{
+			Code: http.StatusBadRequest,
+			Msg:  err.Error(),
+		})
+		return
+	}
+
+	c.JSON(http.StatusOK, model.Message{
+		Code: 0,
+		Data: graph,
 	})
 }

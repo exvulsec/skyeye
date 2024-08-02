@@ -24,6 +24,15 @@ type Graph struct {
 	Edges NodeEdges `json:"edges"`
 }
 
+func NewGraphFromAssetTransfers(chain, txhash string, txTimestamp int64, assetTransfers AssetTransfers) (*Graph, error) {
+	g := Graph{}
+	if err := g.ConvertEdgeFromAssetTransfers(chain, txhash, txTimestamp, assetTransfers); err != nil {
+		return nil, err
+	}
+	g.AddNodes()
+	return &g, nil
+}
+
 func NewGraphFromScan(transactions []ScanTransaction) *Graph {
 	g := Graph{}
 	g.ConvertEdgeFromScanTransactions(transactions)
@@ -84,6 +93,47 @@ func (g *Graph) ConvertEdgeFromScanTransactions(transactions []ScanTransaction) 
 	sort.SliceStable(g.Edges, func(i, j int) bool {
 		return g.Edges[i].Timestamp > g.Edges[j].Timestamp
 	})
+}
+
+func (g *Graph) ConvertEdgeFromAssetTransfers(chain, txHash string, txTimestamp int64, assetTransfers AssetTransfers) error {
+	if g.Edges == nil {
+		g.Edges = NodeEdges{}
+	}
+	tokenMaps := map[string]Token{}
+
+	for _, assetTransfer := range assetTransfers {
+		if assetTransfer.Value.Equal(decimal.Decimal{}) {
+			continue
+		}
+		var (
+			token Token
+			ok    bool
+		)
+		if token, ok = tokenMaps[assetTransfer.Address]; !ok {
+			if err := token.IsExisted(chain, assetTransfer.Address); err != nil {
+				return fmt.Errorf("get token %s is err %v", assetTransfer.Address, err)
+			}
+			tokenMaps[assetTransfer.Address] = token
+		}
+
+		if token.ID == nil {
+			token.Symbol = token.Address
+		}
+		token.Value = token.GetValueWithDecimals(assetTransfer.Value)
+		valueWithUnit := fmt.Sprintf("%s %s", token.Value, token.Symbol)
+
+		g.Edges = append(g.Edges, NodeEdge{
+			FromAddress: assetTransfer.From,
+			ToAddress:   assetTransfer.To,
+			Value:       valueWithUnit,
+			TxHash:      txHash,
+			Timestamp:   txTimestamp,
+		})
+	}
+	sort.SliceStable(g.Edges, func(i, j int) bool {
+		return g.Edges[i].Timestamp > g.Edges[j].Timestamp
+	})
+	return nil
 }
 
 func (g *Graph) AddNodeEdges(chain, address string) error {

@@ -43,7 +43,7 @@ type AssetTransfer struct {
 
 type AssetTransfers []AssetTransfer
 
-func (ats *AssetTransfers) Compose(logs []*types.Log, trace TransactionTrace) {
+func (ats *AssetTransfers) Compose(logs []*types.Log, trace *TransactionTrace) {
 	mutex := sync.RWMutex{}
 	workers := make(chan int, 3)
 	wg := sync.WaitGroup{}
@@ -75,7 +75,9 @@ func (ats *AssetTransfers) Compose(logs []*types.Log, trace TransactionTrace) {
 		}()
 	}
 	wg.Wait()
-	*ats = append(*ats, trace.ListTransferEvent()...)
+	if trace != nil {
+		*ats = append(*ats, trace.ListTransferEvent()...)
+	}
 }
 
 func (a *AssetTransfer) DecodeEvent(event map[string]any, log types.Log) {
