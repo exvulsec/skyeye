@@ -8,24 +8,19 @@ import (
 	"github.com/gin-gonic/gin"
 
 	"github.com/exvulsec/skyeye/http/controller"
-	"github.com/exvulsec/skyeye/middleware"
 )
 
 func addRouters(r gin.IRouter) {
 	addHealthRouter(r)
 	apiV1 := setV1Group(r)
-	monitorCTRL := controller.MonitorController{}
-	monitorCTRL.Routers(apiV1)
-
-	addressCTRL := &controller.AddressController{}
-	addressCTRL.Routers(apiV1)
 
 	ctrls := []controller.Controller{
 		&controller.SkyEyeController{},
 		&controller.TXController{},
 		&controller.SignatureController{},
+		&controller.AddressController{},
+		&controller.MonitorController{},
 	}
-	apiV1.Use(middleware.CheckAPIKEY())
 	for _, ctrl := range ctrls {
 		ctrl.Routers(apiV1)
 	}

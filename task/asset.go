@@ -99,7 +99,7 @@ func (at *assetTask) ComposeAssetsAndAlert(tx model.Transaction) {
 		}
 		assetTransfers := model.AssetTransfers{}
 
-		assetTransfers.Compose(tx.Receipt.Logs, *tx.Trace)
+		assetTransfers.Compose(tx.Receipt.Logs, tx.Trace)
 
 		if err := assets.AnalysisAssetTransfers(assetTransfers); err != nil {
 			logrus.Errorf("analysis asset transfer is err: %v", err)
