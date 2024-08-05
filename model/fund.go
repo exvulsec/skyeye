@@ -203,5 +203,5 @@ func (fpc *FundPolicyCalc) GetAddressTransactionGraph(chain, address string) (*G
 		}()
 	}
 	wg.Wait()
-	return NewGraphFromScan(txs), nil
+	return NewGraphFromScan(chain, txs), nil
 }

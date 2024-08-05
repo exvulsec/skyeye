@@ -9,6 +9,11 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
+type Node struct {
+	Address string `json:"address"`
+	Label   string `json:"label"`
+}
+
 type NodeEdge struct {
 	TxHash      string `json:"tx_hash,omitempty"`
 	Timestamp   int64  `json:"timestamp,omitempty"`
@@ -20,7 +25,7 @@ type NodeEdge struct {
 type NodeEdges []NodeEdge
 
 type Graph struct {
-	Nodes []string  `json:"nodes"`
+	Nodes []Node    `json:"nodes"`
 	Edges NodeEdges `json:"edges"`
 }
 
@@ -29,14 +34,14 @@ func NewGraphFromAssetTransfers(chain, txhash string, txTimestamp int64, assetTr
 	if err := g.ConvertEdgeFromAssetTransfers(chain, txhash, txTimestamp, assetTransfers); err != nil {
 		return nil, err
 	}
-	g.AddNodes()
+	g.AddNodes(chain)
 	return &g, nil
 }
 
-func NewGraphFromScan(transactions []ScanTransaction) *Graph {
+func NewGraphFromScan(chain string, transactions []ScanTransaction) *Graph {
 	g := Graph{}
 	g.ConvertEdgeFromScanTransactions(transactions)
-	g.AddNodes()
+	g.AddNodes(chain)
 	return &g
 }
 
@@ -45,27 +50,35 @@ func NewGraph(chain, address string) (*Graph, error) {
 	if err := g.AddNodeEdges(chain, address); err != nil {
 		return nil, err
 	}
-	g.AddNodes()
+	g.AddNodes(chain)
 	return &g, nil
 }
 
-func (g *Graph) AddNodes() {
+func (g *Graph) AddNodes(chain string) {
 	if g.Edges == nil {
 		return
 	}
-	nodes := []string{}
+	addrs := []string{}
 	for _, edge := range g.Edges {
 		if edge.FromAddress != "" {
-			nodes = append(nodes, edge.FromAddress)
+			addrs = append(addrs, edge.FromAddress)
 		}
 		if edge.ToAddress != "" {
-			nodes = append(nodes, edge.ToAddress)
+			addrs = append(addrs, edge.ToAddress)
 		}
 	}
-	g.Nodes = mapset.NewSet[string](nodes...).ToSlice()
-	sort.SliceStable(g.Nodes, func(i, j int) bool {
-		return g.Nodes[i] < g.Nodes[j]
+	distinctAddrs := mapset.NewSet[string](addrs...).ToSlice()
+	sort.SliceStable(distinctAddrs, func(i, j int) bool {
+		return distinctAddrs[i] < distinctAddrs[j]
 	})
+
+	for _, addr := range distinctAddrs {
+		label := AddressLabel{Address: addr}
+		if err := label.GetLabel(chain, addr); err != nil {
+			logrus.Errorf("get address %s's label is err: %v", addr, err)
+		}
+		g.Nodes = append(g.Nodes, Node{Address: addr, Label: label.Label})
+	}
 }
 
 func (g *Graph) ConvertEdgeFromScanTransactions(transactions []ScanTransaction) {
