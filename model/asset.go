@@ -56,9 +56,7 @@ func (ats *AssetTransfers) Compose(logs []*types.Log, trace *TransactionTrace) {
 				<-workers
 				wg.Done()
 			}()
-
 			assetTransfer := AssetTransfer{}
-
 			event, err := utils.Decode(*l)
 			if err != nil {
 				logrus.Error(err)

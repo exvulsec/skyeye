@@ -3,6 +3,7 @@ package model
 import (
 	"fmt"
 	"sort"
+	"strconv"
 
 	mapset "github.com/deckarep/golang-set/v2"
 	"github.com/shopspring/decimal"
@@ -15,11 +16,13 @@ type Node struct {
 }
 
 type NodeEdge struct {
-	TxHash      string `json:"tx_hash,omitempty"`
-	Timestamp   int64  `json:"timestamp,omitempty"`
-	FromAddress string `json:"from_address,omitempty"`
-	ToAddress   string `json:"to_address,omitempty"`
-	Value       string `json:"value,omitempty"`
+	TxHash        string          `json:"tx_hash,omitempty"`
+	Timestamp     int64           `json:"timestamp,omitempty"`
+	FromAddress   string          `json:"from_address,omitempty"`
+	ToAddress     string          `json:"to_address,omitempty"`
+	Token         string          `json:"-"`
+	Value         decimal.Decimal `json:"-"`
+	ValueWithUnit string          `json:"value,omitempty"`
 }
 
 type NodeEdges []NodeEdge
@@ -29,18 +32,22 @@ type Graph struct {
 	Edges NodeEdges `json:"edges"`
 }
 
-func NewGraphFromAssetTransfers(chain, txhash string, txTimestamp int64, assetTransfers AssetTransfers) (*Graph, error) {
+func NewGraphFromAssetTransfers(chain string, tx Transaction, assetTransfers AssetTransfers) (*Graph, error) {
 	g := Graph{}
-	if err := g.ConvertEdgeFromAssetTransfers(chain, txhash, txTimestamp, assetTransfers); err != nil {
+	if err := g.ConvertEdgeFromAssetTransfers(tx, assetTransfers); err != nil {
 		return nil, err
 	}
+	g.Edges.Distinct()
+	g.Edges.SetValueWithUnit(chain)
 	g.AddNodes(chain)
 	return &g, nil
 }
 
 func NewGraphFromScan(chain string, transactions []ScanTransaction) *Graph {
 	g := Graph{}
-	g.ConvertEdgeFromScanTransactions(transactions)
+	g.ConvertEdgeFromScanTransactions(chain, transactions)
+	g.Edges.Distinct()
+	g.Edges.SetValueWithUnit(chain)
 	g.AddNodes(chain)
 	return &g
 }
@@ -50,6 +57,8 @@ func NewGraph(chain, address string) (*Graph, error) {
 	if err := g.AddNodeEdges(chain, address); err != nil {
 		return nil, err
 	}
+	g.Edges.Distinct()
+	g.Edges.SetValueWithUnit(chain)
 	g.AddNodes(chain)
 	return &g, nil
 }
@@ -81,7 +90,7 @@ func (g *Graph) AddNodes(chain string) {
 	}
 }
 
-func (g *Graph) ConvertEdgeFromScanTransactions(transactions []ScanTransaction) {
+func (g *Graph) ConvertEdgeFromScanTransactions(chain string, transactions []ScanTransaction) {
 	if g.Edges == nil {
 		g.Edges = NodeEdges{}
 	}
@@ -94,11 +103,32 @@ func (g *Graph) ConvertEdgeFromScanTransactions(transactions []ScanTransaction) 
 		if toAddress == "" {
 			toAddress = transaction.Contract
 		}
-		value := fmt.Sprintf("%s %s", transaction.Value.DivRound(decimal.NewFromInt32(10).Pow(transaction.TokenDecimal), 6), transaction.TokenSymbol)
+		decimals, err := strconv.ParseInt(transaction.TokenDecimals, 10, 64)
+		if err != nil {
+			logrus.Errorf("parse decimals %s to int64 err: %v", transaction.TokenDecimals, err)
+		}
+		t := Token{
+			Address:  transaction.TokenID,
+			Name:     transaction.TokenName,
+			Symbol:   transaction.TokenSymbol,
+			Decimals: decimals,
+		}
+
+		if err := t.IsExisted(chain, transaction.TokenID); err != nil {
+			logrus.Errorf("get token info from db is err: %v", err)
+		} else {
+			if t.ID == nil {
+				if createErr := t.Create(chain); createErr != nil {
+					logrus.Errorf("create token info from db is err: %v", err)
+				}
+			}
+		}
+
 		g.Edges = append(g.Edges, NodeEdge{
 			FromAddress: transaction.FromAddress,
 			ToAddress:   toAddress,
-			Value:       value,
+			Token:       transaction.TokenID,
+			Value:       transaction.Value,
 			TxHash:      transaction.TransactionHash,
 			Timestamp:   transaction.Timestamp,
 		})
@@ -108,39 +138,28 @@ func (g *Graph) ConvertEdgeFromScanTransactions(transactions []ScanTransaction) 
 	})
 }
 
-func (g *Graph) ConvertEdgeFromAssetTransfers(chain, txHash string, txTimestamp int64, assetTransfers AssetTransfers) error {
+func (g *Graph) AddressFocus(address string, addrs []string) bool {
+	for _, addr := range addrs {
+		if address == addr {
+			return true
+		}
+	}
+	return false
+}
+
+func (g *Graph) ConvertEdgeFromAssetTransfers(tx Transaction, assetTransfers AssetTransfers) error {
 	if g.Edges == nil {
 		g.Edges = NodeEdges{}
 	}
-	tokenMaps := map[string]Token{}
 
 	for _, assetTransfer := range assetTransfers {
-		if assetTransfer.Value.Equal(decimal.Decimal{}) {
-			continue
-		}
-		var (
-			token Token
-			ok    bool
-		)
-		if token, ok = tokenMaps[assetTransfer.Address]; !ok {
-			if err := token.IsExisted(chain, assetTransfer.Address); err != nil {
-				return fmt.Errorf("get token %s is err %v", assetTransfer.Address, err)
-			}
-			tokenMaps[assetTransfer.Address] = token
-		}
-
-		if token.ID == nil {
-			token.Symbol = token.Address
-		}
-		token.Value = token.GetValueWithDecimals(assetTransfer.Value)
-		valueWithUnit := fmt.Sprintf("%s %s", token.Value, token.Symbol)
-
 		g.Edges = append(g.Edges, NodeEdge{
 			FromAddress: assetTransfer.From,
 			ToAddress:   assetTransfer.To,
-			Value:       valueWithUnit,
-			TxHash:      txHash,
-			Timestamp:   txTimestamp,
+			Token:       assetTransfer.Address,
+			Value:       assetTransfer.Value,
+			TxHash:      tx.TxHash,
+			Timestamp:   tx.BlockTimestamp,
 		})
 	}
 	sort.SliceStable(g.Edges, func(i, j int) bool {
@@ -162,16 +181,63 @@ func (g *Graph) AddNodeEdges(chain, address string) error {
 	return nil
 }
 
-func (ns *NodeEdges) ComposeNode(source, chain, address string) error {
+func (nes *NodeEdges) ComposeNode(source, chain, address string) error {
 	txs := EVMTransactions{}
 	xfers := TokenTransfers{}
 	if err := txs.GetByAddress(source, chain, address); err != nil {
 		return fmt.Errorf("get %s txs %s is from db is err: %v", source, address, err)
 	}
-	*ns = append(*ns, txs.ComposeNodeEdges(chain)...)
+	*nes = append(*nes, txs.ComposeNodeEdges()...)
 	if err := xfers.GetByAddress(source, chain, address); err != nil {
 		return fmt.Errorf("get %s xfers %s is from db is err: %v", source, address, err)
 	}
-	*ns = append(*ns, xfers.ComposeNodes(chain)...)
+	*nes = append(*nes, xfers.ComposeNodes()...)
 	return nil
+}
+
+func (nes *NodeEdges) Distinct() {
+	distinctNodeEdges := NodeEdges{}
+	for _, ne := range *nes {
+		ok, index := distinctNodeEdges.isSameSource(ne)
+		if ok {
+			distinctNodeEdges[index].Value = distinctNodeEdges[index].Value.Add(ne.Value)
+		} else {
+			distinctNodeEdges = append(distinctNodeEdges, ne)
+		}
+	}
+	*nes = distinctNodeEdges
+}
+
+func (nes *NodeEdges) isSameSource(ne NodeEdge) (bool, int) {
+	for index := range *nes {
+		if ne.FromAddress == (*nes)[index].FromAddress && ne.ToAddress == (*nes)[index].ToAddress && ne.Token == (*nes)[index].Token {
+			return true, index
+		}
+	}
+	return false, -1
+}
+
+func (nes *NodeEdges) SetValueWithUnit(chain string) {
+	tokenMaps := map[string]Token{}
+	var (
+		token Token
+		ok    bool
+	)
+	for index, edge := range *nes {
+		if token, ok = tokenMaps[edge.Token]; !ok {
+			if err := token.IsExisted(chain, edge.Token); err != nil {
+				logrus.Errorf(fmt.Sprintf("get token %s is err %v", edge.Token, err))
+			}
+			if token.ID == nil {
+				if err := token.GetMetadataOnChain(chain, edge.Token); err != nil {
+					logrus.Error(err)
+					token.Symbol = edge.Token
+				}
+			}
+			tokenMaps[edge.Token] = token
+		}
+		token.Value = token.GetValueWithDecimals(edge.Value)
+		edge.ValueWithUnit = fmt.Sprintf("%s %s", token.Value, token.Symbol)
+		(*nes)[index] = edge
+	}
 }

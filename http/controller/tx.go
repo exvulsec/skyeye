@@ -135,6 +135,7 @@ func (tc *TXController) TransactionFundFlowGraph(c *gin.Context) {
 	}
 
 	tx := model.Transaction{}
+	tx.ConvertFromBlock(transaction, 0)
 	tx.TxHash = txhash
 	tx.BlockTimestamp = transaction.Time().Unix()
 

@@ -104,7 +104,7 @@ func (tx *Transaction) GenerateFundFlowGraph(chain string) (*Graph, error) {
 	tx.GetTrace(chain)
 	tx.GetReceipt(chain)
 	ats.Compose(tx.Receipt.Logs, tx.Trace)
-	graph, err := NewGraphFromAssetTransfers(chain, tx.TxHash, tx.BlockTimestamp, ats)
+	graph, err := NewGraphFromAssetTransfers(chain, *tx, ats)
 	if err != nil {
 		return nil, err
 	}
