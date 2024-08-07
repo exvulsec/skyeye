@@ -9,7 +9,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/shopspring/decimal"
 	"github.com/sirupsen/logrus"
 
 	"github.com/exvulsec/skyeye/client"
@@ -193,7 +192,7 @@ func (fpc *FundPolicyCalc) GetAddressTransactionGraph(chain, address string) (*G
 			rwMutex.Lock()
 			if action == utils.ScanTransactionAction || action == utils.ScanInternaTXlAction {
 				for index, result := range resp.Result {
-					result.TokenDecimal = decimal.NewFromInt(18)
+					result.TokenDecimals = "18"
 					result.TokenSymbol = utils.GetChainCurrency(chain)
 					resp.Result[index] = result
 				}

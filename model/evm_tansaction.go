@@ -4,7 +4,6 @@ import (
 	"fmt"
 
 	"github.com/shopspring/decimal"
-	"github.com/sirupsen/logrus"
 
 	"github.com/exvulsec/skyeye/config"
 	"github.com/exvulsec/skyeye/datastore"
@@ -36,21 +35,6 @@ func (et *EVMTransaction) Create() error {
 	return datastore.DB().Table(et.TableName()).Create(et).Error
 }
 
-func (et *EVMTransaction) ComposeNodeEdge(chain string) (NodeEdge, error) {
-	token := Token{}
-	if err := token.IsExisted(chain, EVMPlatformCurrency); err != nil {
-		return NodeEdge{}, fmt.Errorf("get token %s on chain is err: %v", EVMPlatformCurrency, err)
-	}
-
-	return NodeEdge{
-		Timestamp:   et.BlockTimestamp,
-		TxHash:      et.TxHash,
-		Value:       token.GetValueWithDecimalsAndSymbol(et.Value),
-		FromAddress: et.FromAddress,
-		ToAddress:   *et.ToAddress,
-	}, nil
-}
-
 type EVMTransactions []EVMTransaction
 
 func (ets *EVMTransactions) TableName(chain string) string {
@@ -72,15 +56,17 @@ func (ets *EVMTransactions) GetByAddress(source, chain, address string) error {
 	return engine.Find(ets).Error
 }
 
-func (ets *EVMTransactions) ComposeNodeEdges(chain string) []NodeEdge {
+func (ets *EVMTransactions) ComposeNodeEdges() []NodeEdge {
 	nodeEdges := []NodeEdge{}
 	for _, evmTX := range *ets {
-		nodeEdge, err := evmTX.ComposeNodeEdge(chain)
-		if err != nil {
-			logrus.Error(err)
-			continue
-		}
-		nodeEdges = append(nodeEdges, nodeEdge)
+		nodeEdges = append(nodeEdges, NodeEdge{
+			Timestamp:   evmTX.BlockTimestamp,
+			TxHash:      evmTX.TxHash,
+			Token:       EVMPlatformCurrency,
+			Value:       evmTX.Value,
+			FromAddress: evmTX.FromAddress,
+			ToAddress:   *evmTX.ToAddress,
+		})
 	}
 	return nodeEdges
 }

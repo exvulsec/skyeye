@@ -94,7 +94,7 @@ func (t *Token) GetSymbol() string {
 
 func (t *Token) GetValueWithDecimals(value decimal.Decimal) decimal.Decimal {
 	pow := decimal.NewFromInt(10).Pow(decimal.NewFromInt(t.Decimals))
-	return value.DivRound(pow, 20)
+	return value.DivRound(pow, 8)
 }
 
 func (t *Token) GetValueWithDecimalsAndSymbol(value decimal.Decimal) string {

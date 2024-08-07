@@ -50,7 +50,7 @@ type ScanTransaction struct {
 	TokenName       string          `json:"tokenName"`
 	TokenID         string          `json:"tokenID"`
 	TokenSymbol     string          `json:"tokenSymbol"`
-	TokenDecimal    decimal.Decimal `json:"tokenDecimal"`
+	TokenDecimals   string          `json:"tokenDecimal"`
 }
 
 type ScanTXResponse struct {

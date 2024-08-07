@@ -8,7 +8,6 @@ import (
 
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/shopspring/decimal"
-	"github.com/sirupsen/logrus"
 
 	"github.com/exvulsec/skyeye/client"
 	"github.com/exvulsec/skyeye/config"
@@ -76,21 +75,6 @@ func (tt *TokenTransfer) DecodeFromEvent(event Event, log types.Log, addrs Monit
 	return nil
 }
 
-func (tt *TokenTransfer) ComposeNodeEdge(chain string) (NodeEdge, error) {
-	token := Token{}
-	if err := token.IsExisted(chain, tt.TokenAddress); err != nil {
-		return NodeEdge{}, fmt.Errorf("get token %s on chain is err: %v", tt.TokenAddress, err)
-	}
-
-	return NodeEdge{
-		Timestamp:   tt.BlockTimestamp,
-		TxHash:      tt.TxHash,
-		Value:       token.GetValueWithDecimalsAndSymbol(tt.Value),
-		FromAddress: tt.FromAddress,
-		ToAddress:   tt.ToAddress,
-	}, nil
-}
-
 type TokenTransfers []TokenTransfer
 
 func (tts *TokenTransfers) TableName(chain string) string {
@@ -111,15 +95,17 @@ func (tts *TokenTransfers) GetByAddress(source, chain, address string) error {
 	return engine.Find(tts).Error
 }
 
-func (tts *TokenTransfers) ComposeNodes(chain string) []NodeEdge {
+func (tts *TokenTransfers) ComposeNodes() []NodeEdge {
 	nodeEdges := []NodeEdge{}
 	for _, tt := range *tts {
-		nodeEdge, err := tt.ComposeNodeEdge(chain)
-		if err != nil {
-			logrus.Error(err)
-			continue
-		}
-		nodeEdges = append(nodeEdges, nodeEdge)
+		nodeEdges = append(nodeEdges, NodeEdge{
+			Timestamp:   tt.BlockTimestamp,
+			TxHash:      tt.TxHash,
+			Token:       tt.TokenAddress,
+			Value:       tt.Value,
+			FromAddress: tt.FromAddress,
+			ToAddress:   tt.ToAddress,
+		})
 	}
 	return nodeEdges
 }
