@@ -1,7 +1,7 @@
 package model
 
 type Type interface {
-	*int64 | *TransactionTrace
+	*int64 | *TransactionTraceCall
 }
 
 type Queue[T Type] struct {

@@ -138,6 +138,7 @@ func (tc *TXController) TransactionFundFlowGraph(c *gin.Context) {
 	tx.ConvertFromBlock(transaction, 0)
 	tx.TxHash = txhash
 	tx.BlockTimestamp = transaction.Time().Unix()
+	tx.GetTrace(chain)
 
 	graph, err := tx.GenerateFundFlowGraph(chain)
 	if err != nil {

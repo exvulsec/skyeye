@@ -19,13 +19,13 @@ import (
 
 type Transaction struct {
 	EVMTransaction
-	ContractAddress string            `json:"contract_address" gorm:"column:contract_address"`
-	Input           string            `json:"input" gorm:"column:input"`
-	Receipt         *types.Receipt    `json:"receipt" gorm:"-"`
-	Trace           *TransactionTrace `json:"trace" gorm:"-"`
-	SplitScores     string            `json:"-" gorm:"-"`
-	MultiContracts  []string          `json:"-" gorm:"-"`
-	IsConstructor   bool              `json:"-" gorm:"-"`
+	ContractAddress string                `json:"contract_address" gorm:"column:contract_address"`
+	Input           string                `json:"input" gorm:"column:input"`
+	Receipt         *types.Receipt        `json:"receipt" gorm:"-"`
+	Trace           *TransactionTraceCall `json:"trace" gorm:"-"`
+	SplitScores     string                `json:"-" gorm:"-"`
+	MultiContracts  []string              `json:"-" gorm:"-"`
+	IsConstructor   bool                  `json:"-" gorm:"-"`
 }
 
 func (tx *Transaction) ConvertFromBlock(transaction *types.Transaction, index int64) {
@@ -81,30 +81,31 @@ func (tx *Transaction) filterAddrs(addrs []string) bool {
 }
 
 func (tx *Transaction) GetTrace(chain string) {
-	var trace *TransactionTrace
-	trace, ok := utils.Retry(func() (any, error) {
+	var call *TransactionTraceCall
+	call, ok := utils.Retry(func() (any, error) {
 		ctxWithTimeOut, cancel := context.WithTimeout(context.TODO(), 10*time.Second)
 		defer cancel()
-		err := client.MultiEvmClient()[chain].Client().CallContext(ctxWithTimeOut, &trace,
+		err := client.MultiEvmClient()[chain].Client().CallContext(ctxWithTimeOut, &call,
 			"debug_traceTransaction",
 			common.HexToHash(tx.TxHash),
-			map[string]string{
+			map[string]any{
 				"tracer": "callTracer",
+				"tracerConfig": map[string]any{
+					"withLog": true,
+				},
 			})
 
-		return trace, err
-	}).(*TransactionTrace)
+		return call, err
+	}).(*TransactionTraceCall)
 	if ok {
-		tx.Trace = trace
+		tx.Trace = call
 	}
 }
 
 func (tx *Transaction) GenerateFundFlowGraph(chain string) (*Graph, error) {
-	ats := AssetTransfers{}
 	tx.GetTrace(chain)
-	tx.GetReceipt(chain)
-	ats.Compose(tx.Receipt.Logs, tx.Trace)
-	graph, err := NewGraphFromAssetTransfers(chain, *tx, ats)
+	assetTransfers := tx.Trace.ListTransferEventWithDFS(AssetTransfers{}, tx.TxHash)
+	graph, err := NewGraphFromAssetTransfers(chain, *tx, assetTransfers)
 	if err != nil {
 		return nil, err
 	}

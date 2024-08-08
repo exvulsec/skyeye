@@ -23,6 +23,7 @@ type NodeEdge struct {
 	Token         string          `json:"-"`
 	Value         decimal.Decimal `json:"-"`
 	ValueWithUnit string          `json:"value,omitempty"`
+	Index         int             `json:"index"`
 }
 
 type NodeEdges []NodeEdge
@@ -108,13 +109,13 @@ func (g *Graph) ConvertEdgeFromScanTransactions(chain string, transactions []Sca
 			logrus.Errorf("parse decimals %s to int64 err: %v", transaction.TokenDecimals, err)
 		}
 		t := Token{
-			Address:  transaction.TokenID,
+			Address:  transaction.Contract,
 			Name:     transaction.TokenName,
 			Symbol:   transaction.TokenSymbol,
 			Decimals: decimals,
 		}
 
-		if err := t.IsExisted(chain, transaction.TokenID); err != nil {
+		if err := t.IsExisted(chain, transaction.Contract); err != nil {
 			logrus.Errorf("get token info from db is err: %v", err)
 		} else {
 			if t.ID == nil {
@@ -123,18 +124,21 @@ func (g *Graph) ConvertEdgeFromScanTransactions(chain string, transactions []Sca
 				}
 			}
 		}
-
+		value := transaction.Value
+		if transaction.TokenID != nil {
+			value = *transaction.TokenID
+		}
 		g.Edges = append(g.Edges, NodeEdge{
 			FromAddress: transaction.FromAddress,
 			ToAddress:   toAddress,
-			Token:       transaction.TokenID,
-			Value:       transaction.Value,
+			Token:       transaction.Contract,
+			Value:       value,
 			TxHash:      transaction.TransactionHash,
 			Timestamp:   transaction.Timestamp,
 		})
 	}
 	sort.SliceStable(g.Edges, func(i, j int) bool {
-		return g.Edges[i].Timestamp > g.Edges[j].Timestamp
+		return g.Edges[i].Timestamp < g.Edges[j].Timestamp
 	})
 }
 
@@ -202,6 +206,7 @@ func (nes *NodeEdges) Distinct() {
 		if ok {
 			distinctNodeEdges[index].Value = distinctNodeEdges[index].Value.Add(ne.Value)
 		} else {
+			ne.Index = len(distinctNodeEdges) + 1
 			distinctNodeEdges = append(distinctNodeEdges, ne)
 		}
 	}
