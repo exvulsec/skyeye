@@ -3,6 +3,7 @@ package model
 import (
 	"strings"
 
+	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/shopspring/decimal"
 
@@ -13,36 +14,39 @@ const (
 	EVMPlatformCurrency = "0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee"
 )
 
-type TransactionTraceBase struct {
-	From     string `json:"from"`
-	Gas      string `json:"gas"`
-	GasUsed  string `json:"gasUsed"`
-	To       string `json:"to"`
-	Input    string `json:"input"`
-	Output   string `json:"output"`
-	Value    string `json:"value"`
-	CallType string `json:"type"`
+type TransactionTraceLog struct {
+	Address common.Address `json:"address"`
+	Topics  []common.Hash  `json:"topics"`
+	Data    string         `json:"data"`
+	Index   uint           `json:"index"`
 }
 
-type TransactionTrace struct {
-	TransactionTraceBase
-	Calls []TransactionTrace `json:"calls"`
-	Depth []int
+type TransactionTraceCall struct {
+	From     string                 `json:"from"`
+	Gas      string                 `json:"gas"`
+	GasUsed  string                 `json:"gasUsed"`
+	To       string                 `json:"to"`
+	Input    string                 `json:"input"`
+	Output   string                 `json:"output"`
+	Value    string                 `json:"value"`
+	CallType string                 `json:"type"`
+	Calls    []TransactionTraceCall `json:"calls"`
+	Logs     []TransactionTraceLog  `json:"logs"`
 }
 
-func (trace *TransactionTrace) GetContractAddress() (string, bool) {
-	if trace.CallType == "CREATE" || trace.CallType == "CREATE2" {
-		if trace.FilterAddress(trace.TransactionTraceBase.From) {
+func (call *TransactionTraceCall) GetContractAddress() (string, bool) {
+	if call.CallType == "CREATE" || call.CallType == "CREATE2" {
+		if call.FilterAddress(call.From) {
 			return "", true
 		}
-		return trace.TransactionTraceBase.To, false
+		return call.To, false
 	}
 	return "", false
 }
 
-func (trace *TransactionTrace) ListContracts() ([]string, bool) {
-	queue := Queue[*TransactionTrace]{}
-	queue.Push(trace)
+func (call *TransactionTraceCall) ListContracts() ([]string, bool) {
+	queue := Queue[*TransactionTraceCall]{}
+	queue.Push(call)
 	contracts := []string{}
 	for {
 		if queue.IsEmpty() {
@@ -61,37 +65,36 @@ func (trace *TransactionTrace) ListContracts() ([]string, bool) {
 		}
 		for index := range txTrace.Calls {
 			call := txTrace.Calls[index]
-			call.Depth = append(txTrace.Depth, index)
 			queue.Push(&call)
 		}
 	}
 	return contracts, false
 }
 
-func (trace *TransactionTrace) ListTransferEvent() []AssetTransfer {
+func (call *TransactionTraceCall) ListTransferEvent() []AssetTransfer {
 	assetTransfers := []AssetTransfer{}
-	queue := Queue[*TransactionTrace]{}
-	queue.Push(trace)
+	queue := Queue[*TransactionTraceCall]{}
+	queue.Push(call)
 	for {
 		if queue.IsEmpty() {
 			break
 		}
-		trace := queue.Pop()
-		if trace != nil {
-			if !strings.EqualFold(trace.Value, "0x0") && trace.Value != "" {
-				value, err := hexutil.DecodeBig(trace.Value)
+		call := queue.Pop()
+		if call != nil {
+			if !strings.EqualFold(call.Value, "0x0") && call.Value != "" {
+				value, err := hexutil.DecodeBig(call.Value)
 				if err != nil {
 					panic(err)
 				}
 				newValue := decimal.NewFromBigInt(value, 0)
 				assetTransfers = append(assetTransfers, AssetTransfer{
-					From:    trace.From,
-					To:      trace.To,
+					From:    call.From,
+					To:      call.To,
 					Address: EVMPlatformCurrency,
 					Value:   newValue,
 				})
 			}
-			for _, call := range trace.Calls {
+			for _, call := range call.Calls {
 				queue.Push(&call)
 			}
 		}
@@ -99,7 +102,28 @@ func (trace *TransactionTrace) ListTransferEvent() []AssetTransfer {
 	return assetTransfers
 }
 
-func (trace *TransactionTrace) FilterAddress(addr string) bool {
+func (call *TransactionTraceCall) ListTransferEventWithDFS(assetTransfers AssetTransfers, txhash string) AssetTransfers {
+	if !strings.EqualFold(call.Value, "0x0") && call.Value != "" {
+		value, err := hexutil.DecodeBig(call.Value)
+		if err != nil {
+			panic(err)
+		}
+		newValue := decimal.NewFromBigInt(value, 0)
+		assetTransfers = append(assetTransfers, AssetTransfer{
+			From:    call.From,
+			To:      call.To,
+			Address: EVMPlatformCurrency,
+			Value:   newValue,
+		})
+	}
+	for _, c := range call.Calls {
+		assetTransfers = c.ListTransferEventWithDFS(assetTransfers, txhash)
+	}
+	assetTransfers.ComposeFromTraceLogs(call.Logs, txhash)
+	return assetTransfers
+}
+
+func (call *TransactionTraceCall) FilterAddress(addr string) bool {
 	contracts := strings.Split(config.Conf.ETL.FilterContracts, ",")
 	for _, contract := range contracts {
 		if strings.EqualFold(contract, addr) {

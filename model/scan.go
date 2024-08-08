@@ -40,17 +40,17 @@ type ScanTransactionResponse struct {
 }
 
 type ScanTransaction struct {
-	TransactionHash string          `json:"hash"`
-	TimestampString string          `json:"timeStamp"`
-	Timestamp       int64           `json:"-"`
-	FromAddress     string          `json:"from"`
-	ToAddress       string          `json:"to"`
-	Value           decimal.Decimal `json:"value"`
-	Contract        string          `json:"contractAddress"`
-	TokenName       string          `json:"tokenName"`
-	TokenID         string          `json:"tokenID"`
-	TokenSymbol     string          `json:"tokenSymbol"`
-	TokenDecimals   string          `json:"tokenDecimal"`
+	TransactionHash string           `json:"hash"`
+	TimestampString string           `json:"timeStamp"`
+	Timestamp       int64            `json:"-"`
+	FromAddress     string           `json:"from"`
+	ToAddress       string           `json:"to"`
+	Value           decimal.Decimal  `json:"value"`
+	Contract        string           `json:"contractAddress"`
+	TokenName       string           `json:"tokenName"`
+	TokenID         *decimal.Decimal `json:"tokenID"`
+	TokenSymbol     string           `json:"tokenSymbol"`
+	TokenDecimals   string           `json:"tokenDecimal"`
 }
 
 type ScanTXResponse struct {

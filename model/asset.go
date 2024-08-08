@@ -43,7 +43,7 @@ type AssetTransfer struct {
 
 type AssetTransfers []AssetTransfer
 
-func (ats *AssetTransfers) Compose(logs []*types.Log, trace *TransactionTrace) {
+func (ats *AssetTransfers) Compose(logs []*types.Log, trace *TransactionTraceCall) {
 	mutex := sync.RWMutex{}
 	workers := make(chan int, 3)
 	wg := sync.WaitGroup{}
@@ -76,6 +76,51 @@ func (ats *AssetTransfers) Compose(logs []*types.Log, trace *TransactionTrace) {
 	if trace != nil {
 		*ats = append(*ats, trace.ListTransferEvent()...)
 	}
+}
+
+func (ats *AssetTransfers) ComposeFromTraceLogs(logs []TransactionTraceLog, txhash string) {
+	mutex := sync.RWMutex{}
+	workers := make(chan int, 3)
+	wg := sync.WaitGroup{}
+
+	for _, log := range logs {
+		if len(log.Topics) > 0 {
+			switch strings.ToLower(log.Topics[0].String()) {
+			case utils.TransferTopic, utils.WithdrawalTopic, utils.DepositTopic:
+				l := types.Log{
+					Address: log.Address,
+					Topics:  log.Topics,
+					Data:    common.FromHex(log.Data),
+					TxHash:  common.HexToHash(txhash),
+				}
+				workers <- 1
+				wg.Add(1)
+				go func() {
+					defer func() {
+						<-workers
+						wg.Done()
+					}()
+					assetTransfer := AssetTransfer{}
+					event, err := utils.Decode(l)
+					if err != nil {
+						logrus.Error(err)
+						return
+					}
+					if len(event) > 0 {
+						assetTransfer.DecodeEvent(event, l)
+						mutex.Lock()
+						if assetTransfer.Address != "" {
+							*ats = append(*ats, assetTransfer)
+						}
+						mutex.Unlock()
+					}
+				}()
+			default:
+				continue
+			}
+		}
+	}
+	wg.Wait()
 }
 
 func (a *AssetTransfer) DecodeEvent(event map[string]any, log types.Log) {

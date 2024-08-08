@@ -26,32 +26,32 @@ const (
 )
 
 type SkyEyeTransaction struct {
-	ID                  *int64            `json:"id" gorm:"column:id"`
-	Chain               string            `json:"chain" gorm:"column:chain"`
-	BlockTimestamp      int64             `json:"block_timestamp" gorm:"column:block_timestamp"`
-	BlockNumber         int64             `json:"block_number" gorm:"column:blknum"`
-	TxHash              string            `json:"txhash" gorm:"column:txhash"`
-	TxPos               int64             `json:"txpos" gorm:"column:txpos"`
-	FromAddress         string            `json:"from_address" gorm:"column:from_address"`
-	ContractAddress     string            `json:"contract_address" gorm:"column:contract_address"`
-	MultiContracts      []string          `json:"multi_contracts" gorm:"-"`
-	MultiContractString string            `json:"-" gorm:"column:multi_contracts"`
-	Nonce               uint64            `json:"nonce" gorm:"column:nonce"`
-	Score               int               `json:"score" gorm:"column:score"`
-	Scores              []string          `json:"-" gorm:"-"`
-	SplitScores         string            `json:"split_scores" gorm:"column:split_scores"`
-	Values              []byte            `json:"-" gorm:"column:skyeye_values"`
-	Trace               *TransactionTrace `json:"-" gorm:"-"`
-	ByteCode            []byte            `json:"-" gorm:"-"`
-	Push4Args           []string          `json:"-" gorm:"-"`
-	Push20Args          []string          `json:"-" gorm:"-"`
-	Push32Args          []string          `json:"-" gorm:"-"`
-	PushStringLogs      []string          `json:"-" gorm:"-"`
-	Fund                string            `json:"fund" gorm:"-"`
-	MonitorAddrs        *SkyMonitorAddrs  `json:"-" gorm:"-"`
-	Skip                bool              `json:"-" gorm:"-"`
-	Input               string            `json:"input" gorm:"-"`
-	IsConstructor       bool              `json:"-" gorm:"-"`
+	ID                  *int64                `json:"id" gorm:"column:id"`
+	Chain               string                `json:"chain" gorm:"column:chain"`
+	BlockTimestamp      int64                 `json:"block_timestamp" gorm:"column:block_timestamp"`
+	BlockNumber         int64                 `json:"block_number" gorm:"column:blknum"`
+	TxHash              string                `json:"txhash" gorm:"column:txhash"`
+	TxPos               int64                 `json:"txpos" gorm:"column:txpos"`
+	FromAddress         string                `json:"from_address" gorm:"column:from_address"`
+	ContractAddress     string                `json:"contract_address" gorm:"column:contract_address"`
+	MultiContracts      []string              `json:"multi_contracts" gorm:"-"`
+	MultiContractString string                `json:"-" gorm:"column:multi_contracts"`
+	Nonce               uint64                `json:"nonce" gorm:"column:nonce"`
+	Score               int                   `json:"score" gorm:"column:score"`
+	Scores              []string              `json:"-" gorm:"-"`
+	SplitScores         string                `json:"split_scores" gorm:"column:split_scores"`
+	Values              []byte                `json:"-" gorm:"column:skyeye_values"`
+	Trace               *TransactionTraceCall `json:"-" gorm:"-"`
+	ByteCode            []byte                `json:"-" gorm:"-"`
+	Push4Args           []string              `json:"-" gorm:"-"`
+	Push20Args          []string              `json:"-" gorm:"-"`
+	Push32Args          []string              `json:"-" gorm:"-"`
+	PushStringLogs      []string              `json:"-" gorm:"-"`
+	Fund                string                `json:"fund" gorm:"-"`
+	MonitorAddrs        *SkyMonitorAddrs      `json:"-" gorm:"-"`
+	Skip                bool                  `json:"-" gorm:"-"`
+	Input               string                `json:"input" gorm:"-"`
+	IsConstructor       bool                  `json:"-" gorm:"-"`
 }
 
 func (st *SkyEyeTransaction) ConvertFromTransaction(tx Transaction) {
