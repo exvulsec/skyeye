@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"math/big"
-	"strings"
 
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/shopspring/decimal"
@@ -34,14 +33,11 @@ func (tt *TokenTransfer) Create() error {
 	return datastore.DB().Table(tt.TableName()).Create(tt).Error
 }
 
-func (tt *TokenTransfer) DecodeFromEvent(event Event, log types.Log, addrs MonitorAddrs) error {
+func (tt *TokenTransfer) DecodeFromEvent(event Event, log types.Log) error {
 	at := AssetTransfer{}
 	at.DecodeEvent(event, log)
 	tt.FromAddress = at.From
 	tt.ToAddress = at.To
-	if !addrs.Existed([]string{tt.FromAddress, tt.ToAddress}) {
-		return nil
-	}
 
 	if at.Value.Cmp(decimal.Decimal{}) == 0 {
 		return nil
@@ -64,11 +60,6 @@ func (tt *TokenTransfer) DecodeFromEvent(event Event, log types.Log, addrs Monit
 		return fmt.Errorf("create token transfer is err: %v", err)
 	}
 	var addr MonitorAddr
-	if addrs.Existed([]string{tt.FromAddress}) {
-		addr = MonitorAddr{Address: strings.ToLower(tt.ToAddress)}
-	} else {
-		addr = MonitorAddr{Address: strings.ToLower(tt.FromAddress)}
-	}
 	if err := addr.Create(config.Conf.ETL.Chain); err != nil {
 		return fmt.Errorf("create monitor address %s is err: %v", tt.ToAddress, err)
 	}
