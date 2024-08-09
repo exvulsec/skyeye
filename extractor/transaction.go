@@ -24,7 +24,6 @@ type transactionExtractor struct {
 	workers            int
 	exporters          []exporter.Exporter
 	skyEyeMonitorAddrs *model.SkyMonitorAddrs
-	monitorAddrs       *model.MonitorAddrs
 }
 
 type transactionChan struct {
@@ -32,7 +31,7 @@ type transactionChan struct {
 	block        uint64
 }
 
-func NewTransactionExtractor(workers int, addrs *model.MonitorAddrs) Extractor {
+func NewTransactionExtractor(workers int) Extractor {
 	skyEyeMonitorAddrs := model.SkyMonitorAddrs{}
 	if err := skyEyeMonitorAddrs.List(); err != nil {
 		logrus.Panicf("list monitor addr is err %v", err)
@@ -42,7 +41,6 @@ func NewTransactionExtractor(workers int, addrs *model.MonitorAddrs) Extractor {
 		transactionCh:      make(chan transactionChan, 1000),
 		workers:            workers,
 		skyEyeMonitorAddrs: &skyEyeMonitorAddrs,
-		monitorAddrs:       addrs,
 	}
 }
 
@@ -77,7 +75,6 @@ func (te *transactionExtractor) ExecuteTask(txCh transactionChan) {
 	tasks := []task.Task{
 		task.NewContractTask(te.skyEyeMonitorAddrs),
 		task.NewAssetTask(te.skyEyeMonitorAddrs),
-		task.NewTransactionTask(te.monitorAddrs),
 	}
 	var data any = txCh.transactions
 	for _, t := range tasks {

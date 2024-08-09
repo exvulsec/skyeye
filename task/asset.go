@@ -49,7 +49,7 @@ func (at *assetTask) AnalysisAssetTransfer(txs model.Transactions) model.Transac
 	originTxs, needAnalysisTxs := txs.MultiProcess(conditionFunc)
 	if len(needAnalysisTxs) > 0 {
 		for _, tx := range needAnalysisTxs {
-			if tx.Trace != nil && tx.Receipt != nil {
+			if tx.Trace != nil {
 				tx.IsConstructor = true
 			}
 			at.ComposeAssetsAndAlert(tx)
@@ -72,10 +72,7 @@ func (at *assetTask) ComposeAssetsAndAlert(tx model.Transaction) {
 	if tx.Trace == nil {
 		tx.GetTrace(config.Conf.ETL.Chain)
 	}
-	if tx.Receipt == nil {
-		tx.GetReceipt(config.Conf.ETL.Chain)
-	}
-	if tx.Receipt != nil && tx.Trace != nil {
+	if tx.Trace != nil {
 		skyTx := model.SkyEyeTransaction{Input: tx.Input}
 		if tx.ToAddress != nil {
 			assets.ToAddress = *tx.ToAddress
@@ -97,10 +94,8 @@ func (at *assetTask) ComposeAssetsAndAlert(tx model.Transaction) {
 			skyTx.IsConstructor = tx.IsConstructor
 			skyTx.MultiContracts = tx.MultiContracts
 		}
-		assetTransfers := model.AssetTransfers{}
 
-		assetTransfers.Compose(tx.Receipt.Logs, tx.Trace)
-
+		assetTransfers := tx.Trace.ListTransferEventWithDFS(model.AssetTransfers{}, tx.TxHash)
 		if err := assets.AnalysisAssetTransfers(assetTransfers); err != nil {
 			logrus.Errorf("analysis asset transfer is err: %v", err)
 			return

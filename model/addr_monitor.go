@@ -113,27 +113,3 @@ func (ma *MonitorAddr) Delete(chain string) error {
 		Where("address = ?", ma.Address).
 		Delete(nil).Error
 }
-
-type MonitorAddrs []MonitorAddr
-
-func (mas *MonitorAddrs) TableName() string {
-	return fmt.Sprintf("%s.%s", config.Conf.ETL.Chain, datastore.TableMonitorAddrs)
-}
-
-func (mas *MonitorAddrs) List(id int64) error {
-	return datastore.DB().Table(mas.TableName()).
-		Where("id > ?", id).
-		Order("id asc").
-		Find(mas).Error
-}
-
-func (mas *MonitorAddrs) Existed(addrs []string) bool {
-	for _, addr := range addrs {
-		for _, m := range *mas {
-			if strings.EqualFold(m.Address, addr) {
-				return true
-			}
-		}
-	}
-	return false
-}
