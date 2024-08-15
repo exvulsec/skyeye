@@ -26,10 +26,12 @@ func (ei *HTTPInstance) Instance() any {
 }
 
 func initHTTPClient() any {
-	transport := &http.Transport{}
-	transport.MaxConnsPerHost = config.Conf.HTTPServer.ClientMaxConns
-	transport.MaxIdleConns = config.Conf.HTTPServer.ClientMaxConns
-	transport.MaxIdleConnsPerHost = config.Conf.HTTPServer.ClientMaxConns
+	transport := &http.Transport{
+		Proxy:               http.ProxyFromEnvironment,
+		MaxIdleConnsPerHost: config.Conf.HTTPServer.ClientMaxConns,
+		MaxIdleConns:        config.Conf.HTTPServer.ClientMaxConns,
+		MaxConnsPerHost:     config.Conf.HTTPServer.ClientMaxConns,
+	}
 	logrus.Infof("init http client")
 	return &http.Client{
 		Transport: transport,
