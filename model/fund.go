@@ -181,14 +181,15 @@ func (fpc *FundPolicyCalc) GetAddressTransactionGraph(chain, address string) (*G
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
+			rwMutex.Lock()
 			index := r.Intn(len(scanInfo.APIKeys))
+			rwMutex.Unlock()
 			scanAPIKEY := scanInfo.APIKeys[index]
 			resp, err := fpc.GetTransactionInfoFromScan(fmt.Sprintf(scanAPI, scanAPIKEY, address, action))
 			if err != nil {
 				logrus.Errorf("get %s resp from scan is err %v", action, err)
 				return
 			}
-			rwMutex.Lock()
 			transactions := []ScanTransaction{}
 			if action == utils.ScanTransactionAction || action == utils.ScanInternaTXlAction {
 				for _, result := range resp.Result {
@@ -203,6 +204,7 @@ func (fpc *FundPolicyCalc) GetAddressTransactionGraph(chain, address string) (*G
 			} else {
 				transactions = resp.Result
 			}
+			rwMutex.Lock()
 			txs = append(txs, transactions...)
 			rwMutex.Unlock()
 		}()
