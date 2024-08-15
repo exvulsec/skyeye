@@ -51,6 +51,7 @@ type ScanTransaction struct {
 	TokenID         *decimal.Decimal `json:"tokenID"`
 	TokenSymbol     string           `json:"tokenSymbol"`
 	TokenDecimals   string           `json:"tokenDecimal"`
+	Input           string           `json:"input"`
 }
 
 type ScanTXResponse struct {

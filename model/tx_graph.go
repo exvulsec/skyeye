@@ -20,7 +20,7 @@ type NodeEdge struct {
 	Timestamp     int64           `json:"timestamp,omitempty"`
 	FromAddress   string          `json:"from_address,omitempty"`
 	ToAddress     string          `json:"to_address,omitempty"`
-	Token         string          `json:"-"`
+	Token         string          `json:"token,omitempty"`
 	Value         decimal.Decimal `json:"-"`
 	ValueWithUnit string          `json:"value,omitempty"`
 	Index         int             `json:"index"`

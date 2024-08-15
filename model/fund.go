@@ -58,7 +58,6 @@ func (fpc *FundPolicyCalc) Name() string {
 
 func (fpc *FundPolicyCalc) GetTransactionInfoFromScan(url string) (ScanTransactionResponse, error) {
 	txResp := ScanTransactionResponse{}
-
 	resp, err := client.HTTPClient().Get(url)
 	if err != nil {
 		return txResp, fmt.Errorf("get scan resp from %s is err %v", url, err)
@@ -190,14 +189,21 @@ func (fpc *FundPolicyCalc) GetAddressTransactionGraph(chain, address string) (*G
 				return
 			}
 			rwMutex.Lock()
+			transactions := []ScanTransaction{}
 			if action == utils.ScanTransactionAction || action == utils.ScanInternaTXlAction {
-				for index, result := range resp.Result {
+				for _, result := range resp.Result {
+					if result.Value.IsZero() && result.Input != "0x" {
+						continue
+					}
+					result.Contract = EVMPlatformCurrency
 					result.TokenDecimals = "18"
 					result.TokenSymbol = utils.GetChainCurrency(chain)
-					resp.Result[index] = result
+					transactions = append(transactions, result)
 				}
+			} else {
+				transactions = resp.Result
 			}
-			txs = append(txs, resp.Result...)
+			txs = append(txs, transactions...)
 			rwMutex.Unlock()
 		}()
 	}
