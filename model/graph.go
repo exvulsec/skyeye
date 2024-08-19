@@ -213,9 +213,6 @@ func (nes *NodeEdges) Distinct() {
 			distinctNodeEdges = append(distinctNodeEdges, ne)
 		}
 	}
-	sort.SliceStable(distinctNodeEdges, func(i, j int) bool {
-		return distinctNodeEdges[i].Index < distinctNodeEdges[j].Index
-	})
 	*nes = distinctNodeEdges
 }
 
