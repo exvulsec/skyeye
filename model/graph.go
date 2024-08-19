@@ -5,7 +5,6 @@ import (
 	"sort"
 	"strconv"
 
-	mapset "github.com/deckarep/golang-set/v2"
 	"github.com/shopspring/decimal"
 	"github.com/sirupsen/logrus"
 )
@@ -68,27 +67,31 @@ func (g *Graph) AddNodes(chain string) {
 	if g.Edges == nil {
 		return
 	}
-	addrs := []string{}
 	for _, edge := range g.Edges {
-		if edge.FromAddress != "" {
-			addrs = append(addrs, edge.FromAddress)
-		}
-		if edge.ToAddress != "" {
-			addrs = append(addrs, edge.ToAddress)
-		}
+		g.ComposeNodeFromEdges(chain, edge.FromAddress)
+		g.ComposeNodeFromEdges(chain, edge.ToAddress)
 	}
-	distinctAddrs := mapset.NewSet[string](addrs...).ToSlice()
-	sort.SliceStable(distinctAddrs, func(i, j int) bool {
-		return distinctAddrs[i] < distinctAddrs[j]
-	})
+}
 
-	for _, addr := range distinctAddrs {
-		label := AddressLabel{Address: addr}
-		if err := label.GetLabel(chain, addr); err != nil {
-			logrus.Errorf("get address %s's label is err: %v", addr, err)
+func (g *Graph) ComposeNodeFromEdges(chain, address string) {
+	if address != "" {
+		if !g.NodeExisted(address) {
+			label := AddressLabel{Address: address}
+			if err := label.GetLabel(chain, address); err != nil {
+				logrus.Errorf("get address %s's label is err: %v", address, err)
+			}
+			g.Nodes = append(g.Nodes, Node{Address: address, Label: label.Label})
 		}
-		g.Nodes = append(g.Nodes, Node{Address: addr, Label: label.Label})
 	}
+}
+
+func (g *Graph) NodeExisted(address string) bool {
+	for _, node := range g.Nodes {
+		if node.Address == address {
+			return true
+		}
+	}
+	return false
 }
 
 func (g *Graph) ConvertEdgeFromScanTransactions(chain string, transactions []ScanTransaction) {
