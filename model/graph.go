@@ -32,8 +32,12 @@ type Graph struct {
 	Edges NodeEdges `json:"edges"`
 }
 
+func initGraph() Graph {
+	return Graph{Nodes: []Node{}, Edges: NodeEdges{}}
+}
+
 func NewGraphFromAssetTransfers(chain string, tx Transaction, assetTransfers AssetTransfers) (*Graph, error) {
-	g := Graph{}
+	g := initGraph()
 	if err := g.ConvertEdgeFromAssetTransfers(tx, assetTransfers); err != nil {
 		return nil, err
 	}
@@ -44,7 +48,7 @@ func NewGraphFromAssetTransfers(chain string, tx Transaction, assetTransfers Ass
 }
 
 func NewGraphFromScan(chain string, transactions []ScanTransaction) *Graph {
-	g := Graph{}
+	g := initGraph()
 	g.ConvertEdgeFromScanTransactions(chain, transactions)
 	g.Edges.Distinct()
 	g.Edges.SetValueWithUnit(chain)
@@ -53,7 +57,7 @@ func NewGraphFromScan(chain string, transactions []ScanTransaction) *Graph {
 }
 
 func NewGraph(chain, address string) (*Graph, error) {
-	g := Graph{}
+	g := initGraph()
 	if err := g.AddNodeEdges(chain, address); err != nil {
 		return nil, err
 	}
