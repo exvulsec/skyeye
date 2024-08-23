@@ -17,11 +17,12 @@ var (
 )
 
 type config struct {
-	Postgresql PostgresqlConfig          `mapstructure:"postgresql" yaml:"postgresql"`
-	ScanInfos  map[string]ScanInfoConfig `mapstructure:"scan_infos" yaml:"scanInfos"`
-	HTTPServer HTTPServerConfig          `mapstructure:"http_server" yaml:"http_server"`
-	ETL        ETLConfig                 `mapstructure:"etl" yaml:"etl"`
-	Redis      RedisConfig               `mapstructure:"redis" yaml:"redis"`
+	Postgresql     PostgresqlConfig          `mapstructure:"postgresql" yaml:"postgresql"`
+	ScanInfos      map[string]ScanInfoConfig `mapstructure:"scan_infos" yaml:"scanInfos"`
+	HTTPServer     HTTPServerConfig          `mapstructure:"http_server" yaml:"http_server"`
+	ETL            ETLConfig                 `mapstructure:"etl" yaml:"etl"`
+	Redis          RedisConfig               `mapstructure:"redis" yaml:"redis"`
+	SimulationPath string                    `mapstructure:"simulation_path" yaml:"simulation_path"`
 }
 
 type HTTPServerConfig struct {
