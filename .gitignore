@@ -1,5 +1,7 @@
 *.idea
 *bin
+lib/lib*
+*simulation
 
 *.DStore
 
