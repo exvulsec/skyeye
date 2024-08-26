@@ -65,5 +65,5 @@ build-image:
 	  --label $(DOCKER_LABELS)                                      \
 	  -f $(BUILD_DIR)/Dockerfile .;                                 \
 	sed -i                                                          \
-	  "/    image: $${image}:*/c    image: $${image}:$(VERSION)"    \
+	  "/\ \ \ \ image: $${image}:*/c\ \ \ \ image: $${image}:$(VERSION)"        \
 	  $(PWD)/docker-compose.yaml;
