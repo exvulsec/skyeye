@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"strconv"
 	"strings"
+	"unsafe"
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/ethclient"
@@ -16,6 +17,12 @@ import (
 	"github.com/exvulsec/skyeye/utils"
 )
 
+/*
+#cgo LDFLAGS: -L../../lib -lsimulation
+#include "../../lib/simulation.h"
+*/
+import "C"
+
 type TXController struct{}
 
 func (tc *TXController) Routers(routers gin.IRouter) {
@@ -23,6 +30,7 @@ func (tc *TXController) Routers(routers gin.IRouter) {
 	{
 		api.GET("/reviewed", tc.Reviewed)
 		api.GET("/:tx_hash/graph", tc.TransactionFundFlowGraph)
+		api.GET("/:tx_hash/contract/:contract/simulation", tc.Simulation)
 	}
 }
 
@@ -150,5 +158,68 @@ func (tc *TXController) TransactionFundFlowGraph(c *gin.Context) {
 	c.JSON(http.StatusOK, model.Message{
 		Code: 0,
 		Data: graph,
+	})
+}
+
+func ExecuteSimulation(chain, txhash, contract string) (string, error) {
+	cChain := C.CString(chain)
+	defer C.free(unsafe.Pointer(cChain))
+
+	cTxhash := C.CString(txhash)
+	defer C.free(unsafe.Pointer(cTxhash))
+
+	cContract := C.CString(contract)
+	defer C.free(unsafe.Pointer(cContract))
+
+	cValue := C.CString("0")
+	defer C.free(unsafe.Pointer(cValue))
+
+	opt := C.OptFFI{
+		txhash:     cTxhash,
+		contract:   cContract,
+		followcall: 0,
+		chain:      cChain,
+		calldata:   nil,
+		instrace:   0,
+		value:      cValue,
+		is_json:    1,
+	}
+
+	var success C.bool
+	result := C.get_simulation_json(&opt, &success)
+	defer C.free_simulation_json(result)
+
+	goString := C.GoString(result)
+
+	if !bool(success) {
+		return "", fmt.Errorf("got simulation is err: %v", goString)
+	}
+
+	return goString, nil
+}
+
+func (tc *TXController) Simulation(c *gin.Context) {
+	chain := utils.GetSupportChain(c.Query(utils.ChainKey))
+	if chain == "" {
+		c.JSON(http.StatusOK, model.Message{
+			Code: http.StatusBadRequest,
+			Msg:  "chain is empty",
+		})
+		return
+	}
+
+	txhash := strings.ToLower(c.Param("tx_hash"))
+	contract := strings.ToLower(c.Param("contract"))
+	result, err := ExecuteSimulation(chain, txhash, contract)
+	if err != nil {
+		c.JSON(http.StatusOK, model.Message{
+			Code: http.StatusInternalServerError,
+			Msg:  fmt.Sprintf("simulation is err: %v", err),
+		})
+		return
+	}
+	c.JSON(http.StatusOK, model.Message{
+		Code: 0,
+		Data: result,
 	})
 }
