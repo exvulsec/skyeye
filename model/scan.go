@@ -52,6 +52,8 @@ type ScanTransaction struct {
 	TokenSymbol     string           `json:"tokenSymbol"`
 	TokenDecimals   string           `json:"tokenDecimal"`
 	Input           string           `json:"input"`
+	IsError         string           `json:"isError"`
+	ErrCode         string           `json:"errCode"`
 }
 
 type ScanTXResponse struct {
