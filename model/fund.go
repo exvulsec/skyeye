@@ -193,6 +193,9 @@ func (fpc *FundPolicyCalc) GetAddressTransactionGraph(chain, address string) (*G
 			transactions := []ScanTransaction{}
 			if action == utils.ScanTransactionAction || action == utils.ScanInternaTXlAction {
 				for _, result := range resp.Result {
+					if result.IsError == "1" {
+						continue
+					}
 					if result.Value.IsZero() && result.Input != "0x" {
 						continue
 					}
