@@ -30,6 +30,7 @@ type TransactionTraceCall struct {
 	Output   string                 `json:"output"`
 	Value    string                 `json:"value"`
 	CallType string                 `json:"type"`
+	Error    string                 `json:"error"`
 	Calls    []TransactionTraceCall `json:"calls"`
 	Logs     []TransactionTraceLog  `json:"logs"`
 }
@@ -81,6 +82,9 @@ func (call *TransactionTraceCall) ListTransferEvent() []AssetTransfer {
 		}
 		call := queue.Pop()
 		if call != nil {
+			if call.Error != "" {
+				continue
+			}
 			if !strings.EqualFold(call.Value, "0x0") && call.Value != "" {
 				value, err := hexutil.DecodeBig(call.Value)
 				if err != nil {
@@ -103,6 +107,9 @@ func (call *TransactionTraceCall) ListTransferEvent() []AssetTransfer {
 }
 
 func (call *TransactionTraceCall) ListTransferEventWithDFS(assetTransfers AssetTransfers, txhash string) AssetTransfers {
+	if call.Error != "" {
+		return assetTransfers
+	}
 	if !strings.EqualFold(call.Value, "0x0") && call.Value != "" {
 		value, err := hexutil.DecodeBig(call.Value)
 		if err != nil {
