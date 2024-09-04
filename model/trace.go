@@ -36,6 +36,9 @@ type TransactionTraceCall struct {
 }
 
 func (call *TransactionTraceCall) GetContractAddress() (string, bool) {
+	if call.Error != "" {
+		return "", true
+	}
 	if call.CallType == "CREATE" || call.CallType == "CREATE2" {
 		if call.FilterAddress(call.From) {
 			return "", true
