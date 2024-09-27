@@ -50,10 +50,11 @@ endif
 	cp -r simulation/target/$(RUST_TARGET)/release/libsimulation.* ./lib
 
 
-build-local: build-rust-lib
-	go mod download;                                                \
-	CGO_ENABLED=1                                                   \
-	GOOS=$(GOOS) GOARCH=$(GOARCH)                                   \
+build-local:
+	cp -r simulation/target/$(RUST_TARGET)/release/libsimulation.* ./lib; \
+	go mod download;                                                      \
+	CGO_ENABLED=1                                                         \
+	GOOS=$(GOOS) GOARCH=$(GOARCH)                                         \
 	go build -v -o $(OUTPUT_DIR)/$(TARGET) main.go;
 
 build-image:
