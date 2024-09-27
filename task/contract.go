@@ -111,7 +111,7 @@ func (ce *contractTask) ComposeLarkNotifierData(st model.SkyEyeTransaction) noti
 }
 
 func (ce *contractTask) Alert(st model.SkyEyeTransaction) {
-	if st.Score > config.Conf.ETL.ScoreAlertThreshold {
+	if st.Score >= config.Conf.ETL.ScoreAlertThreshold {
 		logrus.Infof("monitor contract %s on chain %s", st.ContractAddress, st.Chain)
 		if err := st.MonitorContractAddress(); err != nil {
 			logrus.Error(err)
