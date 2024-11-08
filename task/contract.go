@@ -44,7 +44,7 @@ func (ce *contractTask) AnalysisContracts(txs model.Transactions) model.Transact
 	if len(needAnalysisTxs) > 0 {
 		needAnalysisTxs.EnrichTxs()
 		for index, tx := range needAnalysisTxs {
-			ce.ComposeContractAndAlert(&tx)
+			ce.ComposeContractAndInsert(&tx)
 			needAnalysisTxs[index] = tx
 		}
 		logrus.Infof("block: %d, analysis transactions: %d contract creation, elapsed: %s",
@@ -54,7 +54,7 @@ func (ce *contractTask) AnalysisContracts(txs model.Transactions) model.Transact
 	return append(originTxs, needAnalysisTxs...)
 }
 
-func (ce *contractTask) ComposeContractAndAlert(tx *model.Transaction) {
+func (ce *contractTask) ComposeContractAndInsert(tx *model.Transaction) {
 	policies := []model.PolicyCalc{
 		&model.FundPolicyCalc{Chain: config.Conf.ETL.Chain, NeedFund: true},
 		&model.NoncePolicyCalc{},
@@ -96,7 +96,7 @@ func (ce *contractTask) ComposeContractAndAlert(tx *model.Transaction) {
 		contractTX.Analysis(config.Conf.ETL.Chain)
 		if !contractTX.Skip {
 			tx.SplitScores = contractTX.SplitScores
-			ce.Alert(contractTX)
+			ce.AddToDB(contractTX)
 		}
 	}
 }
@@ -110,7 +110,7 @@ func (ce *contractTask) ComposeLarkNotifierData(st model.SkyEyeTransaction) noti
 	}
 }
 
-func (ce *contractTask) Alert(st model.SkyEyeTransaction) {
+func (ce *contractTask) AddToDB(st model.SkyEyeTransaction) {
 	if st.Score >= config.Conf.ETL.ScoreAlertThreshold {
 		logrus.Infof("monitor contract %s on chain %s", st.ContractAddress, st.Chain)
 		if err := st.MonitorContractAddress(); err != nil {
@@ -120,15 +120,6 @@ func (ce *contractTask) Alert(st model.SkyEyeTransaction) {
 		if err := st.Insert(); err != nil {
 			logrus.Errorf("insert txhash %s's contract %s to db is err %v", st.TxHash, st.ContractAddress, err)
 			return
-		}
-		if ce.notifiers != nil {
-			for _, n := range ce.notifiers {
-				switch n.Name() {
-				case notifier.LarkNotifierName:
-					n.Notify(ce.ComposeLarkNotifierData(st))
-				}
-				logrus.Infof("send message to %s channel", n.Name())
-			}
 		}
 	}
 }
