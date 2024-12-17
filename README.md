@@ -1,4 +1,4 @@
-## Exvul TX Security Monitor and Detector
+## Exvul on chain TX Security Monitor and Detector
 
 
 **Project Description**
