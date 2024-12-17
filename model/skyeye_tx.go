@@ -181,6 +181,7 @@ func (st *SkyEyeTransaction) analysisContractByPolicies() bool {
 			FlashLoanFuncNames: FuncNameList,
 		},
 		&Push20PolicyCalc{},
+		&HeimdallPolicyCalc{},
 	}
 	for _, p := range policies {
 		if p.Filter(st) {
