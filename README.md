@@ -1,196 +1,61 @@
-# ETL Read Me
-
-## ETL
-
-### Quick Start
-
-#### ETL Export Transaction
-
-```shell
-# export contract creation transaction
-etl export txs --tx_nonce <nonce> \
-    --creation_contract true \
-    --config <config_path> \
-    --batch_size <batch> \
-    --chain <chain> \
-    --openapi_server <openapi_server>
-```
-
-#### ETL HTTP Server
-
-```shell
-# shell
-etl http --config <config_file_dir>
-
-# docker
-docker run -d -p 8080:8080 etl:<tag>
-
-# docker-compose
-doker-compose up -d
-
-```
-
-### 命令
-
-#### Export
-
-导出数据, 当前支持 txs
-
-| 参数              | 描述                                                                     |
-| ----------------- | ------------------------------------------------------------------------ |
-| tx_nonce          | 设置 transaction nonce 的值, 大于该值则会被过滤, 0 则不做过滤, 默认值为0 |
-| creation_contract | 只筛选出创建合约的交易, 默认为 false                                     |
-| config            | 设置 config 文件的路径, config 配置详见 [config](#config)                |
-| batch_size        | 使用 BatchCall 时,一个 Batch 中最大的对象数量, 默认为 50                 |
-| chain             | 指定链, 默认为 `ethereum`                                                |
-| openapi_server    | openapi_server 地址, 可使用 `etl http` 命令启动, 详见 [HTTP](#http)      |
-
-#### HTTP
-
-启动 HTTP 服务
-
-| 参数   | 描述                                                      |
-| ------ | --------------------------------------------------------- |
-| config | 设置 config 文件的路径, config 配置详见 [config](#config) |
-
-### 从 RPC 批量获取数据
-
-- 使用 `go-ethereum` RPC 的 `BatchElem` 构建了 `BatchCall` 用于批量从 `RPC Node` 上获取数据
-- `BatchCall` 能批量获取的数据包括 `Block` 数据, `Transaction` 数据, `Receipt` 数据
-
-### 区块
-
-- 最新区块使用 `SubscribeNewHead`
-- 具有区块记录功能,记录当前运行到哪个区块,下次启动时从已执行完区块的下一个区块开始运行
-- 记录的区块高度写到文件上,文件可以在配置文件中配置
-
-### 交易
-
-- 从区块中获取的所有 `Transaction`
-- 根据 `Transaction` 的 `Transaction Hash`, 从 `RPC Node` 获取到 `Transaction` 的 `Receipt` 数据
-
-#### 过滤 Contract Creation 的交易
-
-根据交易的 `To` 字段是否为空则去获取该交易的 `Receipt` 数据
-
-##### 推送 Redis 的策略
-
-根据如下策略判断是否需要过滤合约地址:
-
-- **策略1: 过滤失败交易**
-  - 根据 `Receipt` 数据后,查看 `Status` 是否为 `1`
-  - 若为 `Status` 为 `1` 则过滤该交易
-- **策略2: 过滤 Nonce 大于 10 的交易**
-  - 根据 `Transaction Nonce` 是否小于指定的 `Threshold(暂定 10)`
-  - 若 `Transaction Nonce` 大于 `10` 则过滤掉该合约地址
-
-推送到 Redis `HSET` 的 `Key` 为:
-
-- `<chain>:txs_associated:addrs`
-
-推送到 Redis `HSET` 的 `Value` 为:
-
-- `<from_address>`: `<contract_address>,<contract_address>,<contract_address>`
-
-##### Nastiff 告警策略
-
-根据如下策略判断是否需要过滤合约地址:
-
-- **前置条件: 过滤失败交易**
-  - 根据 `Receipt` 数据后,查看 `Status` 是否为 `1`
-- 若为 `Status` 为 `0` 则过滤该交易
+## Exvul TX Security Monitor and Detector
 
 
-每个合约将进行独立的分数计算, 当前满足分数阈值为 >= 50 分时,推送告警 
+**Project Description**
 
-分数设置
+Exvul TX Security monitor and detector offers comprehensive protection against on-chain threats with a suite of advanced monitoring and analysis tools. Its key features focus on proactive threat detection and rapid response, minimizing the impact of malicious activities.
 
-| name            | conditions         | score             |
-| --------------- | ------------------ |-------------------|
-| nonce           | 0 <= nonce < 10    | 10 - nonce        |
-|                 | 10 <= nonce < 50   | 5 - (nonce-10)/10 |
-|                 | 50 <= nonce        | 0                 |
-| bytecode        | 0 < bytecode < 500 | 0                 |
-|                 | bytecode >= 500    | 12                |
-| isERC20/721     | isERC20/721        | 0                 |
-|                 | ~isERC20/721       | 20                |
-| push20          | len(push20) == 0   | 0                 |
-|                 | len(push20) != 0   | 2                 |
-| push4不含闪电贷   | True               | 0                 |
-|                 | Flase              | 50                |
-| fund            | Tornado            | 40                |
-|                 | ChangeNow          | 13                |
+**Key Features**
 
-推送到 Redis MQ 的 `Key` 为:
+1. **Monitoring On-Chain Malicious Contract Creation:**
 
-- `evm:contract_address:stream`
-  
-推送到 Redis MQ 的 `Value` 的示例为:
+Exvul employs a multi-layered approach to identify malicious contracts at their inception:
 
-```json
-{
-  "chain": "eth",
-  "codeSize": 3218,
-  "contract": "0xe911c2fd491931db7ee683ecb8ebb0b9a37332c5",
-  "createTime": "2023-05-31 03:15:59",
-  "func": "_buy,withdraw,withdrawToken,0x{1}",
-  "fund": "2-KuCoin_0xcad6",
-  "push20": "",
-  "score": 61,
-  "split_scores": [11, 12, 13, 25, 0, 0, 0],
-  "txhash": "0x7464c7dad2859bec2f03f9f231fe63b66570499454fb1bc414d093eba67e98a3"
-}
-```
+   * **Bytecode Analysis:** Newly created contract bytecode is thoroughly analyzed to identify suspicious patterns and potential vulnerabilities.
+   * **AI-Assisted and Self-Developed Decompilation Engines:** These engines reconstruct source code from bytecode, providing a clearer understanding of the contract's logic and facilitating deeper analysis.
+   * **Automated Analysis:** This automation streamlines the identification of malicious behavior, enabling rapid detection and response.
+   * **Dynamic Fuzzing Technology:** This technique executes the contract with various inputs to uncover hidden vulnerabilities and capture its dynamic behavior, ensuring comprehensive coverage.
 
-## Config
+By combining these techniques, Exvul can accurately pinpoint malicious contracts created by attackers and promptly notify project teams, preventing potential exploits and safeguarding user funds.
 
-```yaml
-# http server 配置
-http_server:
-  # httt server ip
-  host: localhost
-  # http server 端口
-  port: 8080
-  # http api key, 设置后将通过 api key 访问 api
-  apikey:
-  # http 客户端最大的链接数
-  client_max_conns: 5
-  # scan 的 apikey, 调用 scan api 使用, 支持多个 apikey, 以 ',' 分割
-  scan_apikeys:
-  # 过滤 fund 源头地址时, 地址 transaction nonce 的阈值, 大于该值时停止查询
-  address_nonce_threshold: 200000
-  # solidity 合约源码的路径, 设置该值则会启用 /api/v1/address/:address/solidity 接口, 默认关闭
-  solidity_code_path:
+2. **Monitoring Contract Calls:**
 
-# 配置该值, 则会在使用 etl export txs 时导出到数据库
-postgresql:
-  user: postgres
-  password: postgres
-  database: postgres
-  host: localhost
-  port: 5432
-  log_mode: true
-  max_idle_conns: 5
-  max_open_conns: 10
+Exvul extends its protection to deployed contracts and established projects:
 
-# etl 配置
-etl:
-  # rpc provider url
-  provider_url:
-  # 链名, 支持 ethereum
-  chain: ethereum
-  # 最大并发数
-  worker: 10
-  # 上一次执行到的区块高度的文件
-  previous_file:
-  # 所有 flash loan 的函数
-  flash_loan_file: ./config/flashloan.txt
-  # 推送监控的分数阈值
-  score_alert_threshold: 50
+   * **Self-Developed Local Simulated EVM Execution:** This feature allows for safe and controlled execution of contract calls, enabling the detection of malicious behavior without impacting the live blockchain.
+   * **Static Analysis:** This technique analyzes the contract's code without executing it, identifying potential vulnerabilities and security flaws.
 
-# 配置该值, 则会在使用 etl export txs 时导出到 redis
-redis:
-  addr: localhost:6379
-  database: 1
-  max_idle_conns: 5
-```
+This combined approach enables rapid identification of attack targets and precise pinpointing of vulnerability root causes, empowering projects to mitigate risks, minimize losses, and even proactively prevent attacks.
+
+3. **Memory Pool Security Monitoring:**
+
+Exvul provides real-time monitoring of the memory pool:
+
+   * **Memory Pool Data Acquisition:** Exvul captures incoming transaction data within the memory pool.
+   * **Contract Analysis and Scanning:** Contracts interacting with transactions in the memory pool are analyzed and scanned for potential threats.
+   * **Parallel and Rapid Simulated Execution and Static Scanning:** These techniques are applied to quickly assess the risk associated with each transaction.
+
+This proactive monitoring allows for the rapid detection of abnormal transactions and provides crucial early warning signals, enabling preemptive action to prevent potential attacks before they are confirmed on the blockchain.
+
+4. **Abnormal Funds Monitoring:**
+
+Exvul tracks and analyzes fund movements to identify suspicious activity:
+
+   * **Address Tracing:** Exvul follows the flow of funds across different addresses to uncover connections and patterns indicative of malicious activity.
+   * **Contract Monitoring:** Ongoing monitoring of contract interactions helps identify unusual or suspicious transactions.
+   * **Associated Address Analysis:** By analyzing relationships between addresses, Exvul can identify potential attacker networks and uncover hidden connections.
+
+This comprehensive approach to funds flow analysis allows for the discovery of hacker addresses and other suspicious entities, providing valuable intelligence for investigations and preventative measures.
+
+**Architecture**
+
+![alt text](./doc/image.png)
+
+
+> **Note:** Due to limitations of Lark documents, framework information cannot be displayed here.
+
+**Alert Information Pushed By:**
+
+* Telegram
+* API
+* Slack
